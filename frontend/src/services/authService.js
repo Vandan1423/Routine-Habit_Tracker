@@ -53,6 +53,30 @@ const authService = {
             throw new Error("Session expired. Please login again.", { cause: error });
         }
     },
+    forgotPassword: async (email) => {
+        try {
+            const response = await api.post("/auth/forgot-password", { email });
+            return response.data;
+        } catch (error) {
+            const message =
+                error.response?.data?.message ||
+                "Failed to send reset link. Please try again.";
+            throw new Error(message, { cause: error });
+        }
+    },
+    resetPassword: async (token, password) => {
+        try {
+            const response = await api.post(`/auth/reset-password/${token}`, {
+                password,
+            });
+            return response.data;
+        } catch (error) {
+            const message =
+                error.response?.data?.message ||
+                "Failed to reset password. Please try again.";
+            throw new Error(message, { cause: error });
+        }
+    },
 };
 
 export default authService;

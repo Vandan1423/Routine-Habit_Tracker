@@ -147,7 +147,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             {/* Brand / Logo Area */}
             <div className={styles.brand}>
                 <div className={styles.logoMark}></div>
-                <span className={styles.brandName}>FocusApp</span>
+                <span className={styles.brandName}>Routine & Habit Tracker</span>
                 <button
                     className={styles.mobileClose}
                     type="button"

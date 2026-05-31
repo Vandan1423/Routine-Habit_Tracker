@@ -5,6 +5,8 @@ import { Analytics } from "@vercel/analytics/react";
 // Auth & Protection
 import ProtectedRoute from "./routes/ProtectedRoute";
 import AuthPage from "./pages/Auth/AuthPage";
+import ForgotPasswordPage from "./pages/Auth/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/Auth/ResetPasswordPage";
 
 // Layout & Pages
 import AppLayout from "./components/layout/AppLayout";
@@ -20,6 +22,8 @@ function App() {
             <Routes>
             {/* Public Routes */}
             <Route path="/login" element={<AuthPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
 
             {/* Protected Routes */}
             {/* We wrap the AppLayout inside the ProtectedRoute so the layout itself is hidden from unauthenticated users */}

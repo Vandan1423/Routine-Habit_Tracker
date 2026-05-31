@@ -149,11 +149,7 @@ export default function Login() {
                         </div>
 
                         <div className={styles.rememberForgot}>
-                            <label className={styles.checkbox}>
-                                <input type="checkbox" />
-                                <span>Remember me</span>
-                            </label>
-                            <a href="#" className={styles.forgotLink}>
+                            <a href="/forgot-password" className={styles.forgotLink}>
                                 Forgot password?
                             </a>
                         </div>
