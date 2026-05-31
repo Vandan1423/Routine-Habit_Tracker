@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import "./App.css";
+import { Analytics } from "@vercel/analytics/react";
 
 // Auth & Protection
 import ProtectedRoute from "./routes/ProtectedRoute";
@@ -14,7 +15,9 @@ import ProgressPage from "./pages/Progress/ProgressPage";
 
 function App() {
     return (
-        <Routes>
+        <>
+            <Analytics />
+            <Routes>
             {/* Public Routes */}
             <Route path="/login" element={<AuthPage />} />
 
@@ -68,7 +71,8 @@ function App() {
 
             {/* Default Redirect */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
+            </Routes>
+        </>
     );
 }
 
