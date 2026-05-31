@@ -6,7 +6,6 @@ import styles from "./AuthPage.module.css";
 export default function Login() {
     const navigate = useNavigate();
     const { login, register, authLoading, error } = useAuth();
-
     const [isLogin, setIsLogin] = useState(true);
     const [localError, setLocalError] = useState("");
     const [formData, setFormData] = useState({
@@ -16,27 +15,21 @@ export default function Login() {
     });
 
     const handleChange = (e) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value,
-        });
+        setFormData({ ...formData, [e.target.name]: e.target.value });
         setLocalError("");
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLocalError("");
-
         if (!formData.email || !formData.password) {
             setLocalError("Please fill in all required fields");
             return;
         }
-
         if (!isLogin && !formData.name) {
             setLocalError("Please enter your name");
             return;
         }
-
         try {
             if (isLogin) {
                 await login({
@@ -73,10 +66,9 @@ export default function Login() {
             </div>
 
             <div
-                className={`${styles.container} ${
-                    !isLogin ? styles.active : ""
-                }`}
+                className={`${styles.container} ${!isLogin ? styles.active : ""}`}
             >
+                {/* ── Sign In ── */}
                 <div className={`${styles.formContainer} ${styles.signIn}`}>
                     <form className={styles.form} onSubmit={handleSubmit}>
                         <div className={styles.logoSection}>
@@ -124,6 +116,7 @@ export default function Login() {
                         </div>
 
                         <h1 className={styles.title}>Sign In</h1>
+
                         {(localError || error) && isLogin && (
                             <div className={styles.errorBox}>
                                 ❌ {localError || error}
@@ -142,7 +135,6 @@ export default function Login() {
                                 required
                             />
                         </div>
-
                         <div className={styles.inputGroup}>
                             <input
                                 type="password"
@@ -191,9 +183,22 @@ export default function Login() {
                                 </svg>
                             )}
                         </button>
+
+                        {/* Mobile-only switch */}
+                        <p className={styles.mobileSwitch}>
+                            Don't have an account?
+                            <button
+                                type="button"
+                                className={styles.mobileSwitchBtn}
+                                onClick={switchMode}
+                            >
+                                Register
+                            </button>
+                        </p>
                     </form>
                 </div>
 
+                {/* ── Sign Up ── */}
                 <div className={`${styles.formContainer} ${styles.signUp}`}>
                     <form className={styles.form} onSubmit={handleSubmit}>
                         <div className={styles.logoSection}>
@@ -241,6 +246,7 @@ export default function Login() {
                         </div>
 
                         <h1 className={styles.title}>Create Account</h1>
+
                         {(localError || error) && !isLogin && (
                             <div className={styles.errorBox}>
                                 ❌ {localError || error}
@@ -258,7 +264,6 @@ export default function Login() {
                                 disabled={authLoading}
                             />
                         </div>
-
                         <div className={styles.inputGroup}>
                             <input
                                 type="email"
@@ -271,7 +276,6 @@ export default function Login() {
                                 required
                             />
                         </div>
-
                         <div className={styles.inputGroup}>
                             <input
                                 type="password"
@@ -312,9 +316,22 @@ export default function Login() {
                                 </svg>
                             )}
                         </button>
+
+                        {/* Mobile-only switch */}
+                        <p className={styles.mobileSwitch}>
+                            Already have an account?
+                            <button
+                                type="button"
+                                className={styles.mobileSwitchBtn}
+                                onClick={switchMode}
+                            >
+                                Login
+                            </button>
+                        </p>
                     </form>
                 </div>
 
+                {/* ── Toggle Panel (desktop only) ── */}
                 <div className={styles.toggleContainer}>
                     <div className={styles.toggle}>
                         <div
