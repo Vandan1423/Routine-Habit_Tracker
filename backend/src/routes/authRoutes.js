@@ -7,6 +7,8 @@ import {
     logoutAll,          
     refreshAccessToken,
     getMe,
+    forgotPassword,
+    resetPassword,
 } from "../controllers/authController.js";
 import { protect } from "../middlewares/authMiddleware.js";
 
@@ -14,6 +16,8 @@ import { protect } from "../middlewares/authMiddleware.js";
 router.route("/register").post(registerUser);
 router.route("/login").post(loginUser);
 router.route("/refresh-token").post(refreshAccessToken);
+router.route("/forgot-password").post(forgotPassword);
+router.route("/reset-password/:token").post(resetPassword);
 
 // --- PROTECTED ROUTES (Requires valid access token) ---
 router.route("/me").get(protect, getMe);

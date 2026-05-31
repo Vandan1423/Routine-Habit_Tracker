@@ -57,6 +57,8 @@ const userSchema = new mongoose.Schema({
             },
         },
     ],
+    passwordResetToken: String,
+    passwordResetExpiry: Date,
 }, {
     timestamps: true,
 });

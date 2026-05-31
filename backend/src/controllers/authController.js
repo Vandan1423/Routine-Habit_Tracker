@@ -1,6 +1,8 @@
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import User from "../models/User.js";
 import ExpressError from "../utils/ExpressError.js";
+import sendEmail from "../utils/sendEmail.js";
 
 const cookieOptions = {
     httpOnly: true,
@@ -255,4 +257,101 @@ export const getMe = async (req, res) => {
     res.status(200).json({
         user: req.user,
     });
+};
+
+// POST /api/auth/forgot-password
+export const forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ email });
+
+        // Always return 200 — don't reveal if email exists or not
+        if (!user) {
+            return res.status(200).json({
+                success: true,
+                message: "If that email exists, a reset link has been sent.",
+            });
+        }
+
+        // Generate raw token, store hashed version in DB
+        const rawToken = crypto.randomBytes(32).toString("hex");
+        const hashedToken = crypto
+            .createHash("sha256")
+            .update(rawToken)
+            .digest("hex");
+
+        user.passwordResetToken = hashedToken;
+        user.passwordResetExpiry = Date.now() + 15 * 60 * 1000; // 15 minutes
+        await user.save({ validateBeforeSave: false });
+
+        const resetURL = `${process.env.CLIENT_URL}/reset-password/${rawToken}`;
+
+        await sendEmail({
+            to: user.email,
+            subject: "Password Reset Request",
+            html: `
+                <h2>Password Reset Request</h2>
+                <p>You requested a password reset.</p>
+                <p>Click the link below (valid for 15 minutes):</p>
+                <a href="${resetURL}" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">Reset Password</a>
+                <p>Or copy this link: ${resetURL}</p>
+                <p>If you didn't request this, ignore this email.</p>
+            `,
+        });
+
+        res.status(200).json({
+            success: true,
+            message: "If that email exists, a reset link has been sent.",
+        });
+    } catch (error) {
+        console.error("Forgot password error:", error);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+};
+
+// POST /api/auth/reset-password/:token
+export const resetPassword = async (req, res) => {
+    try {
+        const { token } = req.params;
+        const { password } = req.body;
+
+        if (!password) {
+            return res.status(400).json({
+                success: false,
+                message: "Password is required.",
+            });
+        }
+
+        // Hash the incoming token to compare with DB
+        const hashedToken = crypto
+            .createHash("sha256")
+            .update(token)
+            .digest("hex");
+
+        const user = await User.findOne({
+            passwordResetToken: hashedToken,
+            passwordResetExpiry: { $gt: Date.now() }, // not expired
+        });
+
+        if (!user) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid or expired reset token.",
+            });
+        }
+
+        user.password = password; // your User model should hash it in pre-save hook
+        user.passwordResetToken = undefined;
+        user.passwordResetExpiry = undefined;
+        user.refreshTokens = []; // log out all devices after password change
+        await user.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Password reset successfully. Please login again.",
+        });
+    } catch (error) {
+        console.error("Reset password error:", error);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
 };
