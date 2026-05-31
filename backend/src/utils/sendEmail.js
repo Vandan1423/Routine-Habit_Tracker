@@ -1,29 +1,14 @@
-import dns from "dns";
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
-dns.setDefaultResultOrder("ipv4first");
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const sendEmail = async ({ to, subject, html }) => {
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    if (!process.env.RESEND_API_KEY) {
         throw new Error("Email service is not configured.");
     }
 
-    const transporter = nodemailer.createTransport({
-        host: "smtp.gmail.com",
-        port: 587,
-        secure: false,
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS, // Gmail App Password, not your real password
-        },
-        family: 4,
-        connectionTimeout: 10000,
-        greetingTimeout: 10000,
-        socketTimeout: 10000,
-    });
-
-    await transporter.sendMail({
-        from: `"Life Tracker" <${process.env.EMAIL_USER}>`,
+    await resend.emails.send({
+        from: "Life Tracker <onboarding@resend.dev>",
         to,
         subject,
         html,
