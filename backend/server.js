@@ -52,6 +52,9 @@ cron.schedule(
 );
 
 // Define routes
+app.get("/", (req, res) => {
+    res.send("Welcome to the Life Management API");
+});
 app.use("/api/auth", authRoutes);
 app.use("/api/routines", routineRoutes);
 app.use("/api/habits", habitRoutes);
@@ -81,6 +84,6 @@ app.use((err, req, res, next) => {
     });
 });
 
-app.listen(process.env.PORT, () => {
-    console.log(`Server is running on port ${process.env.PORT}`);
+app.listen(process.env.PORT || 4000, () => {
+    console.log(`Server is running on port ${process.env.PORT || 4000}`);
 });
