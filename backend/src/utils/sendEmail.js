@@ -13,6 +13,7 @@ const sendEmail = async ({ to, subject, html }) => {
             user: process.env.EMAIL_USER,
             pass: process.env.EMAIL_PASS, // Gmail App Password, not your real password
         },
+        family: 4,
         connectionTimeout: 10000,
         greetingTimeout: 10000,
         socketTimeout: 10000,
