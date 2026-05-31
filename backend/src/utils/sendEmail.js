@@ -1,4 +1,7 @@
+import dns from "dns";
 import nodemailer from "nodemailer";
+
+dns.setDefaultResultOrder("ipv4first");
 
 const sendEmail = async ({ to, subject, html }) => {
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
