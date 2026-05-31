@@ -1,4 +1,4 @@
-const Joi = require("joi");
+import Joi from "joi";
 
 const registerSchema = Joi.object({
     name: Joi.string().min(2).max(50).required().trim().messages({
