@@ -4,10 +4,12 @@ import User from "../models/User.js";
 import ExpressError from "../utils/ExpressError.js";
 import sendEmail from "../utils/sendEmail.js";
 
+const isProduction = process.env.NODE_ENV === "production";
+
 const cookieOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "None",
+    secure: isProduction,
+    sameSite: isProduction ? "None" : "Lax",
     maxAge: 15 * 24 * 60 * 60 * 1000, // 15 days
 };
 
