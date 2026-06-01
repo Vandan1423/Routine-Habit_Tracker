@@ -1,4 +1,22 @@
-import axios from 'axios';
+import axios from "axios";
+// Separate instance for refresh — bypasses the response interceptor to avoid infinite loops
+export const authApi = axios.create({
+    baseURL: import.meta.env.VITE_API_URL,
+    withCredentials: true,
+    headers: {
+        "Content-Type": "application/json",
+    },
+});
+
+const ACCESS_TOKEN_STORAGE_KEY = "life-management.accessToken";
+
+const readStoredAccessToken = () => {
+    if (typeof window === "undefined") {
+        return null;
+    }
+
+    return window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY);
+};
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL,
@@ -10,15 +28,39 @@ const api = axios.create({
 });
 
 //Now store the access token into the memory
-let accessToken = null;
+let accessToken = readStoredAccessToken();
 
 export const setAccessToken = (token) => {
     accessToken = token;
+
+    if (typeof window === "undefined") {
+        return;
+    }
+
+    if (token) {
+        window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, token);
+    } else {
+        window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+    }
 };
 export const clearAccessToken = () => {
-    accessToken = null;
+    setAccessToken(null);
 };
-export const getAccessToken = () => accessToken;
+export const getAccessToken = () => {
+    if (!accessToken) {
+        accessToken = readStoredAccessToken();
+    }
+
+    return accessToken;
+};
+
+if (typeof window !== "undefined") {
+    window.addEventListener("storage", (event) => {
+        if (event.key === ACCESS_TOKEN_STORAGE_KEY) {
+            accessToken = event.newValue;
+        }
+    });
+}
 
 //Api request Interceptor to add the access token to the headers (Config is the request object)
 api.interceptors.request.use(
@@ -31,7 +73,7 @@ api.interceptors.request.use(
     },
     (error) => {
         return Promise.reject(error);
-    }
+    },
 );
 
 //Add response interceptor to handle token expiration automatically
@@ -59,7 +101,7 @@ api.interceptors.response.use(
                     const response = await axios.post(
                         `${api.defaults.baseURL}/auth/refresh-token`,
                         {},
-                        { withCredentials: true } // Send cookies
+                        { withCredentials: true }, // Send cookies
                     );
 
                     const newAccessToken = response.data.accessToken;
@@ -70,7 +112,7 @@ api.interceptors.response.use(
 
                     // Retry All Failed Requests
                     failedRequestsQueue.forEach((callback) =>
-                        callback(newAccessToken)
+                        callback(newAccessToken),
                     );
                     failedRequestsQueue = [];
 
@@ -99,7 +141,7 @@ api.interceptors.response.use(
             });
         }
         return Promise.reject(error);
-    }
+    },
 );
 
 export default api;

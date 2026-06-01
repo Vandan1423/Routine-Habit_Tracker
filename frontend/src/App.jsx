@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import "./App.css";
-import { Analytics } from "@vercel/analytics/react";
+// import { Analytics } from "@vercel/analytics/react";
 
 // Auth & Protection
 import ProtectedRoute from "./routes/ProtectedRoute";
@@ -18,7 +18,7 @@ import ProgressPage from "./pages/Progress/ProgressPage";
 function App() {
     return (
         <>
-            <Analytics />
+            {/* <Analytics /> */}
             <Routes>
             {/* Public Routes */}
             <Route path="/login" element={<AuthPage />} />

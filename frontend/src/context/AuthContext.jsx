@@ -1,7 +1,34 @@
 import { createContext, useState, useEffect } from "react";
 import authService from "../services/authService";
-import { setAccessToken, clearAccessToken } from "../services/api";
+import { setAccessToken, clearAccessToken, getAccessToken } from "../services/api";
 import gamificationService from "../services/gamificationService";
+
+const AUTH_USER_STORAGE_KEY = "life-management.authUser";
+
+const readStoredUser = () => {
+    if (typeof window === "undefined") {
+        return null;
+    }
+
+    try {
+        const storedUser = window.localStorage.getItem(AUTH_USER_STORAGE_KEY);
+        return storedUser ? JSON.parse(storedUser) : null;
+    } catch {
+        return null;
+    }
+};
+
+const storeUser = (user) => {
+    if (typeof window === "undefined") {
+        return;
+    }
+
+    if (user) {
+        window.localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(user));
+    } else {
+        window.localStorage.removeItem(AUTH_USER_STORAGE_KEY);
+    }
+};
 
 const AuthContext = createContext(null);
 
@@ -24,6 +51,23 @@ export const AuthProvider = ({ children }) => {
         setIsAuthenticated(false);
         setUser(null);
         clearAccessToken();
+        storeUser(null);
+    };
+
+    const applyAuthResponse = (response) => {
+        const accessToken = response?.accessToken;
+        const currentUser = response?.user || response?.data?.user || response?.data || null;
+
+        if (accessToken) {
+            setAccessToken(accessToken);
+        }
+
+        if (currentUser) {
+            setUser(currentUser);
+            storeUser(currentUser);
+        }
+
+        setIsAuthenticated(true);
     };
 
     const fetchGamificationStats = async () => {
@@ -40,10 +84,7 @@ export const AuthProvider = ({ children }) => {
             setError(null);
 
             const response = await authService.register(userData);
-            const { user, accessToken } = response;
-            setAccessToken(accessToken);
-            setUser(user);
-            setIsAuthenticated(true);
+            applyAuthResponse(response);
 
             // Fetch gamification stats immediately after successful registration
             await fetchGamificationStats();
@@ -63,11 +104,7 @@ export const AuthProvider = ({ children }) => {
             setError(null);
 
             const response = await authService.login(credentials);
-            const { accessToken } = response;
-
-            setAccessToken(accessToken);
-            setUser(response.user || response.data || null);
-            setIsAuthenticated(true);
+            applyAuthResponse(response);
 
             // Fetch gamification stats immediately after successful login
             await fetchGamificationStats();
@@ -118,18 +155,30 @@ export const AuthProvider = ({ children }) => {
 
     // This runs on app load to check if user is still logged in
     const checkAuthStatus = async () => {
+        const cachedToken = getAccessToken();
+        const cachedUser = readStoredUser();
+
+        if (cachedToken) {
+            setAccessToken(cachedToken);
+            setIsAuthenticated(true);
+        }
+
+        if (cachedUser) {
+            setUser(cachedUser);
+        }
+
         try {
             const response = await authService.refreshToken();
             if (response.accessToken) {
-                setAccessToken(response.accessToken);
-                setUser(response.data);
-                setIsAuthenticated(true);
+                applyAuthResponse(response);
 
                 // Fetch gamification stats immediately upon confirming active session
                 await fetchGamificationStats();
             }
         } catch {
-            clearAuthState();
+            if (!cachedToken) {
+                clearAuthState();
+            }
         } finally {
             setLoading(false);
         }
