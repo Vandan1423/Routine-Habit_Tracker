@@ -93,18 +93,12 @@ export const RoutineProvider = ({ children }) => {
         }
     };
 
-    const completeRoutine = async (id, date) => {
+    const completeRoutine = async (id, date, completedAt) => {
         try {
             setPendingRoutineActions((prev) => ({
                 ...prev,
                 [id]: "complete",
             }));
-
-            const completedAt = new Date().toLocaleTimeString("en-US", {
-                hour: "numeric",
-                minute: "2-digit",
-                hour12: true,
-            });
 
             const response = await api.post(`/routines/${id}/complete`, {
                 date,

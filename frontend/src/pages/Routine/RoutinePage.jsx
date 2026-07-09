@@ -69,6 +69,13 @@ const timeToMinutes = (timeStr) => {
     return Number(hourPart) * 60 + Number(minutePart);
 };
 
+const getCurrentTimeLabel = () =>
+    new Date().toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+    });
+
 const isToday = (dateObj) => {
     const now = new Date();
     return (
@@ -201,8 +208,14 @@ export default function RoutinePage() {
 
                 setConfetti({ x: cx, y: cy });
 
+                const completedAt = getCurrentTimeLabel();
+
                 const dateStr = getLocalYYYYMMDD(selectedDate);
-                const result = await completeRoutine(id, dateStr);
+                const result = await completeRoutine(
+                    id,
+                    dateStr,
+                    completedAt,
+                );
                 if (result.success) {
                     await fetchGamificationStats();
                 } else {
