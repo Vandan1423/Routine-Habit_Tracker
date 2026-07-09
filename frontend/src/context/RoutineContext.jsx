@@ -100,11 +100,26 @@ export const RoutineProvider = ({ children }) => {
                 hour12: true,
             });
 
+            const optimisticLog = {
+                routine: id,
+                date,
+                completedAt,
+                wasOnTime: true,
+                xpEarned: 0,
+            };
+
+            setRoutines((prev) =>
+                prev.map((r) =>
+                    r._id === id ? { ...r, todayLog: optimisticLog } : r,
+                ),
+            );
+
             const response = await api.post(`/routines/${id}/complete`, {
                 date,
                 completedAt,
             });
-            // Refresh local state by updating the routine with the new todayLog
+
+            // Reconcile the optimistic state with the persisted log
             setRoutines((prev) =>
                 prev.map((r) =>
                     r._id === id ? { ...r, todayLog: response.data.log } : r,
@@ -112,6 +127,12 @@ export const RoutineProvider = ({ children }) => {
             );
             return { success: true };
         } catch (error) {
+            // Roll back the optimistic state if the request fails
+            setRoutines((prev) =>
+                prev.map((r) =>
+                    r._id === id ? { ...r, todayLog: null } : r,
+                ),
+            );
             return { success: false, message: error.message };
         }
     };
