@@ -203,7 +203,7 @@ export const reorderRoutines = async (req, res) => {
 export const completeRoutine = async (req, res) => {
     try {
         const { id } = req.params;
-        const { date } = req.body;
+        const { date, completedAt: clientCompletedAt } = req.body;
         const logDate = date || getLocalYYYYMMDD();
 
         // 1. Check if already completed
@@ -221,11 +221,28 @@ export const completeRoutine = async (req, res) => {
 
         // 2. Calculate completion time and punctuality
         const now = new Date();
-        const completedAt = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+        const completedAt =
+            clientCompletedAt ||
+            `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 
-        // Parse time strings (e.g., "14:30") into minutes from midnight for comparison
+        // Parse either "14:30" or "2:30 PM" into minutes from midnight for comparison
         const timeToMinutes = (timeStr) => {
-            const [h, m] = timeStr.split(":").map(Number);
+            if (!timeStr) return null;
+
+            const trimmed = String(timeStr).trim();
+            const ampmMatch = trimmed.match(/^(\d{1,2}):(\d{2})\s*([AP]M)$/i);
+            if (ampmMatch) {
+                let hour = Number(ampmMatch[1]);
+                const minutes = Number(ampmMatch[2]);
+                const meridiem = ampmMatch[3].toUpperCase();
+
+                if (meridiem === "PM" && hour !== 12) hour += 12;
+                if (meridiem === "AM" && hour === 12) hour = 0;
+
+                return hour * 60 + minutes;
+            }
+
+            const [h, m] = trimmed.split(":").map(Number);
             return h * 60 + m;
         };
 

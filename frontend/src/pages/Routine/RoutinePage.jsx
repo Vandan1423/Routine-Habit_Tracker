@@ -35,10 +35,37 @@ const getLocalYYYYMMDD = (dateObj) => {
 
 const formatTime = (t) => {
     if (!t) return "";
-    const [h, m] = t.split(":");
+
+    const normalized = String(t).trim();
+    if (/\b[AP]M$/i.test(normalized)) {
+        return normalized.replace(/\s+/g, " ").toUpperCase();
+    }
+
+    const [h, m] = normalized.split(":");
     const hour = parseInt(h, 10);
     const ampm = hour >= 12 ? "PM" : "AM";
     return `${hour % 12 || 12}:${m} ${ampm}`;
+};
+
+const timeToMinutes = (timeStr) => {
+    if (!timeStr) return null;
+
+    const normalized = String(timeStr).trim();
+    const ampmMatch = normalized.match(/^(\d{1,2}):(\d{2})\s*([AP]M)$/i);
+
+    if (ampmMatch) {
+        let hour = Number(ampmMatch[1]);
+        const minutes = Number(ampmMatch[2]);
+        const meridiem = ampmMatch[3].toUpperCase();
+
+        if (meridiem === "PM" && hour !== 12) hour += 12;
+        if (meridiem === "AM" && hour === 12) hour = 0;
+
+        return hour * 60 + minutes;
+    }
+
+    const [hourPart, minutePart] = normalized.split(":");
+    return Number(hourPart) * 60 + Number(minutePart);
 };
 
 const isToday = (dateObj) => {
@@ -461,8 +488,21 @@ export default function RoutinePage() {
                                 CATEGORY_META[routine.category] ||
                                 CATEGORY_META.other;
                             const isDone = !!routine.todayLog;
+                            const completedMinutes = isDone
+                                ? timeToMinutes(routine.todayLog.completedAt)
+                                : null;
+                            const startMinutes = timeToMinutes(
+                                routine.startTime,
+                            );
+                            const wasEarly =
+                                isDone &&
+                                completedMinutes !== null &&
+                                startMinutes !== null &&
+                                completedMinutes < startMinutes;
                             const wasLate =
-                                isDone && !routine.todayLog.wasOnTime;
+                                isDone &&
+                                !wasEarly &&
+                                !routine.todayLog.wasOnTime;
                             // Only highlight active tasks on today's view, and only if not already done
                             const isActive =
                                 todayFlag &&
@@ -659,10 +699,38 @@ export default function RoutinePage() {
                                                                 <polyline points="12 6 12 12 16 14" />
                                                             </svg>
                                                             Completed late at{" "}
-                                                            {
+                                                            {formatTime(
                                                                 routine.todayLog
-                                                                    .completedAt
-                                                            }
+                                                                    .completedAt,
+                                                            )}
+                                                        </>
+                                                    ) : wasEarly ? (
+                                                        <>
+                                                            <svg
+                                                                width="12"
+                                                                height="12"
+                                                                viewBox="0 0 24 24"
+                                                                fill="none"
+                                                                stroke="currentColor"
+                                                                strokeWidth="2.5"
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                            >
+                                                                <path d="M12 2v4" />
+                                                                <path d="M12 18v4" />
+                                                                <path d="M4.93 4.93l2.83 2.83" />
+                                                                <path d="M16.24 16.24l2.83 2.83" />
+                                                                <path d="M2 12h4" />
+                                                                <path d="M18 12h4" />
+                                                                <path d="M4.93 19.07l2.83-2.83" />
+                                                                <path d="M16.24 7.76l2.83-2.83" />
+                                                                <circle cx="12" cy="12" r="3" />
+                                                            </svg>
+                                                            Completed early at{" "}
+                                                            {formatTime(
+                                                                routine.todayLog
+                                                                    .completedAt,
+                                                            )}
                                                         </>
                                                     ) : (
                                                         <>
@@ -680,10 +748,10 @@ export default function RoutinePage() {
                                                                 <polyline points="22 4 12 14.01 9 11.01" />
                                                             </svg>
                                                             Done on time at{" "}
-                                                            {
+                                                            {formatTime(
                                                                 routine.todayLog
-                                                                    .completedAt
-                                                            }
+                                                                    .completedAt,
+                                                            )}
                                                         </>
                                                     )}
                                                 </div>

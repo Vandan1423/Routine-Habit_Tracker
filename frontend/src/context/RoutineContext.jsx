@@ -94,8 +94,15 @@ export const RoutineProvider = ({ children }) => {
 
     const completeRoutine = async (id, date) => {
         try {
+            const completedAt = new Date().toLocaleTimeString("en-US", {
+                hour: "numeric",
+                minute: "2-digit",
+                hour12: true,
+            });
+
             const response = await api.post(`/routines/${id}/complete`, {
                 date,
+                completedAt,
             });
             // Refresh local state by updating the routine with the new todayLog
             setRoutines((prev) =>
