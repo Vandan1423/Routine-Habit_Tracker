@@ -7,6 +7,7 @@ import useAuth from "../../hooks/useAuth";
 import RoutineModal from "../../components/modals/RoutineModal";
 import DeleteModal from "../../components/modals/DeleteModal";
 import ConfettiEffect from "../../components/Effects/ConfettiEffect";
+import ToastMessage from "../../components/ToastMessage/ToastMessage";
 import styles from "./RoutinePage.module.css";
 
 // ─── Constants ───────────────────────────────────────────────
@@ -117,6 +118,7 @@ export default function RoutinePage() {
     const [deleteTarget, setDeleteTarget] = useState(null); // { id, title }
     const [formLoading, setFormLoading] = useState(false);
     const [deleteLoading, setDeleteLoading] = useState(false);
+    const [toastMessage, setToastMessage] = useState("");
 
     // ── Filter & sort ──
     const [activeFilter, setActiveFilter] = useState("all");
@@ -124,6 +126,16 @@ export default function RoutinePage() {
 
     // ── Confetti ──
     const [confetti, setConfetti] = useState(null); // { x, y }
+
+    useEffect(() => {
+        if (!toastMessage) return undefined;
+
+        const timer = setTimeout(() => {
+            setToastMessage("");
+        }, 4000);
+
+        return () => clearTimeout(timer);
+    }, [toastMessage]);
 
     // ── Current time in minutes (updates every 30s for active-task highlighting) ──
     const getNowMinutes = () => {
@@ -169,8 +181,12 @@ export default function RoutinePage() {
             if (isDone) {
                 // Uncheck — remove completion
                 const dateStr = getLocalYYYYMMDD(selectedDate);
-                await uncompleteRoutine(id, dateStr);
-                await fetchGamificationStats();
+                const result = await uncompleteRoutine(id, dateStr);
+                if (!result.success) {
+                    setToastMessage(result.message || "Failed to update routine.");
+                } else {
+                    await fetchGamificationStats();
+                }
             } else {
                 // Check — mark complete with confetti
                 const rect = e?.currentTarget?.getBoundingClientRect();
@@ -181,11 +197,14 @@ export default function RoutinePage() {
                     ? rect.top + rect.height / 2
                     : window.innerHeight / 2;
 
+                setConfetti({ x: cx, y: cy });
+
                 const dateStr = getLocalYYYYMMDD(selectedDate);
                 const result = await completeRoutine(id, dateStr);
                 if (result.success) {
-                    setConfetti({ x: cx, y: cy });
                     await fetchGamificationStats();
+                } else {
+                    setToastMessage(result.message || "Failed to update routine.");
                 }
             }
 
@@ -263,6 +282,12 @@ export default function RoutinePage() {
     // ─────────────────────────────────────────────────────────
     return (
         <div className={styles.page}>
+            <ToastMessage
+                message={toastMessage}
+                type="error"
+                onClose={() => setToastMessage("")}
+            />
+
             {/* ── Confetti Layer ── */}
             {confetti && (
                 <ConfettiEffect

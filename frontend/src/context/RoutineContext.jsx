@@ -138,14 +138,27 @@ export const RoutineProvider = ({ children }) => {
     };
 
     const uncompleteRoutine = async (id, date) => {
+        let previousRoutine = null;
+
         try {
-            await routineService.uncompleteRoutine(id, date);
-            // Remove the todayLog from local state instantly
+            previousRoutine = routines.find((r) => r._id === id) || null;
+
+            // Remove the todayLog from local state immediately
             setRoutines((prev) =>
                 prev.map((r) => (r._id === id ? { ...r, todayLog: null } : r)),
             );
+
+            await routineService.uncompleteRoutine(id, date);
             return { success: true };
         } catch (error) {
+            // Restore the previous state if the request fails
+            if (previousRoutine) {
+                setRoutines((prev) =>
+                    prev.map((r) =>
+                        r._id === id ? { ...previousRoutine } : r,
+                    ),
+                );
+            }
             return { success: false, message: error.message };
         }
     };
