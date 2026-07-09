@@ -14,3 +14,15 @@ const rateLimitMiddleware = rateLimit({
 });
 
 export default rateLimitMiddleware;
+
+export const authRateLimit = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5, // Limit auth endpoints more aggressively
+    message: {
+        success: false,
+        message:
+            "Too many auth attempts from this IP, please try again after 15 minutes",
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+});

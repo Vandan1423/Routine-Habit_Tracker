@@ -11,12 +11,17 @@ import {
     resetPassword,
 } from "../controllers/authController.js";
 import { protect } from "../middlewares/authMiddleware.js";
+import {
+    validateLogin,
+    validateRegister,
+} from "../middlewares/validationMiddleware.js";
+import { authRateLimit } from "../middlewares/rateLimitMiddleware.js";
 
 // --- PUBLIC ROUTES (No token required) ---
-router.route("/register").post(registerUser);
-router.route("/login").post(loginUser);
+router.route("/register").post(authRateLimit, validateRegister, registerUser);
+router.route("/login").post(authRateLimit, validateLogin, loginUser);
 router.route("/refresh-token").post(refreshAccessToken);
-router.route("/forgot-password").post(forgotPassword);
+router.route("/forgot-password").post(authRateLimit, forgotPassword);
 router.route("/reset-password/:token").post(resetPassword);
 
 // --- PROTECTED ROUTES (Requires valid access token) ---
