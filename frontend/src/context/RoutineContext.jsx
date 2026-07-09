@@ -16,6 +16,7 @@ export const RoutineProvider = ({ children }) => {
     const [routines, setRoutines] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedDate, setSelectedDate] = useState(new Date());
+    const [pendingRoutineActions, setPendingRoutineActions] = useState({});
 
     // Fetch routines for the currently selected date
     const fetchRoutines = useCallback(async (dateToFetch) => {
@@ -94,71 +95,67 @@ export const RoutineProvider = ({ children }) => {
 
     const completeRoutine = async (id, date) => {
         try {
+            setPendingRoutineActions((prev) => ({
+                ...prev,
+                [id]: "complete",
+            }));
+
             const completedAt = new Date().toLocaleTimeString("en-US", {
                 hour: "numeric",
                 minute: "2-digit",
                 hour12: true,
             });
 
-            const optimisticLog = {
-                routine: id,
-                date,
-                completedAt,
-                wasOnTime: true,
-                xpEarned: 0,
-            };
-
-            setRoutines((prev) =>
-                prev.map((r) =>
-                    r._id === id ? { ...r, todayLog: optimisticLog } : r,
-                ),
-            );
-
             const response = await api.post(`/routines/${id}/complete`, {
                 date,
                 completedAt,
             });
 
-            // Reconcile the optimistic state with the persisted log
             setRoutines((prev) =>
                 prev.map((r) =>
                     r._id === id ? { ...r, todayLog: response.data.log } : r,
                 ),
             );
+            setPendingRoutineActions((prev) => {
+                const next = { ...prev };
+                delete next[id];
+                return next;
+            });
             return { success: true };
         } catch (error) {
-            // Roll back the optimistic state if the request fails
-            setRoutines((prev) =>
-                prev.map((r) =>
-                    r._id === id ? { ...r, todayLog: null } : r,
-                ),
-            );
+            setPendingRoutineActions((prev) => {
+                const next = { ...prev };
+                delete next[id];
+                return next;
+            });
             return { success: false, message: error.message };
         }
     };
 
     const uncompleteRoutine = async (id, date) => {
-        let previousRoutine = null;
-
         try {
-            previousRoutine = routines.find((r) => r._id === id) || null;
+            setPendingRoutineActions((prev) => ({
+                ...prev,
+                [id]: "uncomplete",
+            }));
 
-            // Remove the todayLog from local state immediately
+            await routineService.uncompleteRoutine(id, date);
+
             setRoutines((prev) =>
                 prev.map((r) => (r._id === id ? { ...r, todayLog: null } : r)),
             );
-
-            await routineService.uncompleteRoutine(id, date);
+            setPendingRoutineActions((prev) => {
+                const next = { ...prev };
+                delete next[id];
+                return next;
+            });
             return { success: true };
         } catch (error) {
-            // Restore the previous state if the request fails
-            if (previousRoutine) {
-                setRoutines((prev) =>
-                    prev.map((r) =>
-                        r._id === id ? { ...previousRoutine } : r,
-                    ),
-                );
-            }
+            setPendingRoutineActions((prev) => {
+                const next = { ...prev };
+                delete next[id];
+                return next;
+            });
             return { success: false, message: error.message };
         }
     };
@@ -192,6 +189,7 @@ export const RoutineProvider = ({ children }) => {
         loading,
         selectedDate,
         setSelectedDate,
+        pendingRoutineActions,
         fetchRoutines,
         createRoutine,
         updateRoutine,

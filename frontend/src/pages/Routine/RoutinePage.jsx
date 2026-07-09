@@ -103,6 +103,7 @@ export default function RoutinePage() {
         loading,
         selectedDate,
         setSelectedDate,
+        pendingRoutineActions,
         createRoutine,
         updateRoutine,
         deleteRoutine,
@@ -174,6 +175,7 @@ export default function RoutinePage() {
         async (routine, e) => {
             const id = routine._id;
             if (completingRef.current.has(id)) return;
+            if (pendingRoutineActions[id]) return;
             completingRef.current.add(id);
 
             const isDone = !!routine.todayLog;
@@ -212,6 +214,7 @@ export default function RoutinePage() {
         },
         [
             selectedDate,
+            pendingRoutineActions,
             completeRoutine,
             uncompleteRoutine,
             fetchGamificationStats,
@@ -512,20 +515,24 @@ export default function RoutinePage() {
                             const meta =
                                 CATEGORY_META[routine.category] ||
                                 CATEGORY_META.other;
-                            const isDone = !!routine.todayLog;
-                            const completedMinutes = isDone
+                            const pendingAction =
+                                pendingRoutineActions[routine._id] || null;
+                            const isDone = pendingAction
+                                ? pendingAction === "complete"
+                                : !!routine.todayLog;
+                            const hasCommittedLog =
+                                !!routine.todayLog && !pendingAction;
+                            const completedMinutes = hasCommittedLog
                                 ? timeToMinutes(routine.todayLog.completedAt)
                                 : null;
-                            const startMinutes = timeToMinutes(
-                                routine.startTime,
-                            );
+                            const startMinutes = timeToMinutes(routine.startTime);
                             const wasEarly =
-                                isDone &&
+                                hasCommittedLog &&
                                 completedMinutes !== null &&
                                 startMinutes !== null &&
                                 completedMinutes < startMinutes;
                             const wasLate =
-                                isDone &&
+                                hasCommittedLog &&
                                 !wasEarly &&
                                 !routine.todayLog.wasOnTime;
                             // Only highlight active tasks on today's view, and only if not already done
@@ -700,7 +707,7 @@ export default function RoutinePage() {
 
                                         {/* Completion info or action row */}
                                         <div className={styles.cardFooter}>
-                                            {isDone ? (
+                                            {hasCommittedLog ? (
                                                 <div
                                                     className={`${styles.completionBadge} ${wasLate ? styles.completionLate : styles.completionOnTime}`}
                                                 >
@@ -786,7 +793,9 @@ export default function RoutinePage() {
                                                         styles.pendingLabel
                                                     }
                                                 >
-                                                    Pending
+                                                    {pendingAction
+                                                        ? "Saving..."
+                                                        : "Pending"}
                                                 </span>
                                             )}
 
