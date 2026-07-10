@@ -1,6 +1,6 @@
 import Joi from "joi";
 
-const registerSchema = Joi.object({
+export const registerSchema = Joi.object({
     name: Joi.string().min(2).max(50).required().trim().messages({
         "string.base": "Name must be a string.",
         "string.empty": "Name is required.",
@@ -25,7 +25,7 @@ const registerSchema = Joi.object({
     }),
 });
 
-const loginSchema = Joi.object({
+export const loginSchema = Joi.object({
     email: Joi.string().email().required().lowercase().trim().messages({
         "string.base": "Email must be a string.",
         "string.empty": "Email is required.",
@@ -39,8 +39,3 @@ const loginSchema = Joi.object({
         "any.required": "Password is required.",
     }),
 });
-
-module.exports = {
-    registerSchema,
-    loginSchema,
-};
