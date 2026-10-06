@@ -14,6 +14,7 @@ import DashboardPage from "./pages/Dashboard/DashboardPage";
 import RoutinePage from "./pages/Routine/RoutinePage"; 
 import HabitsPage from "./pages/Habits/HabitsPage";
 import ProgressPage from "./pages/Progress/ProgressPage";
+import ExpensesPage from "./pages/Expenses/ExpensesPage";
 
 function App() {
     return (
@@ -68,6 +69,17 @@ function App() {
                     <ProtectedRoute>
                         <AppLayout title="Progress">
                             <ProgressPage />
+                        </AppLayout>
+                    </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path="/expenses"
+                element={
+                    <ProtectedRoute>
+                        <AppLayout title="Expenses">
+                            <ExpensesPage />
                         </AppLayout>
                     </ProtectedRoute>
                 }

@@ -54,6 +54,7 @@ export const registerUser = async (req, res) => {
                 message: "User registered successfully",
                 user: safeUser,
                 accessToken,
+                refreshToken, // Returned in body for mobile clients (stored in flutter_secure_storage)
             });
     } catch (error) {
         res.status(500).json({
@@ -97,6 +98,7 @@ export const loginUser = async (req, res) => {
                     message: "User logged in successfully",
                     user: safeUser,
                     accessToken,
+                    refreshToken, // Returned in body for mobile clients (stored in flutter_secure_storage)
                 });
         } else {
             return res.status(400).json({ message: "Invalid credentials" });
@@ -108,7 +110,8 @@ export const loginUser = async (req, res) => {
 
 export const logoutUser = async (req, res) => {
     try {
-        const refreshToken = req.cookies?.refreshToken;
+        // Read from cookie (web) OR request body (mobile)
+        const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
 
         if (!refreshToken) {
             return res.status(400).json({
@@ -241,6 +244,7 @@ export const refreshAccessToken = async (req, res) => {
             success: true,
             message: "Token refreshed successfully.",
             accessToken: newAccessToken,
+            refreshToken: newRefreshToken, // Returned in body for mobile clients
             data: {
                 _id: user._id,
                 name: user.name,

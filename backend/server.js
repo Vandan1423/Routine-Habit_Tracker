@@ -19,6 +19,7 @@ import routineRoutes from "./src/routes/routineRoutes.js";
 import habitRoutes from "./src/routes/habitRoutes.js";
 import gamificationRoutes from "./src/routes/gamificationRoutes.js";
 import streakRoutes from "./src/routes/streakRoutes.js";
+import expenseRoutes from "./src/routes/expenseRoutes.js";
 
 dotenv.config();
 
@@ -60,6 +61,7 @@ app.use("/api/routines", routineRoutes);
 app.use("/api/habits", habitRoutes);
 app.use("/api/gamification", gamificationRoutes);
 app.use("/api/streaks", streakRoutes);
+app.use("/api/expenses", expenseRoutes);
 
 // 404 Handler - Must be after all routes
 app.use((req, res, next) => {
