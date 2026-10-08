@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-accent="ink" data-type="hanken" data-date="serif">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Today: direction mockups</title>
+<!--
+  Phase 0 of the redesign: a static mockup of the Today screen for choosing the look.
+  Chosen on 2026-10-09 and now the default: Ink and saffron, Hanken Grotesk, serif date, the name Nitya.
+  Nothing here is app code. Open through `node design/serve.mjs` or straight from disk.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Hanken+Grotesk:wght@400..700&family=Instrument+Sans:wght@400..700&family=Inter:opsz,wght@14..32,400..700&family=Newsreader:opsz,wght@6..72,400..600&display=swap">
+<style>
+/* ── Tokens ─────────────────────────────────────────────── */
+[data-type="instrument"] { --font-ui: "Instrument Sans", system-ui, sans-serif; --track-title: -0.018em; }
+[data-type="hanken"]     { --font-ui: "Hanken Grotesk", system-ui, sans-serif;  --track-title: -0.022em; }
+[data-type="geist"]      { --font-ui: "Geist", system-ui, sans-serif;           --track-title: -0.028em; }
+[data-type="inter"]      { --font-ui: "Inter", system-ui, sans-serif;           --track-title: -0.024em; }
+[data-date="sans"]  { --font-date: var(--font-ui); --date-weight: 600; --date-size: 30px; --date-track: var(--track-title); }
+[data-date="serif"] { --font-date: "Newsreader", Georgia, serif; --date-weight: 500; --date-size: 34px; --date-track: -0.012em; }
+
+[data-theme="light"] {
+    --paper: #faf8f4; --paper-side: #f3f0ea; --raised: #fffefc;
+    --ink: #1f1d1a; --ink-2: #6b665e; --ink-3: #8a8479;
+    --line: #e7e3db; --line-strong: #d3cec3;
+    --fill: #f0ece5; --fill-strong: #dedad0; --hover: #f2efe9;
+    --loss: #b4321f; --late: #96590a;
+    --shadow: 0 1px 2px rgba(31, 29, 26, 0.06), 0 8px 24px rgba(31, 29, 26, 0.1);
+}
+[data-theme="dark"] {
+    --paper: #1b1a18; --paper-side: #161514; --raised: #252320;
+    --ink: #ece8e1; --ink-2: #a69f94; --ink-3: #7d776d;
+    --line: #2d2a27; --line-strong: #403c37;
+    --fill: #262422; --fill-strong: #3a3733; --hover: #22201e;
+    --loss: #e8735c; --late: #d9a441;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 28px rgba(0, 0, 0, 0.4);
+}
+[data-theme="light"][data-accent="forest"] { --accent: #1f6b4a; --accent-soft: #d9e8df; --on-accent: #fffefc; --now: #1f6b4a; }
+[data-theme="dark"][data-accent="forest"]  { --accent: #66ba90; --accent-soft: #223a2e; --on-accent: #14201a; --now: #66ba90; }
+[data-theme="light"][data-accent="blue"]   { --accent: #2b4a9a; --accent-soft: #dce3f3; --on-accent: #fffefc; --now: #2b4a9a; }
+[data-theme="dark"][data-accent="blue"]    { --accent: #8aa6ee; --accent-soft: #252e45; --on-accent: #131827; --now: #8aa6ee; }
+[data-theme="light"][data-accent="ink"]    { --accent: #1f1d1a; --accent-soft: #e2ded5; --on-accent: #faf8f4; --now: #a85800; }
+[data-theme="dark"][data-accent="ink"]     { --accent: #ece8e1; --accent-soft: #3a3733; --on-accent: #1b1a18; --now: #efa43a; }
+
+:root {
+    --r-1: 5px; --r-2: 7px; --r-3: 10px;
+    --t-fast: 120ms; --t-base: 220ms; --t-slow: 340ms;
+    --ease: cubic-bezier(0.2, 0, 0, 1);
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Page chrome (not part of the design) ───────────────── */
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { background: var(--paper-side); color-scheme: light dark; }
+body { margin: 0; font-family: system-ui, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+.lab { position: sticky; top: 0; z-index: 10; display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; padding: 12px 24px; background: var(--paper-side); border-bottom: 1px solid var(--line); font-size: 12px; }
+.lab-title { font-weight: 600; margin-right: 6px; }
+.lab-group { display: flex; align-items: center; gap: 8px; color: var(--ink-2); }
+.seg-ctl { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 7px; overflow: hidden; background: var(--paper); }
+.seg-ctl button { appearance: none; border: 0; background: none; color: var(--ink-2); font: inherit; padding: 5px 10px; cursor: pointer; }
+.seg-ctl button + button { border-left: 1px solid var(--line); }
+.seg-ctl button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.lab select { font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line-strong); border-radius: 7px; padding: 5px 8px; }
+.stage { display: flex; gap: 32px; align-items: flex-start; padding: 28px 24px 8px; }
+.frame { margin: 0; flex: none; }
+.frame figcaption { margin-top: 10px; font-size: 12px; color: var(--ink-2); }
+.viewport { overflow: hidden; border: 1px solid var(--line-strong); background: var(--paper); box-shadow: var(--shadow); }
+.frame--desktop .viewport { border-radius: 10px; }
+.frame--phone .viewport { border-radius: 30px; }
+.app { transform-origin: 0 0; }
+.frame--desktop .app { width: 1280px; height: 860px; }
+.frame--phone .app { width: 390px; height: 844px; }
+@media (max-width: 900px) { .stage { flex-direction: column; } }
+
+/* ── The design ─────────────────────────────────────────── */
+.app, .specimen { font-family: var(--font-ui); font-size: 14px; line-height: 20px; color: var(--ink); font-optical-sizing: auto; }
+.app { container-type: inline-size; container-name: app; background: var(--paper); }
+:where(.app, .specimen) button { font: inherit; color: inherit; }
+.num { font-variant-numeric: tabular-nums; }
+:is(.app, .specimen) :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.shell { display: grid; grid-template-columns: 232px minmax(0, 1fr); height: 100%; }
+
+/* Sidebar */
+.side { display: flex; flex-direction: column; gap: 4px; padding: 18px 12px 16px; background: var(--paper-side); border-right: 1px solid var(--line); }
+.brand { display: flex; align-items: center; gap: 9px; padding: 4px 8px 14px; font-weight: 600; font-size: 15px; letter-spacing: -0.01em; }
+.mark { display: inline-flex; gap: 2px; }
+.mark i { width: 5px; height: 12px; border-radius: 1.5px; background: var(--accent); }
+.mark i:last-child { background: var(--fill-strong); }
+.jump { display: flex; align-items: center; gap: 8px; width: 100%; height: 32px; padding: 0 8px; margin-bottom: 10px; border: 1px solid var(--line); border-radius: var(--r-2); background: var(--paper); color: var(--ink-3); cursor: pointer; transition: border-color var(--t-fast) var(--ease); }
+.jump:hover { border-color: var(--line-strong); }
+.jump span { flex: 1; text-align: left; font-size: 13px; }
+kbd { font-family: inherit; font-size: 11px; line-height: 16px; padding: 0 5px; border-radius: 4px; border: 1px solid var(--line); color: var(--ink-3); background: var(--paper); }
+.nav { display: flex; flex-direction: column; gap: 1px; flex: 1; }
+.nav-item { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: var(--r-2); color: var(--ink-2); font-weight: 500; font-size: 13.5px; cursor: pointer; transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
+.nav-item:hover { background: var(--fill); color: var(--ink); }
+.nav-item.is-active { background: var(--fill); color: var(--ink); }
+.nav-gap { height: 18px; }
+.icon { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.level { padding: 12px 8px 2px; border-top: 1px solid var(--line); }
+.level-row { display: flex; justify-content: space-between; font-size: 12.5px; }
+.level-row span:first-child { font-weight: 600; }
+.level-row span:last-child { color: var(--ink-3); }
+.level-bar { height: 3px; margin-top: 8px; border-radius: 2px; background: var(--fill-strong); overflow: hidden; }
+.level-bar i { display: block; height: 100%; border-radius: 2px; background: var(--ink); transition: width var(--t-slow) var(--ease-out); }
+
+/* Main */
+.main { overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+.page { display: grid; grid-template-columns: minmax(0, 640px) 248px; gap: 64px; justify-content: center; padding: 44px 48px 64px; }
+.head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.eyebrow { margin: 0 0 4px; font-size: 13px; color: var(--ink-2); }
+.date { margin: 0; font-family: var(--font-date); font-weight: var(--date-weight); font-size: var(--date-size); line-height: 1.2; letter-spacing: var(--date-track); text-wrap: balance; }
+.btn { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; border-radius: var(--r-2); border: 1px solid transparent; background: none; font-weight: 500; font-size: 13.5px; cursor: pointer; white-space: nowrap; transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), opacity var(--t-fast) var(--ease); }
+.btn:active { transform: translateY(0.5px); }
+.btn-primary { background: var(--accent); color: var(--on-accent); }
+.btn-primary:hover { opacity: 0.9; }
+.btn-secondary { background: var(--raised); border-color: var(--line-strong); }
+.btn-secondary:hover { background: var(--hover); }
+.btn-ghost { color: var(--ink-2); }
+.btn-ghost:hover { background: var(--fill); color: var(--ink); }
+.btn[disabled] { opacity: 0.45; cursor: default; }
+
+/* Yesterday recap */
+.recap { display: grid; grid-template-columns: 1fr auto; gap: 2px 16px; align-items: baseline; margin-top: 24px; padding: 12px 14px; border-radius: var(--r-3); background: var(--fill); }
+.recap-label { font-size: 12px; font-weight: 500; color: var(--ink-2); }
+.recap-dismiss { appearance: none; border: 0; background: none; padding: 0; font-size: 12px; color: var(--ink-3); cursor: pointer; }
+.recap-dismiss:hover { color: var(--ink); }
+.recap-text { font-size: 14px; }
+.recap-loss { color: var(--loss); font-weight: 500; }
+.recap.is-gone { display: none; }
+
+/* Progress: the day strip */
+.progress { margin-top: 28px; }
+.progress-top { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+.context { margin: 0; font-size: 15px; line-height: 22px; color: var(--ink-2); }
+.context b { font-weight: 500; color: var(--ink); }
+.count { flex: none; font-size: 13px; color: var(--ink-2); }
+.count b { font-weight: 600; color: var(--ink); display: inline-block; }
+.strip { display: flex; gap: 12px; margin-top: 14px; }
+.strip-group { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.strip-segs { display: flex; gap: 3px; }
+.seg { flex: 1; height: 6px; border-radius: 2px; background: var(--fill-strong); overflow: hidden; transition: background var(--t-base) var(--ease); }
+.seg i { display: block; height: 100%; width: 0; background: var(--accent); transition: width var(--t-slow) var(--ease-out); }
+.seg.is-done i { width: 100%; }
+.seg.pop { animation: segPop 360ms var(--ease-out); }
+.strip-label { display: flex; gap: 6px; font-size: 12px; color: var(--ink-3); white-space: nowrap; transition: color var(--t-base) var(--ease); }
+.strip-group.is-current .strip-label { color: var(--ink); font-weight: 500; }
+.strip-group.is-sealed .strip-label { color: var(--ink-2); }
+@keyframes segPop { 0% { transform: scaleY(1); } 40% { transform: scaleY(1.9); } 100% { transform: scaleY(1); } }
+
+/* Blocks and rows */
+.block { margin-top: 30px; }
+.block-head { display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 8px; margin: 0 -8px; border-bottom: 1px solid var(--line); font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
+.block.is-current .block-head { color: var(--ink); }
+.block-count { font-weight: 400; color: var(--ink-3); }
+.block-sealed { display: none; margin-left: auto; align-items: center; gap: 5px; font-weight: 500; color: var(--ink-2); }
+.block.is-sealed .block-sealed { display: inline-flex; }
+.block.is-sealed.just-sealed .block-sealed { animation: sealIn 420ms var(--ease-out); }
+@keyframes sealIn { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+.rows { padding-top: 4px; }
+.row { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 8px; margin: 0 -8px; border-radius: var(--r-2); transition: background var(--t-fast) var(--ease); }
+.row:hover { background: var(--hover); }
+.check { position: relative; flex: none; width: 18px; height: 18px; padding: 0; border: 1.5px solid var(--line-strong); border-radius: var(--r-1); background: none; cursor: pointer; overflow: hidden; transition: border-color var(--t-fast) var(--ease), background var(--t-base) var(--ease), transform var(--t-fast) var(--ease); }
+.check::after { content: ""; position: absolute; inset: -14px; }
+.check:hover { border-color: var(--ink-2); }
+.check:active { transform: scale(0.9); }
+.row.is-next .check { border-color: var(--now); }
+.check-fill { position: absolute; left: 0; right: 0; bottom: 0; background: color-mix(in srgb, var(--accent) 32%, transparent); transition: height var(--t-slow) var(--ease-out); }
+.check svg { position: absolute; inset: 0; width: 100%; height: 100%; fill: none; stroke: var(--on-accent); stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.tick { stroke-dasharray: 14; stroke-dashoffset: 14; transition: stroke-dashoffset 0ms; }
+.row.is-done .check { background: var(--accent); border-color: var(--accent); }
+.row.is-done .tick { stroke-dashoffset: 0; transition: stroke-dashoffset 240ms var(--ease-out) 70ms; }
+.row-main { display: flex; align-items: baseline; gap: 10px; flex: 1; min-width: 0; }
+.row-title { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color var(--t-base) var(--ease); }
+.row-meta { flex: none; font-size: 13px; color: var(--ink-3); }
+.row.is-next .row-meta b { font-weight: 500; color: var(--now); }
+.row.is-done .row-title { color: var(--ink-3); }
+.stake { flex: none; min-width: 34px; text-align: right; font-size: 13px; color: var(--ink-3); transition: color var(--t-base) var(--ease); }
+.row.is-done .stake { color: var(--ink); }
+.stepper { display: inline-flex; flex: none; border: 1px solid var(--line-strong); border-radius: var(--r-2); overflow: hidden; }
+.stepper button { appearance: none; display: grid; place-items: center; width: 28px; height: 26px; padding: 0; border: 0; background: var(--raised); color: var(--ink-2); cursor: pointer; transition: background var(--t-fast) var(--ease); }
+.stepper button + button { border-left: 1px solid var(--line); }
+.stepper button:hover { background: var(--hover); color: var(--ink); }
+.row.is-done .stepper { visibility: hidden; }
+.nowline { display: flex; align-items: center; gap: 8px; height: 14px; margin: 0 -8px; padding: 0 8px; font-size: 11px; font-weight: 500; color: var(--now); }
+.nowline::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--now); margin: 0 6.5px; }
+.nowline::after { content: ""; flex: 1; height: 1px; background: var(--now); opacity: 0.45; }
+.total { display: flex; justify-content: space-between; margin-top: 26px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 13px; color: var(--ink-2); }
+.total b { font-weight: 600; color: var(--ink); display: inline-block; }
+.rolled { animation: roll 280ms var(--ease-out); }
+@keyframes roll { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+
+/* Aside */
+.aside { padding-top: 62px; }
+.aside h2 { margin: 0 0 10px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
+.week { display: grid; gap: 9px; margin-bottom: 34px; }
+.week-row { display: grid; grid-template-columns: 30px 1fr 38px; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-3); }
+.week-row.is-today { color: var(--ink); font-weight: 500; }
+.week-row span:last-child { text-align: right; }
+.mini { display: flex; gap: 2px; }
+.mini i { flex: 1; height: 4px; border-radius: 1px; background: var(--fill-strong); }
+.mini i.on { background: var(--accent); }
+.mini i.miss { background: none; box-shadow: inset 0 0 0 1px var(--loss); }
+.week-row.is-future .mini i { background: var(--fill); }
+.streak-num { font-size: 28px; line-height: 32px; font-weight: 600; letter-spacing: var(--track-title); }
+.streak-num small { font-size: 14px; font-weight: 500; letter-spacing: 0; color: var(--ink-2); }
+.streak-note { margin: 6px 0 0; font-size: 13px; color: var(--ink-2); text-wrap: pretty; }
+
+/* Bottom tabs: phone only */
+.tabs { display: none; }
+
+@container app (max-width: 700px) {
+    .shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+    .side { display: none; }
+    .page { grid-template-columns: minmax(0, 1fr); gap: 0; padding: 58px 20px 28px; }
+    .head { align-items: center; }
+    .date { font-size: calc(var(--date-size) - 5px); }
+    .btn-new span, .btn-new kbd { display: none; }
+    .btn-new { width: 36px; height: 36px; padding: 0; justify-content: center; border-color: var(--line-strong); background: var(--raised); color: var(--ink); }
+    .recap { margin-top: 20px; }
+    .progress { margin-top: 22px; }
+    .strip { gap: 8px; }
+    .block { margin-top: 26px; }
+    .row { min-height: 54px; }
+    .row-main { flex-direction: column; align-items: flex-start; gap: 0; }
+    .row-title { font-size: 16px; max-width: 100%; }
+    .check { width: 22px; height: 22px; border-radius: 6px; }
+    .stepper button { width: 36px; height: 34px; }
+    .nowline::before { margin: 0 8.5px; }
+    .aside { padding-top: 34px; }
+    .week { margin-bottom: 26px; }
+    .tabs { display: grid; grid-template-columns: repeat(4, 1fr); padding: 6px 8px 22px; border-top: 1px solid var(--line); background: var(--paper); }
+    .tab { display: grid; justify-items: center; gap: 3px; padding: 6px 0; font-size: 11px; font-weight: 500; color: var(--ink-3); }
+    .tab .icon { width: 20px; height: 20px; }
+    .tab.is-active { color: var(--ink); }
+}
+
+/* ── Specimen ───────────────────────────────────────────── */
+.specimen { padding: 28px 24px 64px; }
+.specimen > h2 { margin: 0 0 4px; font-size: 18px; line-height: 24px; font-weight: 600; letter-spacing: -0.01em; }
+.specimen > p { margin: 0 0 22px; color: var(--ink-2); max-width: 70ch; }
+.sheet { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.panel { padding: 20px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--paper); }
+.panel h3 { margin: 0 0 14px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
+.swatches { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; font-size: 11px; color: var(--ink-2); }
+.swatches i { display: block; height: 34px; margin-bottom: 5px; border-radius: var(--r-1); border: 1px solid var(--line); }
+.type-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.type-row:last-child { border-bottom: 0; }
+.type-row small { flex: none; font-size: 11px; color: var(--ink-3); }
+.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+.field { display: block; width: 100%; height: 36px; padding: 0 11px; border: 1px solid var(--line-strong); border-radius: var(--r-2); background: var(--raised); color: var(--ink); font: inherit; }
+.field::placeholder { color: var(--ink-3); }
+.field:focus { outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent); outline-offset: 0; border-color: var(--accent); }
+.check-set { display: flex; gap: 18px; align-items: center; font-size: 12px; color: var(--ink-2); }
+.check-set .row { min-height: 0; margin: 0; padding: 0; gap: 7px; }
+.check-set .row:hover { background: none; }
+.empty { text-align: left; }
+.empty .strip-segs { max-width: 220px; margin-bottom: 16px; }
+.empty .seg { background: none; box-shadow: inset 0 0 0 1px var(--line-strong); }
+.empty h4 { margin: 0 0 4px; font-size: 18px; line-height: 24px; font-weight: 600; letter-spacing: -0.01em; }
+.empty p { margin: 0 0 16px; color: var(--ink-2); text-wrap: pretty; }
+.toast { display: inline-flex; align-items: center; gap: 14px; padding: 9px 10px 9px 14px; border-radius: var(--r-3); background: var(--raised); border: 1px solid var(--line); box-shadow: var(--shadow); font-size: 13.5px; }
+.toast .btn { height: 26px; padding: 0 8px; }
+.ledger { display: grid; gap: 0; font-size: 13.5px; }
+.ledger div { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.ledger div:last-child { border-bottom: 0; font-weight: 600; }
+.ledger .minus { color: var(--loss); }
+.ledger small { color: var(--ink-3); font-size: 12px; margin-left: 8px; }
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; transition-delay: 0ms !important; }
+}
+</style>
+</head>
+<body>
+
+<header class="lab">
+    <span class="lab-title">Today: direction mockups</span>
+    <div class="lab-group">Preset
+        <div class="seg-ctl" data-control="preset">
+            <button data-value="forest">Forest</button>
+            <button data-value="blue">Blue ink</button>
+            <button data-value="ink">Ink and saffron</button>
+        </div>
+    </div>
+    <div class="lab-group">Typeface
+        <div class="seg-ctl" data-control="type">
+            <button data-value="instrument">Instrument Sans</button>
+            <button data-value="hanken">Hanken Grotesk</button>
+            <button data-value="geist">Geist</button>
+            <button data-value="inter">Inter</button>
+        </div>
+    </div>
+    <div class="lab-group">Date
+        <div class="seg-ctl" data-control="date">
+            <button data-value="sans">Sans</button>
+            <button data-value="serif">Serif</button>
+        </div>
+    </div>
+    <div class="lab-group">Theme
+        <div class="seg-ctl" data-control="theme">
+            <button data-value="light">Light</button>
+            <button data-value="dark">Dark</button>
+        </div>
+    </div>
+    <label class="lab-group">Name
+        <select id="name-select">
+            <option>Nitya</option>
+            <option>Daybook</option>
+            <option>Riyaz</option>
+            <option>Kept</option>
+            <option>R&amp;H Tracker</option>
+        </select>
+    </label>
+</header>
+
+<main class="stage">
+    <figure class="frame frame--desktop">
+        <div class="viewport"><div class="app"></div></div>
+        <figcaption>Desktop, 1280 px wide. The checkboxes and the water stepper work.</figcaption>
+    </figure>
+    <figure class="frame frame--phone">
+        <div class="viewport"><div class="app"></div></div>
+        <figcaption>Phone, 390 px wide.</figcaption>
+    </figure>
+</main>
+
+<section class="specimen">
+    <h2>The system behind it</h2>
+    <p>Everything above is built from these values. They follow the controls at the top of the page.</p>
+    <div class="sheet">
+        <div class="panel">
+            <h3>Colour</h3>
+            <div class="swatches">
+                <div><i style="background:var(--paper)"></i>Paper</div>
+                <div><i style="background:var(--paper-side)"></i>Sidebar</div>
+                <div><i style="background:var(--raised)"></i>Raised</div>
+                <div><i style="background:var(--fill)"></i>Fill</div>
+                <div><i style="background:var(--ink)"></i>Ink</div>
+                <div><i style="background:var(--ink-2)"></i>Ink 2</div>
+                <div><i style="background:var(--ink-3)"></i>Ink 3</div>
+                <div><i style="background:var(--line-strong)"></i>Line</div>
+                <div><i style="background:var(--accent)"></i>Accent</div>
+                <div><i style="background:var(--accent-soft)"></i>Accent soft</div>
+                <div><i style="background:var(--now)"></i>Now</div>
+                <div><i style="background:var(--loss)"></i>Loss</div>
+            </div>
+        </div>
+        <div class="panel">
+            <h3>Type</h3>
+            <div class="type-row"><span class="date" style="font-size:var(--date-size)">Friday, 9 October</span><small>Title</small></div>
+            <div class="type-row"><span style="font-size:18px;line-height:24px;font-weight:600;letter-spacing:-0.01em">Your day starts here</span><small>Heading</small></div>
+            <div class="type-row"><span style="font-size:15px;font-weight:500">Plan tomorrow</span><small>Item</small></div>
+            <div class="type-row"><span>Half the day is done.</span><small>Body</small></div>
+            <div class="type-row"><span style="font-size:13px;color:var(--ink-2)">2:00 to 4:00 pm</span><small>Meta</small></div>
+            <div class="type-row"><span class="num" style="font-size:13px">0123456789 &nbsp; +20 &nbsp; −15 &nbsp; 5 of 10</span><small>Numerals</small></div>
+        </div>
+        <div class="panel">
+            <h3>Controls</h3>
+            <div class="controls">
+                <button class="btn btn-primary">Add habit</button>
+                <button class="btn btn-secondary">Cancel</button>
+                <button class="btn btn-ghost">Skip</button>
+                <button class="btn btn-primary" disabled>Saving</button>
+            </div>
+            <div class="controls"><input class="field" placeholder="What do you want to do every day?"></div>
+            <div class="check-set">
+                <span class="row"><span class="check"></span>Open</span>
+                <span class="row is-next"><span class="check"></span>Next</span>
+                <span class="row"><span class="check"><i class="check-fill" style="height:62%"></i></span>Partly</span>
+                <span class="row is-done"><span class="check"><svg viewBox="0 0 18 18"><path class="tick" d="M4.6 9.4l2.9 2.9 6-6.4"/></svg></span>Done</span>
+            </div>
+        </div>
+        <div class="panel empty">
+            <h3>Empty state</h3>
+            <div class="strip-segs"><span class="seg"></span><span class="seg"></span><span class="seg"></span><span class="seg"></span><span class="seg"></span><span class="seg"></span></div>
+            <h4>Your day starts here</h4>
+            <p>Add the first thing you want to do today. The rest of the routine can grow one step at a time.</p>
+            <div class="controls" style="margin:0">
+                <button class="btn btn-primary">Add a routine</button>
+                <button class="btn btn-secondary">Add a habit</button>
+            </div>
+        </div>
+        <div class="panel">
+            <h3>Feedback</h3>
+            <div class="toast">Deep work done <span class="num" style="color:var(--ink-2)">+20 XP</span><button class="btn btn-ghost">Undo</button></div>
+        </div>
+        <div class="panel">
+            <h3>XP ledger: gains and losses</h3>
+            <div class="ledger num">
+                <div><span>Workout <small>7:04 am, on time</small></span><span>+20</span></div>
+                <div><span>All of yesterday's routines <small>bonus</small></span><span>+25</span></div>
+                <div><span>Journal <small>left open on Thursday</small></span><span class="minus">−15</span></div>
+                <div><span>This week</span><span>+310</span></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<template id="icons">
+    <svg class="icon" data-icon="today" viewBox="0 0 20 20"><path d="M2.5 14.5h15M5.5 14.5a4.5 4.5 0 0 1 9 0M10 5v2M4.3 8.3l1.4 1.4M15.7 8.3l-1.4 1.4"/></svg>
+    <svg class="icon" data-icon="plan" viewBox="0 0 20 20"><path d="M8.5 5.5h8M8.5 10h8M8.5 14.5h8"/><rect x="3.5" y="4" width="3" height="3" rx=".8"/><rect x="3.5" y="8.5" width="3" height="3" rx=".8"/><rect x="3.5" y="13" width="3" height="3" rx=".8"/></svg>
+    <svg class="icon" data-icon="insights" viewBox="0 0 20 20"><path d="M4.5 16V10M10 16V4.5M15.5 16v-4"/></svg>
+    <svg class="icon" data-icon="history" viewBox="0 0 20 20"><rect x="3" y="4.5" width="14" height="12.5" rx="2.5"/><path d="M3 8.5h14M7 2.8v3M13 2.8v3"/></svg>
+    <svg class="icon" data-icon="expenses" viewBox="0 0 20 20"><path d="M5 3h10v14l-2.5-1.6L10 17l-2.5-1.6L5 17z"/><path d="M8 7.2h4M8 10.4h4"/></svg>
+    <svg class="icon" data-icon="settings" viewBox="0 0 20 20"><path d="M3 6h7M15.5 6H17M3 14h1.5M10 14h7"/><circle cx="12.8" cy="6" r="2.2"/><circle cx="7.2" cy="14" r="2.2"/></svg>
+    <svg class="icon" data-icon="search" viewBox="0 0 20 20"><circle cx="9" cy="9" r="5"/><path d="M13 13l3.5 3.5"/></svg>
+    <svg class="icon" data-icon="plus" viewBox="0 0 20 20"><path d="M10 4.5v11M4.5 10h11"/></svg>
+    <svg class="icon" data-icon="minus" viewBox="0 0 20 20"><path d="M4.5 10h11"/></svg>
+    <svg class="icon" data-icon="check" viewBox="0 0 20 20"><path d="M4.5 10.5l3.5 3.5 7.5-8"/></svg>
+</template>
+
+<script>
+const ITEMS = [
+    { id: "wake", block: "morning", title: "Wake up and water", time: "6:30 am", xp: 10, done: true },
+    { id: "meditate", block: "morning", title: "Meditation", meta: "10 min", xp: 15, done: true },
+    { id: "workout", block: "morning", title: "Workout", time: "7:00 am", xp: 20, done: true },
+    { id: "read", block: "morning", title: "Read", qty: [20, 20, "pages"], xp: 15, done: true },
+    { id: "inbox", block: "afternoon", title: "Clear the inbox", time: "1:00 pm", xp: 10, done: true, nowAfter: true },
+    { id: "deep", block: "afternoon", title: "Deep work", time: "2:00 to 4:00 pm", at: "2:00", soon: "in 25 min", xp: 20 },
+    { id: "water", block: "afternoon", title: "Drink water", qty: [5, 8, "glasses"], xp: 10 },
+    { id: "cook", block: "evening", title: "Cook dinner", time: "7:30 pm", at: "7:30", xp: 10 },
+    { id: "journal", block: "evening", title: "Journal", xp: 15 },
+    { id: "plan", block: "evening", title: "Plan tomorrow", time: "10:00 pm", at: "10:00", xp: 10 },
+];
+const BLOCKS = [["morning", "Morning"], ["afternoon", "Afternoon"], ["evening", "Evening"]];
+const CURRENT = "afternoon";
+const WEEK = [["Mon", 10], ["Tue", 10], ["Wed", 10], ["Thu", 9], ["Fri", null], ["Sat", -1], ["Sun", -1]];
+const WORDS = ["None", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"];
+
+const icon = (name) => document.querySelector(`#icons`).content.querySelector(`[data-icon="${name}"]`).outerHTML;
+const el = (html) => { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstElementChild; };
+
+function mount(app) {
+    const items = ITEMS.map((i) => ({ ...i, qty: i.qty && [...i.qty] }));
+    const qtyMeta = (i) => `${i.qty[0]} of ${i.qty[1]} ${i.qty[2]}`;
+
+    app.innerHTML = `
+    <div class="shell">
+        <aside class="side">
+            <div class="brand"><span class="mark"><i></i><i></i><i></i></span><span data-name>Nitya</span></div>
+            <button class="jump">${icon("search")}<span>Jump to…</span><kbd>⌘K</kbd></button>
+            <nav class="nav">
+                <a class="nav-item is-active">${icon("today")}Today</a>
+                <a class="nav-item">${icon("plan")}Plan</a>
+                <a class="nav-item">${icon("insights")}Insights</a>
+                <a class="nav-item">${icon("history")}History</a>
+                <div class="nav-gap"></div>
+                <a class="nav-item">${icon("expenses")}Expenses</a>
+                <a class="nav-item">${icon("settings")}Settings</a>
+            </nav>
+            <div class="level">
+                <div class="level-row"><span>Level 7</span><span class="num"><span data-xp>340</span> / 500 XP</span></div>
+                <div class="level-bar"><i data-xpbar></i></div>
+            </div>
+        </aside>
+        <main class="main">
+            <div class="page">
+                <div class="col">
+                    <header class="head">
+                        <div><p class="eyebrow">Good afternoon</p><h1 class="date">Friday, 9 October</h1></div>
+                        <button class="btn btn-ghost btn-new" aria-label="New item">${icon("plus")}<span>New</span><kbd>N</kbd></button>
+                    </header>
+                    <div class="recap">
+                        <span class="recap-label">Yesterday, Thursday 8 October</span>
+                        <button class="recap-dismiss">Dismiss</button>
+                        <span class="recap-text">9 of 10 done. Journal was left open.</span>
+                        <span class="recap-loss num">−15 XP</span>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-top"><p class="context" data-context></p><span class="count num"><b data-done></b> of ${items.length}</span></div>
+                        <div class="strip">${BLOCKS.map(([key, label]) => `
+                            <div class="strip-group" data-group="${key}" style="flex:${items.filter((i) => i.block === key).length}">
+                                <div class="strip-segs">${items.filter((i) => i.block === key).map((i) => `<span class="seg" data-seg="${i.id}"><i></i></span>`).join("")}</div>
+                                <div class="strip-label"><span>${label}</span><span class="num" data-groupcount></span></div>
+                            </div>`).join("")}
+                        </div>
+                    </div>
+                    ${BLOCKS.map(([key, label]) => `
+                    <section class="block" data-block="${key}">
+                        <div class="block-head"><span>${label}</span><span class="block-count num" data-blockcount></span><span class="block-sealed">${icon("check")}Complete</span></div>
+                        <div class="rows">${items.filter((i) => i.block === key).map((i) => `
+                            <div class="row" data-id="${i.id}">
+                                <button class="check" aria-label="Complete ${i.title}">${i.qty ? `<i class="check-fill"></i>` : ""}<svg viewBox="0 0 18 18"><path class="tick" d="M4.6 9.4l2.9 2.9 6-6.4"/></svg></button>
+                                <div class="row-main"><span class="row-title">${i.title}</span><span class="row-meta num" data-meta></span></div>
+                                ${i.qty ? `<div class="stepper"><button data-step="-1" aria-label="One less">${icon("minus")}</button><button data-step="1" aria-label="One more">${icon("plus")}</button></div>` : ""}
+                                <span class="stake num">+${i.xp}</span>
+                            </div>${i.nowAfter ? `<div class="nowline num">1:35 pm</div>` : ""}`).join("")}
+                        </div>
+                    </section>`).join("")}
+                    <div class="total"><span>Earned today</span><span class="num"><b data-earned></b> XP</span></div>
+                </div>
+                <aside class="aside">
+                    <h2>This week</h2>
+                    <div class="week">${WEEK.map(([day, n]) => `
+                        <div class="week-row ${n === null ? "is-today" : n < 0 ? "is-future" : ""}" ${n === null ? "data-todayrow" : ""}>
+                            <span>${day}</span>
+                            <span class="mini">${Array.from({ length: 10 }, (_, k) => `<i class="${n > k ? "on" : n >= 0 && n !== null ? "miss" : ""}"></i>`).join("")}</span>
+                            <span class="num">${n === null ? "" : n < 0 ? "" : `${n}/10`}</span>
+                        </div>`).join("")}
+                    </div>
+                    <h2>Streak</h2>
+                    <div class="streak-num num">12 <small>days</small></div>
+                    <p class="streak-note">Your best is 21. Two more days reaches the 14-day mark.</p>
+                </aside>
+            </div>
+        </main>
+        <nav class="tabs">
+            <a class="tab is-active">${icon("today")}Today</a>
+            <a class="tab">${icon("plan")}Plan</a>
+            <a class="tab">${icon("insights")}Insights</a>
+            <a class="tab">${icon("history")}History</a>
+        </nav>
+    </div>`;
+
+    const $ = (sel) => app.querySelector(sel);
+    const roll = (node, text) => {
+        if (node.textContent === String(text)) return;
+        node.textContent = text;
+        node.classList.remove("rolled");
+        void node.offsetWidth;
+        node.classList.add("rolled");
+    };
+
+    function render(changedId) {
+        const done = items.filter((i) => i.done);
+        const next = [...items.filter((i) => i.block !== "morning"), ...items].find((i) => !i.done);
+        const earned = done.reduce((sum, i) => sum + i.xp, 0);
+
+        for (const i of items) {
+            const row = $(`[data-id="${i.id}"]`);
+            row.classList.toggle("is-done", !!i.done);
+            row.classList.toggle("is-next", i === next);
+            const meta = i.qty ? qtyMeta(i) : i.time || i.meta || "";
+            row.querySelector("[data-meta]").innerHTML =
+                i === next && i.soon ? `${meta} · <b>${i.soon}</b>` : i === next && !i.done ? `${meta}${meta ? " · " : ""}<b>Next</b>` : meta;
+            const fill = row.querySelector(".check-fill");
+            if (fill) fill.style.height = i.done ? "0%" : `${(i.qty[0] / i.qty[1]) * 100}%`;
+            const seg = $(`[data-seg="${i.id}"]`);
+            seg.classList.toggle("is-done", !!i.done);
+            seg.firstElementChild.style.width = i.done ? "" : i.qty ? `${(i.qty[0] / i.qty[1]) * 100}%` : "";
+            if (i.id === changedId && i.done) { seg.classList.remove("pop"); void seg.offsetWidth; seg.classList.add("pop"); }
+        }
+
+        for (const [key] of BLOCKS) {
+            const inBlock = items.filter((i) => i.block === key);
+            const n = inBlock.filter((i) => i.done).length;
+            const sealed = n === inBlock.length;
+            const block = $(`[data-block="${key}"]`);
+            const group = $(`[data-group="${key}"]`);
+            const justSealed = sealed && !block.classList.contains("is-sealed") && changedId;
+            block.classList.toggle("is-sealed", sealed);
+            block.classList.toggle("just-sealed", !!justSealed);
+            block.classList.toggle("is-current", key === CURRENT);
+            group.classList.toggle("is-sealed", sealed);
+            group.classList.toggle("is-current", key === CURRENT && !sealed);
+            block.querySelector("[data-blockcount]").textContent = sealed ? "" : `${n} of ${inBlock.length}`;
+            group.querySelector("[data-groupcount]").textContent = `${n}/${inBlock.length}`;
+            if (justSealed) group.querySelectorAll(".seg").forEach((seg, k) => {
+                seg.classList.remove("pop");
+                setTimeout(() => { void seg.offsetWidth; seg.classList.add("pop"); }, 120 + k * 60);
+            });
+        }
+
+        const left = items.length - done.length;
+        const nextText = next ? `${next.title} is next${next.at ? `, at ${next.at}` : ""}.` : "";
+        const context =
+            left === 0 ? `<b>Today is complete.</b> Everything you planned is done.`
+            : left === 1 ? `<b>One left.</b> ${next.title} closes the day.`
+            : done.length === 0 ? `<b>A fresh page.</b> ${nextText}`
+            : done.length * 2 === items.length ? `<b>Half the day is done.</b> ${nextText}`
+            : done.length * 2 > items.length ? `<b>${WORDS[left]} to go.</b> ${nextText}`
+            : `<b>${WORDS[done.length]} done.</b> ${nextText}`;
+        if ($("[data-context]").innerHTML !== context) $("[data-context]").innerHTML = context;
+
+        roll($("[data-done]"), done.length);
+        roll($("[data-earned]"), `+${earned}`);
+        $("[data-xp]").textContent = 270 + earned;
+        $("[data-xpbar]").style.width = `${((270 + earned) / 500) * 100}%`;
+        const today = $("[data-todayrow]");
+        today.querySelectorAll(".mini i").forEach((bar, k) => bar.classList.toggle("on", k < done.length));
+        today.lastElementChild.textContent = `${done.length}/10`;
+    }
+
+    app.addEventListener("click", (event) => {
+        const row = event.target.closest(".row");
+        if (event.target.closest(".recap-dismiss")) return $(".recap").classList.add("is-gone");
+        if (!row) return;
+        const item = items.find((i) => i.id === row.dataset.id);
+        const step = event.target.closest("[data-step]");
+        if (step) {
+            item.qty[0] = Math.max(0, Math.min(item.qty[1], item.qty[0] + Number(step.dataset.step)));
+            item.done = item.qty[0] === item.qty[1];
+        } else if (event.target.closest(".check")) {
+            item.done = !item.done;
+            if (item.qty) item.qty[0] = item.done ? item.qty[1] : item.qty[1] - 1;
+        } else return;
+        render(item.id);
+    });
+
+    render();
+}
+
+document.querySelectorAll(".app").forEach(mount);
+
+// ── Controls ──
+const root = document.documentElement;
+const PRESETS = {
+    forest: { accent: "forest", type: "hanken", date: "sans" },
+    blue: { accent: "blue", type: "instrument", date: "sans" },
+    ink: { accent: "ink", type: "geist", date: "serif" },
+};
+function sync() {
+    document.querySelectorAll("[data-control]").forEach((group) => {
+        const key = group.dataset.control === "preset" ? "accent" : group.dataset.control;
+        group.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.value === root.dataset[key])));
+    });
+}
+document.querySelector(".lab").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-control] button");
+    if (!button) return;
+    const control = button.parentElement.dataset.control;
+    if (control === "preset") Object.assign(root.dataset, PRESETS[button.dataset.value]);
+    else root.dataset[control] = button.dataset.value;
+    sync();
+});
+document.querySelector("#name-select").addEventListener("change", (event) => {
+    document.querySelectorAll("[data-name]").forEach((node) => (node.textContent = event.target.value));
+});
+const params = new URLSearchParams(location.search);
+for (const key of ["theme", "accent", "type", "date"]) if (params.get(key)) root.dataset[key] = params.get(key);
+if (params.get("preset")) Object.assign(root.dataset, PRESETS[params.get("preset")]);
+sync();
+
+// ── Fit the frames to the window ──
+function fit() {
+    const stage = document.querySelector(".stage");
+    // ?only=desktop or ?only=phone shows one frame at full size, for close inspection
+    const only = params.get("only");
+    if (only) {
+        document.querySelector(".lab").hidden = document.querySelector(".specimen").hidden = true;
+        document.querySelector(`.frame--${only === "phone" ? "desktop" : "phone"}`).hidden = true;
+        stage.style.padding = "0";
+        document.querySelector(`.frame--${only} .viewport`).style.cssText = "border:0;border-radius:0;box-shadow:none";
+        return;
+    }
+    const width = stage.clientWidth - 48;
+    const stacked = window.innerWidth <= 900;
+    const desktopW = stacked ? width : (width - 32) / (1 + (390 / 844) * (860 / 1280));
+    const kDesktop = desktopW / 1280;
+    const kPhone = stacked ? Math.min(1, width / 390) : (860 * kDesktop) / 844;
+    const set = (frame, k, w, h) => {
+        const viewport = document.querySelector(`${frame} .viewport`);
+        viewport.style.width = `${w * k}px`;
+        viewport.style.height = `${h * k}px`;
+        viewport.firstElementChild.style.transform = `scale(${k})`;
+    };
+    set(".frame--desktop", kDesktop, 1280, 860);
+    set(".frame--phone", kPhone, 390, 844);
+}
+window.addEventListener("resize", fit);
+fit();
+</script>
+</body>
+</html>
