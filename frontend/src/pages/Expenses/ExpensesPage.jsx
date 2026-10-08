@@ -58,6 +58,14 @@ const formatDate = (value) =>
         day: "numeric",
     });
 
+// Today as the user sees it on their device ("YYYY-MM-DD"). toISOString() would give the UTC date instead.
+const getLocalToday = () => {
+    const now = new Date();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${now.getFullYear()}-${month}-${day}`;
+};
+
 const initialLog = {
     type: "expense",
     amount: "",
@@ -67,7 +75,7 @@ const initialLog = {
     accountId: "",
     transferToAccountId: "",
     placeName: "",
-    transactionDate: new Date().toISOString().slice(0, 10),
+    transactionDate: getLocalToday(),
     notes: "",
 };
 
@@ -78,7 +86,7 @@ const initialSubscription = {
     frequency: "monthly",
     accountId: "",
     description: "",
-    nextDueDate: new Date().toISOString().slice(0, 10),
+    nextDueDate: getLocalToday(),
     reminderDays: 3,
 };
 
@@ -180,7 +188,12 @@ export default function ExpensesPage() {
     };
 
     useEffect(() => {
-        loadSummary();
+        // Pushing the fetch to the next event loop tick prevents the synchronous double-render
+        const fetchTimer = setTimeout(() => {
+            loadSummary();
+        }, 0);
+
+        return () => clearTimeout(fetchTimer);
     }, []);
 
     const accountTotal = useMemo(
@@ -250,16 +263,22 @@ export default function ExpensesPage() {
         event.preventDefault();
         setSavingLog(true);
         try {
-            await expenseService.createTransaction({
+            const payload = {
                 ...logForm,
                 amount: Number(logForm.amount),
                 transferToAccountId: logForm.type === "transfer" ? logForm.transferToAccountId : null,
-            });
+            };
+            if (editingTransactionId) {
+                await expenseService.updateTransaction(editingTransactionId, payload);
+            } else {
+                await expenseService.createTransaction(payload);
+            }
             setLogForm((current) => ({
                 ...initialLog,
                 accountId: current.accountId,
                 transferToAccountId: current.transferToAccountId,
             }));
+            setEditingTransactionId("");
             await loadSummary();
         } catch (error) {
             console.error("Create transaction error:", error);

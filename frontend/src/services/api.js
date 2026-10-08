@@ -1,11 +1,21 @@
 import axios from "axios";
+
+// Defaults to the same-origin /api path, which the Vite dev server proxies to the backend
+const API_BASE_URL = import.meta.env.VITE_API_URL || "/api";
+
+// The device's timezone goes out with every request, so the server knows when this user's day starts and ends
+const TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+const DEFAULT_HEADERS = {
+    "Content-Type": "application/json",
+    ...(TIMEZONE ? { "X-Timezone": TIMEZONE } : {}),
+};
+
 // Separate instance for refresh — bypasses the response interceptor to avoid infinite loops
 export const authApi = axios.create({
-    baseURL: import.meta.env.VITE_API_URL,
+    baseURL: API_BASE_URL,
     withCredentials: true,
-    headers: {
-        "Content-Type": "application/json",
-    },
+    headers: DEFAULT_HEADERS,
 });
 
 const ACCESS_TOKEN_STORAGE_KEY = "life-management.accessToken";
@@ -19,12 +29,10 @@ const readStoredAccessToken = () => {
 };
 
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL,
+    baseURL: API_BASE_URL,
     withCredentials: true,
     timeout: 15000,
-    headers: {
-        "Content-Type": "application/json",
-    },
+    headers: DEFAULT_HEADERS,
 });
 
 //Now store the access token into the memory
@@ -76,10 +84,34 @@ api.interceptors.request.use(
     },
 );
 
-//Add response interceptor to handle token expiration automatically
-let isRefreshing = false;
-let failedRequestsQueue = [];
+// Only one refresh may be in flight at a time. Every caller (app load, any request that hit a 401)
+// shares the same request, so this tab never spends the rotating refresh token twice.
+let refreshPromise = null;
 
+export const refreshSession = () => {
+    if (!refreshPromise) {
+        refreshPromise = authApi
+            .post("/auth/refresh-token")
+            .then((response) => {
+                setAccessToken(response.data.accessToken);
+                return response.data;
+            })
+            .finally(() => {
+                refreshPromise = null;
+            });
+    }
+
+    return refreshPromise;
+};
+
+// True when the server itself rejected the refresh token, as opposed to a network error,
+// a timeout or a 5xx — those say nothing about whether the session is still valid.
+export const isSessionExpiredError = (error) => {
+    const status = error?.response?.status;
+    return status === 401 || status === 403;
+};
+
+//Add response interceptor to handle token expiration automatically
 api.interceptors.response.use(
     // If response is successful, just return it
     (response) => {
@@ -91,54 +123,31 @@ api.interceptors.response.use(
         const originalRequest = error.config;
 
         //Access token expired
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        if (
+            error.response?.status === 401 &&
+            originalRequest &&
+            !originalRequest._retry
+        ) {
             originalRequest._retry = true;
 
-            if (!isRefreshing) {
-                isRefreshing = true;
+            try {
+                const { accessToken: newAccessToken } = await refreshSession();
 
-                try {
-                    const response = await axios.post(
-                        `${api.defaults.baseURL}/auth/refresh-token`,
-                        {},
-                        { withCredentials: true }, // Send cookies
-                    );
-
-                    const newAccessToken = response.data.accessToken;
-                    setAccessToken(newAccessToken);
-
-                    // Update the failed request with new token
-                    originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-
-                    // Retry All Failed Requests
-                    failedRequestsQueue.forEach((callback) =>
-                        callback(newAccessToken),
-                    );
-                    failedRequestsQueue = [];
-
-                    // Retry the original request
-                    return api(originalRequest);
-                } catch (refreshError) {
-                    // Clear everything and logout
+                // Retry the original request with the new token
+                originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+                return api(originalRequest);
+            } catch (refreshError) {
+                // Only end the session when the refresh token was rejected. A network blip
+                // or a server that is still waking up must not log the user out.
+                if (isSessionExpiredError(refreshError)) {
                     clearAccessToken();
-                    failedRequestsQueue = [];
 
                     // Redirect to login (we'll handle this in AuthContext)
                     window.dispatchEvent(new Event("auth:logout"));
-
-                    return Promise.reject(refreshError);
-                } finally {
-                    isRefreshing = false;
                 }
-            }
 
-            // If a refresh is already in progress, queue this request
-            return new Promise((resolve) => {
-                failedRequestsQueue.push((token) => {
-                    originalRequest.headers.Authorization = `Bearer ${token}`;
-                    resolve(api(originalRequest));
-                });
-            });
+                return Promise.reject(refreshError);
+            }
         }
         return Promise.reject(error);
     },

@@ -3,7 +3,7 @@ import DailyLog from "../models/DailyLog.js";
 
 // @desc    Get overarching streak info and last 7 days of logs
 // @route   GET /api/streaks/info
-export const getStreakInfo = async (req, res) => {
+export const getStreakInfo = async (req, res, next) => {
     try {
         // Fetch only the specific streak fields to keep the payload tiny
         const user = await User.findById(req.user._id).select(
@@ -26,16 +26,13 @@ export const getStreakInfo = async (req, res) => {
             recentLogs,
         });
     } catch (error) {
-        res.status(500).json({
-            message: "Error fetching streak info",
-            error: error.message,
-        });
+        next(error);
     }
 };
 
 // @desc    Get historical daily logs for heatmap/analytics
 // @route   GET /api/streaks/logs?days=30
-export const getDailyLogs = async (req, res) => {
+export const getDailyLogs = async (req, res, next) => {
     try {
         // Default to 30 days if the query parameter isn't provided
         const limit = parseInt(req.query.days) || 30;
@@ -46,9 +43,6 @@ export const getDailyLogs = async (req, res) => {
 
         res.status(200).json({ logs });
     } catch (error) {
-        res.status(500).json({
-            message: "Error fetching daily logs",
-            error: error.message,
-        });
+        next(error);
     }
 };

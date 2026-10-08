@@ -1,19 +1,80 @@
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import User from "../models/User.js";
+import User, { PRIVATE_USER_FIELDS } from "../models/User.js";
 import ExpressError from "../utils/ExpressError.js";
 import sendEmail from "../utils/sendEmail.js";
+import {
+    passwordResetEmail,
+    verificationEmail,
+} from "../utils/emailTemplates.js";
+import {
+    addDays,
+    DEFAULT_TIMEZONE,
+    getTodayIn,
+    isValidTimezone,
+} from "../utils/dateRules.js";
 
-const isProduction = process.env.NODE_ENV === "production";
+const REFRESH_TOKEN_TTL_MS = 15 * 24 * 60 * 60 * 1000; // 15 days
+const EMAIL_VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const PASSWORD_RESET_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
-const cookieOptions = {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? "None" : "Lax",
-    maxAge: 15 * 24 * 60 * 60 * 1000, // 15 days
+// New accounts must confirm their email before they can be used, unless EMAIL_VERIFICATION_REQUIRED is "false".
+// The switch is for a deployment that can't send email to its users yet; read per request, like the cookie options.
+export const isEmailVerificationRequired = () =>
+    process.env.EMAIL_VERIFICATION_REQUIRED !== "false";
+
+const hashToken = (token) =>
+    crypto.createHash("sha256").update(token).digest("hex");
+
+// The token for an emailed link. Only its hash is stored, so a copy of the database can't be turned into working links.
+const createEmailToken = () => {
+    const raw = crypto.randomBytes(32).toString("hex");
+    return { raw, hashed: hashToken(raw) };
 };
 
-export const registerUser = async (req, res) => {
+// Puts a fresh confirmation link on the account, replacing any earlier one, and returns the email carrying it.
+// The caller saves the user and sends the email.
+const startEmailVerification = (user) => {
+    const token = createEmailToken();
+    user.emailVerified = false;
+    user.emailVerificationToken = token.hashed;
+    user.emailVerificationExpiry = Date.now() + EMAIL_VERIFICATION_TTL_MS;
+
+    return {
+        to: user.email,
+        ...verificationEmail({
+            name: user.name,
+            url: `${process.env.CLIENT_URL}/verify-email/${token.raw}`,
+        }),
+    };
+};
+
+// Built per request, so it doesn't rely on .env already being loaded when this module is imported
+const getCookieOptions = () => {
+    const isProduction = process.env.NODE_ENV === "production";
+
+    return {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? "None" : "Lax",
+        maxAge: REFRESH_TOKEN_TTL_MS,
+    };
+};
+
+// Removes sessions whose refresh token has already expired, so the list can't grow forever
+const pruneExpiredSessions = (userId) =>
+    User.updateOne(
+        { _id: userId },
+        {
+            $pull: {
+                refreshTokens: {
+                    createdAt: { $lt: new Date(Date.now() - REFRESH_TOKEN_TTL_MS) },
+                },
+            },
+        },
+    );
+
+export const registerUser = async (req, res, next) => {
     try {
         const { name, email, password } = req.body;
 
@@ -24,15 +85,56 @@ export const registerUser = async (req, res) => {
         }
 
         const existingUser = await User.findOne({ email });
-        if (existingUser) {
+        if (existingUser?.emailVerified) {
             return res.status(400).json({ message: "User already exists" });
         }
 
-        const newUser = new User({
+        // A new account starts in the timezone its client reports
+        const reportedTimezone = req.headers["x-timezone"];
+        const hasTimezone = isValidTimezone(reportedTimezone);
+        const timezone = hasTimezone ? reportedTimezone : DEFAULT_TIMEZONE;
+
+        // An account whose email was never confirmed has never been usable, and whoever opened it never
+        // showed the address was theirs. Signing up for it again starts it over instead of being refused.
+        const newUser = existingUser ?? new User({ email });
+
+        newUser.set({
             name,
-            email,
             password,
+            timezone,
+            timezoneUpdatedAt: hasTimezone ? new Date() : undefined,
+            // Missed-task penalties count from the day the account is created
+            penaltiesSettledThrough: addDays(getTodayIn(timezone), -1),
+            refreshTokens: [],
         });
+
+        if (isEmailVerificationRequired()) {
+            const confirmation = startEmailVerification(newUser);
+            await newUser.save({ validateBeforeSave: false });
+
+            try {
+                await sendEmail(confirmation);
+            } catch (error) {
+                // The account stays unconfirmed, so signing up again later simply tries once more
+                console.error("Confirmation email failed:", error.message);
+                return res.status(503).json({
+                    success: false,
+                    message:
+                        "We couldn't send the confirmation email. Please try again in a few minutes.",
+                });
+            }
+
+            // No tokens: the account can't be used until the emailed link has been clicked
+            return res.status(201).json({
+                success: true,
+                message:
+                    "Account created. Check your email for a link to confirm your address.",
+                verificationRequired: true,
+                email: newUser.email,
+            });
+        }
+
+        newUser.emailVerified = true;
 
         const accessToken = newUser.generateAccessToken();
         const refreshToken = newUser.generateRefreshToken(); // Changed to singular variable name
@@ -45,26 +147,22 @@ export const registerUser = async (req, res) => {
         await newUser.save({ validateBeforeSave: false });
 
         const safeUser = await User.findById(newUser._id).select(
-            "-password -refreshTokens",
+            PRIVATE_USER_FIELDS,
         );
 
         res.status(201)
-            .cookie("refreshToken", refreshToken, cookieOptions) // Standardized to "refreshToken"
+            .cookie("refreshToken", refreshToken, getCookieOptions()) // Standardized to "refreshToken"
             .json({
                 message: "User registered successfully",
                 user: safeUser,
                 accessToken,
-                refreshToken, // Returned in body for mobile clients (stored in flutter_secure_storage)
             });
     } catch (error) {
-        res.status(500).json({
-            message: "Internal server error",
-            error: error.message,
-        });
+        next(error);
     }
 };
 
-export const loginUser = async (req, res) => {
+export const loginUser = async (req, res, next) => {
     try {
         const { email, password } = req.body;
 
@@ -77,8 +175,20 @@ export const loginUser = async (req, res) => {
         const user = await User.findOne({ email });
 
         if (user && (await user.matchPassword(password))) {
+            // Checked only after the password, so this answer never tells a stranger anything about the account
+            if (isEmailVerificationRequired() && !user.emailVerified) {
+                return res.status(403).json({
+                    success: false,
+                    code: "EMAIL_NOT_VERIFIED",
+                    message:
+                        "Please confirm your email address before signing in. Check your inbox for the link.",
+                });
+            }
+
             const accessToken = user.generateAccessToken();
             const refreshToken = user.generateRefreshToken(); // Changed to singular variable name
+
+            await pruneExpiredSessions(user._id);
 
             user.refreshTokens.push({
                 token: refreshToken,
@@ -88,30 +198,29 @@ export const loginUser = async (req, res) => {
             await user.save({ validateBeforeSave: false });
 
             const safeUser = await User.findById(user._id).select(
-                "-password -refreshTokens",
+                PRIVATE_USER_FIELDS,
             );
 
             return res
                 .status(200)
-                .cookie("refreshToken", refreshToken, cookieOptions) // Standardized to "refreshToken"
+                .cookie("refreshToken", refreshToken, getCookieOptions()) // Standardized to "refreshToken"
                 .json({
                     message: "User logged in successfully",
                     user: safeUser,
                     accessToken,
-                    refreshToken, // Returned in body for mobile clients (stored in flutter_secure_storage)
                 });
         } else {
             return res.status(400).json({ message: "Invalid credentials" });
         }
     } catch (error) {
-        res.status(500).json({ message: "Server error", error: error.message });
+        next(error);
     }
 };
 
 export const logoutUser = async (req, res) => {
     try {
-        // Read from cookie (web) OR request body (mobile)
-        const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
+        // The refresh token only ever travels in its HttpOnly cookie, out of reach of page scripts
+        const refreshToken = req.cookies?.refreshToken;
 
         if (!refreshToken) {
             return res.status(400).json({
@@ -121,22 +230,30 @@ export const logoutUser = async (req, res) => {
         }
 
         // Using req.user._id assuming this route uses the 'protect' middleware!
-        const user = await User.findById(req.user._id);
+        // $pull only touches this session, so a refresh happening on another device isn't overwritten.
+        // previousToken is matched too, in case the client never received its latest rotation.
+        const result = await User.updateOne(
+            { _id: req.user._id },
+            {
+                $pull: {
+                    refreshTokens: {
+                        $or: [
+                            { token: refreshToken },
+                            { previousToken: refreshToken },
+                        ],
+                    },
+                },
+            },
+        );
 
-        if (!user) {
+        if (result.matchedCount === 0) {
             return res.status(404).json({
                 success: false,
                 message: "User not found.",
             });
         }
 
-        user.refreshTokens = user.refreshTokens.filter(
-            (rt) => rt.token !== refreshToken,
-        );
-
-        await user.save({ validateBeforeSave: false });
-
-        res.clearCookie("refreshToken", cookieOptions).status(200).json({
+        res.clearCookie("refreshToken", getCookieOptions()).status(200).json({
             success: true,
             message: "Logged out successfully.",
         });
@@ -161,7 +278,7 @@ export const logoutAll = async (req, res) => {
         user.refreshTokens = [];
         await user.save({ validateBeforeSave: false });
 
-        res.clearCookie("refreshToken", cookieOptions).status(200).json({
+        res.clearCookie("refreshToken", getCookieOptions()).status(200).json({
             success: true,
             message: "Logged out from all devices successfully.",
         });
@@ -173,8 +290,7 @@ export const logoutAll = async (req, res) => {
 
 export const refreshAccessToken = async (req, res) => {
     try {
-        const oldRefreshToken =
-            req.cookies?.refreshToken || req.body?.refreshToken;
+        const oldRefreshToken = req.cookies?.refreshToken;
 
         if (!oldRefreshToken) {
             return res.status(401).json({
@@ -208,43 +324,48 @@ export const refreshAccessToken = async (req, res) => {
             });
         }
 
-        const tokenIndex = user.refreshTokens.findIndex(
-            (tokenObj) => tokenObj.token === oldRefreshToken,
-        );
-
-        if (tokenIndex === -1) {
-            return res.status(401).json({
-                success: false,
-                message: "Refresh token not valid. Please login again.",
-            });
-        }
-
         // FIXED: Using your User instance methods instead of jwtConfig
         const newAccessToken = user.generateAccessToken();
-        const newRefreshToken = user.generateRefreshToken();
+        let newRefreshToken = user.generateRefreshToken();
 
-        const updatedRefreshTokens = user.refreshTokens.filter(
-            (tokenObj) => tokenObj.token !== oldRefreshToken,
+        // Swap the token in place, atomically, and only if it is still this session's current one.
+        // Two requests carrying the same token can't both win, and other sessions are left untouched.
+        const rotation = await User.updateOne(
+            { _id: user._id, "refreshTokens.token": oldRefreshToken },
+            {
+                $set: {
+                    "refreshTokens.$.token": newRefreshToken,
+                    "refreshTokens.$.previousToken": oldRefreshToken,
+                    "refreshTokens.$.createdAt": new Date(),
+                },
+            },
         );
 
-        updatedRefreshTokens.push({
-            token: newRefreshToken,
-            createdAt: new Date(),
-        });
+        if (rotation.matchedCount === 0) {
+            // Not the current token. If it is the one that was just replaced, then either a parallel
+            // request rotated it first or the earlier response never reached the client (page reload,
+            // dropped connection). Hand back the session's current token instead of ending the session.
+            const latest = await User.findById(user._id).select("refreshTokens");
+            const session = latest?.refreshTokens.find(
+                (tokenObj) => tokenObj.previousToken === oldRefreshToken,
+            );
 
-        await User.findByIdAndUpdate(
-            user._id,
-            { refreshTokens: updatedRefreshTokens },
-            { returnDocument: "after" },
-        );
+            if (!session) {
+                return res.status(401).json({
+                    success: false,
+                    message: "Refresh token not valid. Please login again.",
+                });
+            }
 
-        res.cookie("refreshToken", newRefreshToken, cookieOptions); // FIXED: Using standard cookieOptions
+            newRefreshToken = session.token;
+        }
+
+        res.cookie("refreshToken", newRefreshToken, getCookieOptions()); // FIXED: Using standard cookieOptions
 
         res.status(200).json({
             success: true,
             message: "Token refreshed successfully.",
             accessToken: newAccessToken,
-            refreshToken: newRefreshToken, // Returned in body for mobile clients
             data: {
                 _id: user._id,
                 name: user.name,
@@ -265,6 +386,73 @@ export const getMe = async (req, res) => {
     });
 };
 
+// POST /api/auth/verify-email/:token
+export const verifyEmail = async (req, res, next) => {
+    try {
+        const invalid = {
+            success: false,
+            message: "This confirmation link is invalid or has expired.",
+        };
+
+        const user = await User.findOne({
+            emailVerificationToken: hashToken(req.params.token),
+        });
+
+        if (!user) {
+            return res.status(400).json(invalid);
+        }
+
+        // The token is kept after it has been used, so opening the link a second time
+        // (a double click, a mail app that opens links by itself) still gets a friendly answer
+        if (!user.emailVerified) {
+            if (!(user.emailVerificationExpiry > Date.now())) {
+                return res.status(400).json(invalid);
+            }
+
+            await User.updateOne(
+                { _id: user._id },
+                {
+                    $set: { emailVerified: true },
+                    $unset: { emailVerificationExpiry: "" },
+                },
+            );
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Email confirmed. You can sign in now.",
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// POST /api/auth/resend-verification
+export const resendVerification = async (req, res, next) => {
+    try {
+        const user = await User.findOne({ email: req.body.email });
+
+        // Same answer whether the address has an account, is already confirmed, or is still waiting
+        if (user && !user.emailVerified) {
+            const confirmation = startEmailVerification(user);
+            await user.save({ validateBeforeSave: false });
+
+            // Not awaited, so the answer doesn't arrive later for an address that is waiting than for one that isn't
+            sendEmail(confirmation).catch((error) =>
+                console.error("Confirmation email failed:", error.message),
+            );
+        }
+
+        res.status(200).json({
+            success: true,
+            message:
+                "If that account is waiting to be confirmed, a new link has been sent.",
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 // POST /api/auth/forgot-password
 export const forgotPassword = async (req, res) => {
     try {
@@ -280,30 +468,22 @@ export const forgotPassword = async (req, res) => {
         }
 
         // Generate raw token, store hashed version in DB
-        const rawToken = crypto.randomBytes(32).toString("hex");
-        const hashedToken = crypto
-            .createHash("sha256")
-            .update(rawToken)
-            .digest("hex");
+        const token = createEmailToken();
 
-        user.passwordResetToken = hashedToken;
-        user.passwordResetExpiry = Date.now() + 15 * 60 * 1000; // 15 minutes
+        user.passwordResetToken = token.hashed;
+        user.passwordResetExpiry = Date.now() + PASSWORD_RESET_TTL_MS;
         await user.save({ validateBeforeSave: false });
 
-        const resetURL = `${process.env.CLIENT_URL}/reset-password/${rawToken}`;
+        const resetURL = `${process.env.CLIENT_URL}/reset-password/${token.raw}`;
 
-        await sendEmail({
+        // Not awaited, and a failure is only logged: the answer must be the same, and arrive
+        // just as fast, for an address that has an account as for one that doesn't
+        sendEmail({
             to: user.email,
-            subject: "Password Reset Request",
-            html: `
-                <h2>Password Reset Request</h2>
-                <p>You requested a password reset.</p>
-                <p>Click the link below (valid for 15 minutes):</p>
-                <a href="${resetURL}" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">Reset Password</a>
-                <p>Or copy this link: ${resetURL}</p>
-                <p>If you didn't request this, ignore this email.</p>
-            `,
-        });
+            ...passwordResetEmail({ url: resetURL }),
+        }).catch((error) =>
+            console.error("Password reset email failed:", error.message),
+        );
 
         res.status(200).json({
             success: true,
@@ -328,14 +508,8 @@ export const resetPassword = async (req, res) => {
             });
         }
 
-        // Hash the incoming token to compare with DB
-        const hashedToken = crypto
-            .createHash("sha256")
-            .update(token)
-            .digest("hex");
-
         const user = await User.findOne({
-            passwordResetToken: hashedToken,
+            passwordResetToken: hashToken(token), // Hash the incoming token to compare with DB
             passwordResetExpiry: { $gt: Date.now() }, // not expired
         });
 
@@ -349,6 +523,7 @@ export const resetPassword = async (req, res) => {
         user.password = password; // your User model should hash it in pre-save hook
         user.passwordResetToken = undefined;
         user.passwordResetExpiry = undefined;
+        user.emailVerified = true; // the reset link arrived by email too, so the address is confirmed
         user.refreshTokens = []; // log out all devices after password change
         await user.save();
 

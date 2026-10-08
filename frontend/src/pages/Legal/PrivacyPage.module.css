@@ -1,0 +1,90 @@
+.page {
+    min-height: 100vh;
+    width: 100%;
+    background: linear-gradient(135deg, #1f9b6c 0%, #0f5b3f 100%);
+    display: flex;
+    justify-content: center;
+    font-family:
+        -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+        "Ubuntu", "Cantarell", sans-serif;
+    padding: 40px 20px;
+}
+
+.card {
+    width: 100%;
+    max-width: 720px;
+    height: fit-content;
+    padding: 48px;
+    background: #fff;
+    border-radius: 30px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    color: #333;
+    font-size: 15px;
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+}
+
+.title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 4px;
+}
+
+.updated {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 20px;
+}
+
+.card h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #0f5b3f;
+    margin: 28px 0 8px;
+}
+
+.card p {
+    margin-bottom: 12px;
+}
+
+.card ul {
+    margin: 0 0 12px;
+    padding-left: 22px;
+}
+
+.card li {
+    margin-bottom: 8px;
+}
+
+.back {
+    margin-top: 32px;
+}
+
+.link {
+    color: #1f9b6c;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.3s ease;
+}
+
+.link:hover {
+    color: #0f5b3f;
+    text-decoration: underline;
+}
+
+@media (max-width: 480px) {
+    .page {
+        padding: 20px 12px;
+    }
+
+    .card {
+        padding: 28px 22px;
+        border-radius: 24px;
+        font-size: 14px;
+    }
+
+    .title {
+        font-size: 22px;
+    }
+}

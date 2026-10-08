@@ -7,6 +7,8 @@ import ProtectedRoute from "./routes/ProtectedRoute";
 import AuthPage from "./pages/Auth/AuthPage";
 import ForgotPasswordPage from "./pages/Auth/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/Auth/ResetPasswordPage";
+import VerifyEmailPage from "./pages/Auth/VerifyEmailPage";
+import PrivacyPage from "./pages/Legal/PrivacyPage";
 
 // Layout & Pages
 import AppLayout from "./components/layout/AppLayout";
@@ -25,6 +27,8 @@ function App() {
             <Route path="/login" element={<AuthPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+            <Route path="/verify-email/:token" element={<VerifyEmailPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
 
             {/* Protected Routes */}
             {/* We wrap the AppLayout inside the ProtectedRoute so the layout itself is hidden from unauthenticated users */}

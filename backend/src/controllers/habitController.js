@@ -2,16 +2,15 @@ import Habit from "../models/Habit.js";
 import HabitLog from "../models/HabitLog.js";
 import User from "../models/User.js";
 import { awardXP } from "../utils/rewardEngine.js";
-import {
-    calculateStreak,
-    getLocalYYYYMMDD,
-} from "../utils/streakCalculator.js";
+import { calculateStreak } from "../utils/streakCalculator.js";
+import { getUserToday } from "../utils/dateRules.js";
+import { addDailyXp, syncHabitTotals } from "../utils/dailySummary.js";
 
 // --- CONTROLLERS ---
 
 // @desc    Create a new habit
 // @route   POST /api/habits
-export const createHabit = async (req, res) => {
+export const createHabit = async (req, res, next) => {
     try {
         // xpReward is automatically calculated by the Habit model's pre('save') hook based on difficulty!
         const habit = await Habit.create({
@@ -21,22 +20,19 @@ export const createHabit = async (req, res) => {
 
         res.status(201).json({ habit });
     } catch (error) {
-        res.status(500).json({
-            message: "Error creating habit",
-            error: error.message,
-        });
+        next(error);
     }
 };
 
 // @desc    Get all active habits with today's log status
 // @route   GET /api/habits
-export const getHabits = async (req, res) => {
+export const getHabits = async (req, res, next) => {
     try {
         // 1. Fetch all active habits for the user
         const habits = await Habit.find({ user: req.user._id, isActive: true });
 
         // 2. Fetch all logs for today
-        const todayStr = getLocalYYYYMMDD();
+        const todayStr = getUserToday(req.user);
         const todayLogs = await HabitLog.find({
             user: req.user._id,
             date: todayStr,
@@ -57,23 +53,32 @@ export const getHabits = async (req, res) => {
 
         res.status(200).json({ habits: habitsWithLogs });
     } catch (error) {
-        res.status(500).json({
-            message: "Error fetching habits",
-            error: error.message,
-        });
+        next(error);
     }
 };
 
 // @desc    Log a habit (Complete it or Add incremental progress)
 // @route   POST /api/habits/:id/log
-export const logHabit = async (req, res) => {
+export const logHabit = async (req, res, next) => {
     try {
         const { id } = req.params;
         const { date, quantity = 1, note } = req.body;
-        const logDate = date || getLocalYYYYMMDD();
+        const today = getUserToday(req.user);
+        const logDate = date || today;
 
-        const habit = await Habit.findOne({ _id: id, user: req.user._id });
+        const habit = await Habit.findOne({
+            _id: id,
+            user: req.user._id,
+            isActive: true,
+        });
         if (!habit) return res.status(404).json({ message: "Habit not found" });
+
+        // A day is closed once it ends in the user's timezone
+        if (logDate !== today) {
+            return res.status(400).json({
+                message: "Habits can only be logged for the current day.",
+            });
+        }
 
         // 1. Find existing log or create a new one
         let log = await HabitLog.findOne({
@@ -133,7 +138,11 @@ export const logHabit = async (req, res) => {
                 habit: id,
                 completed: true,
             }).sort({ date: -1 });
-            const currentStreak = await calculateStreak(id, req.user._id);
+            const currentStreak = await calculateStreak(
+                id,
+                req.user._id,
+                today,
+            );
 
             habit.currentStreak = currentStreak;
             if (currentStreak > habit.bestStreak)
@@ -154,6 +163,12 @@ export const logHabit = async (req, res) => {
             );
         }
 
+        // Keep the day's summary (habits due and done, XP earned) in step
+        if (isFirstTimeCompletingToday) {
+            await addDailyXp(req.user._id, logDate, habit.xpReward);
+        }
+        await syncHabitTotals(req.user, logDate);
+
         // 4. Return everything the frontend needs, including the reward object
         res.status(200).json({
             habit,
@@ -162,22 +177,18 @@ export const logHabit = async (req, res) => {
             reward,
         });
     } catch (error) {
-        res.status(500).json({
-            message: "Error logging habit",
-            error: error.message,
-        });
+        next(error);
     }
 };
 
 // @desc    Update a habit's definition
 // @route   PUT /api/habits/:id
-export const updateHabit = async (req, res) => {
+export const updateHabit = async (req, res, next) => {
     try {
-        const habit = await Habit.findOneAndUpdate(
-            { _id: req.params.id, user: req.user._id },
-            req.body,
-            { returnDocument: "after", runValidators: true },
-        );
+        const habit = await Habit.findOne({
+            _id: req.params.id,
+            user: req.user._id,
+        });
 
         if (!habit) {
             return res
@@ -185,21 +196,20 @@ export const updateHabit = async (req, res) => {
                 .json({ message: "Habit not found or unauthorized" });
         }
 
-        // If the user changed the difficulty, we need to save the document so the pre('save') hook recalculates the XP
+        // Apply the changes to the loaded document and save it, so the pre('save') hook
+        // sees a changed difficulty and recalculates the XP
+        habit.set(req.body);
         await habit.save();
 
         res.status(200).json({ habit });
     } catch (error) {
-        res.status(500).json({
-            message: "Error updating habit",
-            error: error.message,
-        });
+        next(error);
     }
 };
 
 // @desc    Soft delete a habit
 // @route   DELETE /api/habits/:id
-export const deleteHabit = async (req, res) => {
+export const deleteHabit = async (req, res, next) => {
     try {
         const habit = await Habit.findOneAndUpdate(
             { _id: req.params.id, user: req.user._id },
@@ -218,9 +228,6 @@ export const deleteHabit = async (req, res) => {
             id: req.params.id,
         });
     } catch (error) {
-        res.status(500).json({
-            message: "Error deleting habit",
-            error: error.message,
-        });
+        next(error);
     }
 };

@@ -39,3 +39,35 @@ export const loginSchema = Joi.object({
         "any.required": "Password is required.",
     }),
 });
+
+export const forgotPasswordSchema = Joi.object({
+    email: loginSchema.extract("email"),
+});
+
+// A new password follows the same rules as one chosen at registration
+export const resetPasswordSchema = Joi.object({
+    password: registerSchema.extract("password"),
+});
+
+export const resendVerificationSchema = Joi.object({
+    email: loginSchema.extract("email"),
+});
+
+export const verificationTokenParamSchema = Joi.object({
+    token: Joi.string()
+        .pattern(/^[0-9a-f]{64}$/i)
+        .required()
+        .messages({
+            "string.pattern.base":
+                "This confirmation link is invalid or has expired.",
+        }),
+});
+
+export const resetTokenParamSchema = Joi.object({
+    token: Joi.string()
+        .pattern(/^[0-9a-f]{64}$/i)
+        .required()
+        .messages({
+            "string.pattern.base": "Invalid or expired reset token.",
+        }),
+});

@@ -1,6 +1,7 @@
 import { createContext, useState, useEffect, useCallback } from "react";
 import routineService from "../services/routineService";
 import api from "../services/api";
+import useAuth from "../hooks/useAuth";
 
 const RoutineContext = createContext(null);
 
@@ -13,6 +14,7 @@ const formatDateToLocal = (dateObj) => {
 };
 
 export const RoutineProvider = ({ children }) => {
+    const { isAuthenticated } = useAuth();
     const [routines, setRoutines] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedDate, setSelectedDate] = useState(new Date());
@@ -35,17 +37,22 @@ export const RoutineProvider = ({ children }) => {
         }
     }, []);
 
-    // Effect: Automatically fetch when selectedDate changes
+    // Effect: Automatically fetch when selectedDate changes or the user logs in,
+    // and drop the data again on logout
     useEffect(() => {
         // Pushing the fetch to the next event loop tick prevents the synchronous double-render
         // and acts as a micro-debounce if the user clicks through dates quickly!
         const fetchTimer = setTimeout(() => {
-            fetchRoutines(selectedDate);
+            if (isAuthenticated) {
+                fetchRoutines(selectedDate);
+            } else {
+                setRoutines([]);
+            }
         }, 0);
 
         // Cleanup function prevents memory leaks if the date changes rapidly
         return () => clearTimeout(fetchTimer);
-    }, [selectedDate, fetchRoutines]);
+    }, [selectedDate, fetchRoutines, isAuthenticated]);
 
     // Create
     const createRoutine = async (data) => {
@@ -122,7 +129,10 @@ export const RoutineProvider = ({ children }) => {
                 delete next[id];
                 return next;
             });
-            return { success: false, message: error.message };
+            return {
+                success: false,
+                message: error.response?.data?.message || error.message,
+            };
         }
     };
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import useAuth from "../../hooks/useAuth.js";
+import authService from "../../services/authService";
 import styles from "./AuthPage.module.css";
 
 export default function Login() {
@@ -8,6 +9,10 @@ export default function Login() {
     const { login, register, authLoading, error } = useAuth();
     const [isLogin, setIsLogin] = useState(true);
     const [localError, setLocalError] = useState("");
+    const [notice, setNotice] = useState("");
+    // The address of an account that is still waiting for its email to be confirmed
+    const [pendingEmail, setPendingEmail] = useState("");
+    const [resending, setResending] = useState(false);
     const [formData, setFormData] = useState({
         name: "",
         email: "",
@@ -37,23 +42,55 @@ export default function Login() {
                     password: formData.password,
                 });
             } else {
-                await register({
+                const result = await register({
                     name: formData.name,
                     email: formData.email,
                     password: formData.password,
                 });
+
+                // The account opens once the emailed link is clicked, so go back to the sign-in form to wait for that
+                if (result.verificationRequired) {
+                    setPendingEmail(result.email);
+                    setNotice(
+                        `We've sent a confirmation link to ${result.email}. Click it, then sign in here.`,
+                    );
+                    setIsLogin(true);
+                    setFormData({ name: "", email: result.email, password: "" });
+                    return;
+                }
             }
             navigate("/dashboard");
         } catch (err) {
+            // Signing in before the email was confirmed: offer to send the link again
+            if (err.cause?.response?.data?.code === "EMAIL_NOT_VERIFIED") {
+                setPendingEmail(formData.email);
+            }
+            setNotice("");
             setLocalError(
                 err.message || "Something went wrong. Please try again.",
             );
         }
     };
 
+    const handleResend = async () => {
+        setResending(true);
+        setLocalError("");
+        try {
+            await authService.resendVerification(pendingEmail);
+            setNotice(`A new confirmation link is on its way to ${pendingEmail}.`);
+        } catch (err) {
+            setNotice("");
+            setLocalError(err.message);
+        } finally {
+            setResending(false);
+        }
+    };
+
     const switchMode = () => {
         setIsLogin(!isLogin);
         setLocalError("");
+        setNotice("");
+        setPendingEmail("");
         setFormData({ name: "", email: "", password: "" });
     };
 
@@ -117,10 +154,28 @@ export default function Login() {
 
                         <h1 className={styles.title}>Sign In</h1>
 
-                        {(localError || error) && isLogin && (
+                        {(localError || error) && !notice && isLogin && (
                             <div className={styles.errorBox}>
                                 ❌ {localError || error}
                             </div>
+                        )}
+
+                        {notice && isLogin && (
+                            <div className={styles.noticeBox}>✓ {notice}</div>
+                        )}
+
+                        {pendingEmail && isLogin && (
+                            <p className={styles.resendRow}>
+                                Didn't get the email?
+                                <button
+                                    type="button"
+                                    className={styles.resendBtn}
+                                    onClick={handleResend}
+                                    disabled={resending}
+                                >
+                                    {resending ? "Sending..." : "Send it again"}
+                                </button>
+                            </p>
                         )}
 
                         <div className={styles.inputGroup}>
@@ -367,6 +422,10 @@ export default function Login() {
                     </div>
                 </div>
             </div>
+
+            <Link to="/privacy" className={styles.privacyLink}>
+                Privacy Policy
+            </Link>
         </div>
     );
 }

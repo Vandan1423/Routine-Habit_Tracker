@@ -183,6 +183,12 @@ export default function RoutinePage() {
             const id = routine._id;
             if (completingRef.current.has(id)) return;
             if (pendingRoutineActions[id]) return;
+
+            // A day is closed once it ends, and a future day hasn't started
+            if (!isToday(selectedDate)) {
+                setToastMessage("Routines can only be ticked off on the day itself.");
+                return;
+            }
             completingRef.current.add(id);
 
             const isDone = !!routine.todayLog;

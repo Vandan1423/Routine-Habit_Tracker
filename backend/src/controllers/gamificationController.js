@@ -4,7 +4,7 @@ import { calculateLevel } from "../utils/xpCalculator.js";
 
 // @desc    Get user's current gamification stats (Level, XP, Coins)
 // @route   GET /api/gamification/stats
-export const getStats = async (req, res) => {
+export const getStats = async (req, res, next) => {
     try {
         // Fetch a fresh copy of the user to ensure exact coin/XP sync
         const user = await User.findById(req.user._id);
@@ -26,16 +26,13 @@ export const getStats = async (req, res) => {
             coins: user.coins || 0,
         });
     } catch (error) {
-        res.status(500).json({
-            message: "Error fetching gamification stats",
-            error: error.message,
-        });
+        next(error);
     }
 };
 
 // @desc    Get recent XP transaction history
 // @route   GET /api/gamification/xp-history
-export const getXPHistory = async (req, res) => {
+export const getXPHistory = async (req, res, next) => {
     try {
         // Fetch the 20 most recent XP logs for the user
         const logs = await XPLog.find({ user: req.user._id })
@@ -44,9 +41,6 @@ export const getXPHistory = async (req, res) => {
 
         res.status(200).json({ history: logs });
     } catch (error) {
-        res.status(500).json({
-            message: "Error fetching XP history",
-            error: error.message,
-        });
+        next(error);
     }
 };

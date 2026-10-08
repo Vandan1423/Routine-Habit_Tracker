@@ -17,6 +17,18 @@ import {
     upsertBudget,
 } from "../controllers/expenseController.js";
 import { protect } from "../middlewares/authMiddleware.js";
+import { validate } from "../middlewares/validationMiddleware.js";
+import { idParam } from "../Schema/CommonSchema.js";
+import {
+    createSubscriptionSchema,
+    createTransactionSchema,
+    exportQuerySchema,
+    placesQuerySchema,
+    updateAccountSchema,
+    updateSubscriptionSchema,
+    updateTransactionSchema,
+    upsertBudgetSchema,
+} from "../Schema/ExpenseSchema.js";
 
 const router = express.Router();
 
@@ -24,18 +36,18 @@ router.use(protect);
 
 router.get("/summary", getSummary);
 router.get("/accounts", getAccounts);
-router.put("/accounts/:id", updateAccount);
+router.put("/accounts/:id", validate({ params: idParam, body: updateAccountSchema }), updateAccount);
 router.get("/transactions", listTransactions);
-router.post("/transactions", createTransaction);
-router.put("/transactions/:id", updateTransaction);
-router.delete("/transactions/:id", deleteTransaction);
+router.post("/transactions", validate({ body: createTransactionSchema }), createTransaction);
+router.put("/transactions/:id", validate({ params: idParam, body: updateTransactionSchema }), updateTransaction);
+router.delete("/transactions/:id", validate({ params: idParam }), deleteTransaction);
 router.get("/subscriptions", listSubscriptions);
-router.post("/subscriptions", createSubscription);
-router.put("/subscriptions/:id", updateSubscription);
-router.delete("/subscriptions/:id", deleteSubscription);
-router.get("/places", listKnownPlaces);
+router.post("/subscriptions", validate({ body: createSubscriptionSchema }), createSubscription);
+router.put("/subscriptions/:id", validate({ params: idParam, body: updateSubscriptionSchema }), updateSubscription);
+router.delete("/subscriptions/:id", validate({ params: idParam }), deleteSubscription);
+router.get("/places", validate({ query: placesQuerySchema }), listKnownPlaces);
 router.get("/budgets", listBudgets);
-router.post("/budgets", upsertBudget);
-router.get("/export", exportMonthlyCsv);
+router.post("/budgets", validate({ body: upsertBudgetSchema }), upsertBudget);
+router.get("/export", validate({ query: exportQuerySchema }), exportMonthlyCsv);
 
 export default router;

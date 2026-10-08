@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import jwt from "jsonwebtoken";
 
 const userSchema = new mongoose.Schema({
@@ -44,21 +45,46 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: "", // Stored as "YYYY-MM-DD" to track the last time they logged an action
     },
+    timezone: {
+        type: String,
+        default: "UTC", // IANA name (e.g. "Asia/Kolkata"), reported by the client. Decides when this user's day starts and ends
+    },
+    timezoneUpdatedAt: {
+        type: Date, // Last time the timezone changed, see TIMEZONE_CHANGE_COOLDOWN_MS
+    },
+    penaltiesSettledThrough: {
+        type: String,
+        default: "", // "YYYY-MM-DD": the last of this user's days whose missed tasks have been charged
+    },
     refreshTokens: [
         {
             token: {
                 type: String,
                 required: true,
             },
+            // The token this one replaced. It stays usable until the new one is used,
+            // so a refresh whose response never reached the client doesn't end the session.
+            previousToken: {
+                type: String,
+            },
+            // No TTL index here: on an array field it would delete the whole user document.
+            // Expired sessions are pruned at login instead.
             createdAt: {
                 type: Date,
                 default: Date.now,
-                expires: 15 * 24 * 60 * 60 * 1000, // 15 days
             },
         },
     ],
     passwordResetToken: String,
     passwordResetExpiry: Date,
+    emailVerified: {
+        type: Boolean,
+        // false only between signing up and clicking the emailed link. Accounts from before
+        // confirmation existed carry no value at all, and so count as confirmed.
+        default: true,
+    },
+    emailVerificationToken: String, // Hash of the token in the emailed link, like passwordResetToken
+    emailVerificationExpiry: Date,
 }, {
     timestamps: true,
 });
@@ -98,9 +124,14 @@ userSchema.methods.generateRefreshToken = function () {
             email: this.email,
         },
         process.env.REFRESH_TOKEN_SECRET,
-        { expiresIn: "15d" },
+        // jwtid keeps every token unique, even two issued within the same second
+        { expiresIn: "15d", jwtid: crypto.randomUUID() },
     );
 };
+
+// Left out whenever a user is loaded to be sent back in a response
+export const PRIVATE_USER_FIELDS =
+    "-password -refreshTokens -passwordResetToken -passwordResetExpiry -emailVerificationToken -emailVerificationExpiry";
 
 const User = mongoose.model("User", userSchema);
 

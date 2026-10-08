@@ -1,12 +1,18 @@
 import Routine from "../models/Routine.js";
 import RoutineLog from "../models/RoutineLog.js";
-import { awardXP } from "../utils/rewardEngine.js";
-import { getLocalYYYYMMDD } from "../utils/streakCalculator.js";
+import { awardXP, revokeXP } from "../utils/rewardEngine.js";
 import { updateDailyStreak } from "../utils/dailyStreakCalculator.js";
+import { addDailyXp } from "../utils/dailySummary.js";
+import {
+    getUserClockTime,
+    getUserToday,
+    getWeekday,
+    isRoutineScheduledOn,
+} from "../utils/dateRules.js";
 
 // @desc    Create a new routine
 // @route   POST /api/routines
-export const createRoutine = async (req, res) => {
+export const createRoutine = async (req, res, next) => {
     try {
         // 1. ADD 'date' TO DESTRUCTURED BODY
         const {
@@ -18,7 +24,6 @@ export const createRoutine = async (req, res) => {
             isRecurring,
             recurringDays,
             order,
-            xpReward,
             date,
         } = req.body;
 
@@ -38,22 +43,18 @@ export const createRoutine = async (req, res) => {
             isRecurring,
             recurringDays,
             order,
-            xpReward,
             date, // 2. SAVE THE DATE
         });
 
         res.status(201).json(routine);
     } catch (error) {
-        res.status(500).json({
-            message: "Error creating routine",
-            error: error.message,
-        });
+        next(error);
     }
 };
 
 // @desc    Get routines (filtered by date)
 // @route   GET /api/routines
-export const getRoutines = async (req, res) => {
+export const getRoutines = async (req, res, next) => {
     try {
         const query = {
             user: req.user._id,
@@ -61,12 +62,10 @@ export const getRoutines = async (req, res) => {
         };
 
         // Date handling
-        const dateQuery =
-            req.query.date || new Date().toISOString().split("T")[0];
+        const dateQuery = req.query.date || getUserToday(req.user);
 
         if (dateQuery) {
-            const requestedDate = new Date(dateQuery);
-            const dayOfWeek = requestedDate.getDay();
+            const dayOfWeek = getWeekday(dateQuery);
 
             query.$or = [
                 { isRecurring: true, recurringDays: { $in: [dayOfWeek] } },
@@ -98,13 +97,13 @@ export const getRoutines = async (req, res) => {
 
         res.status(200).json({ routines: routinesWithStatus });
     } catch (error) {
-        res.status(500).json({ message: "Server error", error: error.message });
+        next(error);
     }
 };
 
 // @desc    Update a routine
 // @route   PUT /api/routines/:id
-export const updateRoutine = async (req, res) => {
+export const updateRoutine = async (req, res, next) => {
     try {
         // Find routine by ID AND User ID (prevents modifying someone else's routine)
         let routine = await Routine.findOne({
@@ -126,16 +125,13 @@ export const updateRoutine = async (req, res) => {
 
         res.status(200).json(routine);
     } catch (error) {
-        res.status(500).json({
-            message: "Error updating routine",
-            error: error.message,
-        });
+        next(error);
     }
 };
 
 // @desc    Soft delete a routine
 // @route   DELETE /api/routines/:id
-export const deleteRoutine = async (req, res) => {
+export const deleteRoutine = async (req, res, next) => {
     try {
         const routine = await Routine.findOne({
             _id: req.params.id,
@@ -157,16 +153,13 @@ export const deleteRoutine = async (req, res) => {
             id: req.params.id,
         });
     } catch (error) {
-        res.status(500).json({
-            message: "Error deleting routine",
-            error: error.message,
-        });
+        next(error);
     }
 };
 
 // @desc    Reorder multiple routines
 // @route   PUT /api/routines/reorder
-export const reorderRoutines = async (req, res) => {
+export const reorderRoutines = async (req, res, next) => {
     try {
         // Destructure 'routines' from the request body to match your frontend payload
         const { routines } = req.body;
@@ -191,20 +184,39 @@ export const reorderRoutines = async (req, res) => {
 
         res.status(200).json({ message: "Routines reordered successfully" });
     } catch (error) {
-        res.status(500).json({
-            message: "Error reordering routines",
-            error: error.message,
-        });
+        next(error);
     }
 };
 
 // @desc    Complete a routine
 // @route   POST /api/routines/:id/complete
-export const completeRoutine = async (req, res) => {
+export const completeRoutine = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const { date, completedAt: clientCompletedAt } = req.body;
-        const logDate = date || getLocalYYYYMMDD();
+        const { date } = req.body;
+        const today = getUserToday(req.user);
+        const logDate = date || today;
+
+        const routine = await Routine.findOne({
+            _id: id,
+            user: req.user._id,
+            isActive: true,
+        });
+        if (!routine)
+            return res.status(404).json({ message: "Routine not found" });
+
+        // A routine only earns XP on a day it is scheduled for, and a day is closed
+        // once it ends in the user's timezone
+        if (logDate !== today) {
+            return res.status(400).json({
+                message: "Routines can only be completed for the current day.",
+            });
+        }
+        if (!isRoutineScheduledOn(routine, logDate)) {
+            return res.status(400).json({
+                message: "This routine is not scheduled for that day.",
+            });
+        }
 
         // 1. Check if already completed
         const existingLog = await RoutineLog.findOne({
@@ -215,15 +227,9 @@ export const completeRoutine = async (req, res) => {
             return res.status(400).json({ message: "Already completed today" });
         }
 
-        const routine = await Routine.findOne({ _id: id, user: req.user._id });
-        if (!routine)
-            return res.status(404).json({ message: "Routine not found" });
-
         // 2. Calculate completion time and punctuality
-        const now = new Date();
-        const completedAt =
-            clientCompletedAt ||
-            `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+        // The server's clock, in the user's timezone, decides when it was done
+        const completedAt = getUserClockTime(req.user);
 
         // Parse either "14:30" or "2:30 PM" into minutes from midnight for comparison
         const timeToMinutes = (timeStr) => {
@@ -249,8 +255,8 @@ export const completeRoutine = async (req, res) => {
         const currentMinutes = timeToMinutes(completedAt);
         const endMinutes = timeToMinutes(routine.endTime);
 
-        // "Late" if more than 15 minutes after endTime
-        const wasOnTime = currentMinutes <= endMinutes + 15;
+        // "Late" if more than 15 minutes after endTime. With no end time there is no deadline to miss.
+        const wasOnTime = endMinutes === null || currentMinutes <= endMinutes + 15;
         const xpEarned = wasOnTime
             ? routine.xpReward
             : Math.floor(routine.xpReward / 2);
@@ -275,29 +281,34 @@ export const completeRoutine = async (req, res) => {
                 wasOnTime,
             },
         );
+        await addDailyXp(req.user._id, logDate, xpEarned);
         const dailyStats = await updateDailyStreak(req.user._id, logDate);
 
         res.status(200).json({ log, reward });
     } catch (error) {
-        res.status(500).json({
-            message: "Error completing routine",
-            error: error.message,
-        });
+        next(error);
     }
 };
 
 // @desc    Uncomplete a routine (remove log)
 // @route   DELETE /api/routines/:id/complete
-export const uncompleteRoutine = async (req, res) => {
+export const uncompleteRoutine = async (req, res, next) => {
     try {
         const { id } = req.params;
         const { date } = req.body;
-        const logDate = date || getLocalYYYYMMDD();
+        const today = getUserToday(req.user);
+        const logDate = date || today;
 
         // Verify the routine belongs to this user
         const routine = await Routine.findOne({ _id: id, user: req.user._id });
         if (!routine) {
             return res.status(404).json({ message: "Routine not found" });
+        }
+
+        if (logDate !== today) {
+            return res.status(400).json({
+                message: "Routines can only be changed for the current day.",
+            });
         }
 
         // Delete the log for this date
@@ -313,11 +324,21 @@ export const uncompleteRoutine = async (req, res) => {
                 .json({ message: "No completion log found for this date" });
         }
 
+        // Undoing a completion takes back the XP it earned, then re-evaluates the day
+        // (a perfect day that is no longer perfect loses its bonus too)
+        if (deleted.xpEarned > 0) {
+            const { xpRevoked } = await revokeXP(
+                req.user._id,
+                deleted.xpEarned,
+                "routine_uncomplete",
+                { routineId: id, date: logDate },
+            );
+            await addDailyXp(req.user._id, logDate, -xpRevoked);
+        }
+        await updateDailyStreak(req.user._id, logDate);
+
         res.status(200).json({ message: "Routine unmarked successfully" });
     } catch (error) {
-        res.status(500).json({
-            message: "Error uncompleting routine",
-            error: error.message,
-        });
+        next(error);
     }
 };

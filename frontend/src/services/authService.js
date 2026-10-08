@@ -1,4 +1,4 @@
-import api, { authApi } from "./api";
+import api, { authApi, refreshSession } from "./api";
 
 const authService = {
     register: async (data) => {
@@ -47,12 +47,35 @@ const authService = {
     },
     refreshToken: async () => {
         try {
-            const response = await authApi.post("/auth/refresh-token"); // ← authApi, not api
-            return response.data;
+            return await refreshSession(); // shared with the api interceptor, never run twice in parallel
         } catch (error) {
             throw new Error("Session expired. Please login again.", {
                 cause: error,
             });
+        }
+    },
+    verifyEmail: async (token) => {
+        try {
+            const response = await authApi.post(`/auth/verify-email/${token}`);
+            return response.data;
+        } catch (error) {
+            const message =
+                error.response?.data?.message ||
+                "We couldn't confirm your email. Please try again.";
+            throw new Error(message, { cause: error });
+        }
+    },
+    resendVerification: async (email) => {
+        try {
+            const response = await authApi.post("/auth/resend-verification", {
+                email,
+            });
+            return response.data;
+        } catch (error) {
+            const message =
+                error.response?.data?.message ||
+                "Failed to send the confirmation email. Please try again.";
+            throw new Error(message, { cause: error });
         }
     },
     forgotPassword: async (email) => {

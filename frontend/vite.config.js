@@ -4,4 +4,10 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  server: {
+    proxy: {
+      // Serve the API from the same origin as the app, so the refresh cookie is first-party
+      '/api': 'http://localhost:4000',
+    },
+  },
 })

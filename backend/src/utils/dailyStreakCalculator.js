@@ -2,7 +2,10 @@ import Routine from '../models/Routine.js';
 import RoutineLog from '../models/RoutineLog.js';
 import DailyLog from '../models/DailyLog.js';
 import User from '../models/User.js';
-import { awardXP } from './rewardEngine.js';
+import XPLog from '../models/XPLog.js';
+import { awardXP, revokeXP } from './rewardEngine.js';
+import { existedOn } from './dateRules.js';
+import { upsertDailyLog } from './dailySummary.js';
 
 // Helper to reliably construct YYYY-MM-DD from a Date object locally
 const getLocalYYYYMMDD = (dateObj) => {
@@ -19,8 +22,10 @@ export const updateDailyStreak = async (userId, dateString) => {
         const targetDate = new Date(y, m - 1, d);
         const dayOfWeek = targetDate.getDay();
 
-        // 1. Get all routines scheduled for this date
-        const scheduledRoutines = await Routine.find({
+        const owner = await User.findById(userId).select('timezone');
+
+        // 1. Get all routines scheduled for this date (a routine created later wasn't due yet)
+        const matchingRoutines = await Routine.find({
             user: userId,
             isActive: true,
             $or: [
@@ -28,14 +33,20 @@ export const updateDailyStreak = async (userId, dateString) => {
                 { isRecurring: false, date: dateString }
             ]
         });
+        const scheduledRoutines = matchingRoutines.filter(
+            routine => existedOn(routine, dateString, owner?.timezone)
+        );
         const totalRoutines = scheduledRoutines.length;
 
-        // 2. Get all RoutineLogs for this user on this date
+        // 2. Get all RoutineLogs for this user on this date, counting only the routines that were due
         const routineLogs = await RoutineLog.find({ 
             user: userId, 
             date: dateString 
         });
-        const completedRoutines = routineLogs.length;
+        const scheduledIds = new Set(scheduledRoutines.map(routine => routine._id.toString()));
+        const completedRoutines = routineLogs.filter(
+            log => scheduledIds.has(log.routine.toString())
+        ).length;
 
         // 3 & 4. Calculate if it's a perfect day
         const isPerfectDay = totalRoutines > 0 && completedRoutines >= totalRoutines;
@@ -91,6 +102,22 @@ export const updateDailyStreak = async (userId, dateString) => {
                 streakCount: currentStreak,
                 date: dateString
             });
+        } else if (!isPerfectDay && wasAlreadyPerfect) {
+            // The day stopped being perfect (a completion was undone): take back whatever
+            // bonus this date still holds, so ticking it again can't earn the bonus twice
+            const bonusLogs = await XPLog.find({
+                user: userId,
+                reason: { $in: ["perfect_day_bonus", "perfect_day_bonus_revoked"] },
+                "metadata.date": dateString
+            });
+            const bonusHeld = bonusLogs.reduce((sum, log) => sum + log.amount, 0);
+
+            if (bonusHeld > 0) {
+                const { xpRevoked } = await revokeXP(userId, bonusHeld, "perfect_day_bonus_revoked", {
+                    date: dateString
+                });
+                bonusXP = -xpRevoked;
+            }
         }
 
         // Calculate total XP earned today by aggregating the XPLog
@@ -98,25 +125,19 @@ export const updateDailyStreak = async (userId, dateString) => {
         const totalXpEarnedToday = existingDailyLog ? (existingDailyLog.xpEarned + bonusXP) : bonusXP;
 
         // 6. Upsert the DailyLog for this date
-        await DailyLog.findOneAndUpdate(
-            { user: userId, date: dateString },
-            { 
-                totalRoutines, 
-                completedRoutines, 
-                isPerfectDay, 
-                streakDay: currentStreak,
-                $inc: { xpEarned: bonusXP } // Add bonus XP to whatever was already earned today
-            },
-            { upsert: true, new: true }
-        );
+        await upsertDailyLog(userId, dateString, { 
+            totalRoutines, 
+            completedRoutines, 
+            isPerfectDay, 
+            streakDay: currentStreak,
+            $inc: { xpEarned: bonusXP } // Add bonus XP to whatever was already earned today
+        });
 
         // 7. Update User's global streak stats
-        const user = await User.findById(userId);
-        user.currentStreak = currentStreak;
-        if (currentStreak > (user.bestStreak || 0)) {
-            user.bestStreak = currentStreak;
-        }
-        await user.save();
+        await User.updateOne(
+            { _id: userId },
+            { $set: { currentStreak }, $max: { bestStreak: currentStreak } }
+        );
 
         // 9. Return gamification payload
         return { 

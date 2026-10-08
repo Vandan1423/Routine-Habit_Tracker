@@ -1,6 +1,11 @@
 import { createContext, useState, useEffect } from "react";
 import authService from "../services/authService";
-import { setAccessToken, clearAccessToken, getAccessToken } from "../services/api";
+import {
+    setAccessToken,
+    clearAccessToken,
+    getAccessToken,
+    isSessionExpiredError,
+} from "../services/api";
 import gamificationService from "../services/gamificationService";
 
 const AUTH_USER_STORAGE_KEY = "life-management.authUser";
@@ -84,6 +89,17 @@ export const AuthProvider = ({ children }) => {
             setError(null);
 
             const response = await authService.register(userData);
+
+            // With email confirmation on, signing up doesn't sign in:
+            // the account opens once the link in the email has been clicked
+            if (!response.accessToken) {
+                return {
+                    success: true,
+                    verificationRequired: true,
+                    email: response.email,
+                };
+            }
+
             applyAuthResponse(response);
 
             // Fetch gamification stats immediately after successful registration
@@ -92,6 +108,7 @@ export const AuthProvider = ({ children }) => {
             return { success: true, data: user };
         } catch (err) {
             setError(err.message || "Registration failed");
+            throw err;
         } finally {
             setAuthLoading(false);
         }
@@ -175,8 +192,11 @@ export const AuthProvider = ({ children }) => {
                 // Fetch gamification stats immediately upon confirming active session
                 await fetchGamificationStats();
             }
-        } catch {
-            if (!cachedToken) {
+        } catch (err) {
+            // The server rejected the refresh token, so the session is really over.
+            // Any other failure (offline, server waking up) keeps the cached session;
+            // the api interceptor refreshes again on the next request.
+            if (!cachedToken || isSessionExpiredError(err.cause)) {
                 clearAuthState();
             }
         } finally {

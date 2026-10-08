@@ -3,6 +3,7 @@ import ExpenseBudget from "../models/ExpenseBudget.js";
 import ExpenseSubscription from "../models/ExpenseSubscription.js";
 import ExpenseTransaction from "../models/ExpenseTransaction.js";
 import KnownSpendPlace from "../models/KnownSpendPlace.js";
+import { getUserToday } from "../utils/dateRules.js";
 
 const CATEGORIES = [
     "Food & Dining",
@@ -46,18 +47,14 @@ const ensureDefaultAccounts = async (userId) => {
     return ExpenseAccount.find({ user: userId }).sort({ sortOrder: 1, createdAt: 1 });
 };
 
-const monthKeyFromDate = (date) => {
-    const target = date instanceof Date ? date : new Date(date);
-    const year = target.getFullYear();
-    const month = String(target.getMonth() + 1).padStart(2, "0");
-    return `${year}-${month}`;
-};
+// "2026-10" for a user whose today is "2026-10-08"
+const getUserMonthKey = (user) => getUserToday(user).slice(0, 7);
 
-const getMonthWindow = (offset = 0) => {
-    const date = new Date();
-    date.setMonth(date.getMonth() - offset, 1);
-    date.setHours(0, 0, 0, 0);
-    return monthKeyFromDate(date);
+// shiftMonth("2026-01", -1) is "2025-12"
+const shiftMonth = (monthKey, offset) => {
+    const [year, month] = monthKey.split("-").map(Number);
+    const shifted = new Date(Date.UTC(year, month - 1 + offset, 1));
+    return `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth() + 1).padStart(2, "0")}`;
 };
 
 const getReadableMonth = (monthKey) => {
@@ -69,6 +66,12 @@ const getReadableMonth = (monthKey) => {
 };
 
 const normalizePlaceName = (value = "") => value.trim().toLowerCase().replace(/\s+/g, " ");
+
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// Accounts and subscriptions referenced by a request must belong to the user making it
+const ownsAccount = (userId, accountId) => ExpenseAccount.exists({ _id: accountId, user: userId });
+const ownsSubscription = (userId, subscriptionId) => ExpenseSubscription.exists({ _id: subscriptionId, user: userId });
 
 const getRefId = (value) => {
     if (!value) {
@@ -120,12 +123,8 @@ const buildAccountBalanceMap = (accounts = [], transactions = []) => {
     return balances;
 };
 
-const aggregateSummary = (accounts, transactions, subscriptions, places) => {
-    const now = new Date();
-    const currentMonthKey = monthKeyFromDate(now);
-    const previousMonthKey = getMonthWindow(1);
-    const currentYear = now.getFullYear();
-    const currentMonthIndex = now.getMonth();
+const aggregateSummary = (accounts, transactions, subscriptions, places, currentMonthKey) => {
+    const previousMonthKey = shiftMonth(currentMonthKey, -1);
 
     const currentMonthExpenses = transactions.filter(
         (transaction) => transaction.type === "expense" && transaction.monthKey === currentMonthKey,
@@ -135,8 +134,7 @@ const aggregateSummary = (accounts, transactions, subscriptions, places) => {
     );
 
     const monthSeries = Array.from({ length: 6 }, (_, index) => {
-        const d = new Date(currentYear, currentMonthIndex - (5 - index), 1);
-        const monthKey = monthKeyFromDate(d);
+        const monthKey = shiftMonth(currentMonthKey, index - 5);
         const monthTransactions = transactions.filter(
             (transaction) => transaction.type === "expense" && transaction.monthKey === monthKey,
         );
@@ -204,7 +202,7 @@ const aggregateSummary = (accounts, transactions, subscriptions, places) => {
     };
 };
 
-export const getSummary = async (req, res) => {
+export const getSummary = async (req, res, next) => {
     try {
         const accounts = await ensureDefaultAccounts(req.user._id);
         const [transactions, subscriptions, places] = await Promise.all([
@@ -217,15 +215,15 @@ export const getSummary = async (req, res) => {
         ]);
         const budgets = await ExpenseBudget.find({ user: req.user._id, isActive: true });
 
-        const summary = aggregateSummary(accounts, transactions, subscriptions, places);
+        const summary = aggregateSummary(accounts, transactions, subscriptions, places, getUserMonthKey(req.user));
         summary.budgets = budgets;
         res.status(200).json(summary);
     } catch (error) {
-        res.status(500).json({ message: "Error loading expense summary", error: error.message });
+        next(error);
     }
 };
 
-export const getAccounts = async (req, res) => {
+export const getAccounts = async (req, res, next) => {
     try {
         const accounts = await ensureDefaultAccounts(req.user._id);
         const transactions = await ExpenseTransaction.find({ user: req.user._id }).sort({ transactionDate: 1 });
@@ -238,11 +236,11 @@ export const getAccounts = async (req, res) => {
             })),
         });
     } catch (error) {
-        res.status(500).json({ message: "Error loading accounts", error: error.message });
+        next(error);
     }
 };
 
-export const updateAccount = async (req, res) => {
+export const updateAccount = async (req, res, next) => {
     try {
         const { id } = req.params;
         const { name, openingBalance } = req.body;
@@ -270,11 +268,11 @@ export const updateAccount = async (req, res) => {
             },
         });
     } catch (error) {
-        res.status(500).json({ message: "Error updating account", error: error.message });
+        next(error);
     }
 };
 
-export const listTransactions = async (req, res) => {
+export const listTransactions = async (req, res, next) => {
     try {
         const transactions = await ExpenseTransaction.find({ user: req.user._id })
             .populate("account", "name type")
@@ -283,15 +281,29 @@ export const listTransactions = async (req, res) => {
 
         res.status(200).json({ transactions });
     } catch (error) {
-        res.status(500).json({ message: "Error loading transactions", error: error.message });
+        next(error);
     }
 };
 
-export const updateTransaction = async (req, res) => {
+export const updateTransaction = async (req, res, next) => {
     try {
         const existing = await ExpenseTransaction.findOne({ _id: req.params.id, user: req.user._id });
         if (!existing) {
             return res.status(404).json({ message: "Transaction not found" });
+        }
+
+        const { accountId, transferToAccountId, subscriptionId } = req.body;
+
+        if (accountId && !(await ownsAccount(req.user._id, accountId))) {
+            return res.status(404).json({ message: "Selected account not found" });
+        }
+
+        if (transferToAccountId && !(await ownsAccount(req.user._id, transferToAccountId))) {
+            return res.status(404).json({ message: "Destination account not found" });
+        }
+
+        if (subscriptionId && !(await ownsSubscription(req.user._id, subscriptionId))) {
+            return res.status(404).json({ message: "Subscription not found" });
         }
 
         const payload = {
@@ -300,29 +312,29 @@ export const updateTransaction = async (req, res) => {
             category: req.body.category ?? existing.category,
             description: req.body.description ?? existing.description,
             paymentMethod: req.body.paymentMethod ?? existing.paymentMethod,
-            account: req.body.accountId ?? existing.account,
-            transferToAccount: req.body.transferToAccountId !== undefined ? req.body.transferToAccountId || null : existing.transferToAccount,
+            account: accountId ?? existing.account,
+            transferToAccount: transferToAccountId !== undefined ? transferToAccountId || null : existing.transferToAccount,
             placeName: req.body.placeName ?? existing.placeName,
             transactionDate: req.body.transactionDate ?? existing.transactionDate,
             notes: req.body.notes ?? existing.notes,
-            subscription: req.body.subscriptionId !== undefined ? req.body.subscriptionId || null : existing.subscription,
+            subscription: subscriptionId !== undefined ? subscriptionId || null : existing.subscription,
         };
 
-        const updated = await ExpenseTransaction.findOneAndUpdate(
-            { _id: req.params.id, user: req.user._id },
-            payload,
-            { new: true, runValidators: true },
-        )
+        // Saved through the document so the pre('save') hook keeps monthKey in step with the date
+        existing.set(payload);
+        await existing.save();
+
+        const updated = await ExpenseTransaction.findById(existing._id)
             .populate("account", "name type")
             .populate("transferToAccount", "name type");
 
         res.status(200).json({ transaction: updated });
     } catch (error) {
-        res.status(500).json({ message: "Error updating transaction", error: error.message });
+        next(error);
     }
 };
 
-export const deleteTransaction = async (req, res) => {
+export const deleteTransaction = async (req, res, next) => {
     try {
         const transaction = await ExpenseTransaction.findOneAndDelete({
             _id: req.params.id,
@@ -335,11 +347,11 @@ export const deleteTransaction = async (req, res) => {
 
         res.status(200).json({ message: "Transaction deleted", id: req.params.id });
     } catch (error) {
-        res.status(500).json({ message: "Error deleting transaction", error: error.message });
+        next(error);
     }
 };
 
-export const createTransaction = async (req, res) => {
+export const createTransaction = async (req, res, next) => {
     try {
         const {
             type = "expense",
@@ -370,6 +382,14 @@ export const createTransaction = async (req, res) => {
             return res.status(400).json({ message: "Transfer requires a destination account" });
         }
 
+        if (transferToAccountId && !accounts.some((account) => account._id.toString() === transferToAccountId)) {
+            return res.status(404).json({ message: "Destination account not found" });
+        }
+
+        if (subscriptionId && !(await ownsSubscription(req.user._id, subscriptionId))) {
+            return res.status(404).json({ message: "Subscription not found" });
+        }
+
         if (!PAYMENT_METHODS.includes(paymentMethod)) {
             return res.status(400).json({ message: "Invalid payment method" });
         }
@@ -384,7 +404,8 @@ export const createTransaction = async (req, res) => {
             account: accountId,
             transferToAccount: transferToAccountId || null,
             placeName: placeName?.trim() || "Other",
-            transactionDate: transactionDate || Date.now(),
+            // No date given: it happened today, in the user's timezone
+            transactionDate: transactionDate || new Date(`${getUserToday(req.user)}T00:00:00Z`),
             notes,
             subscription: subscriptionId || null,
         });
@@ -421,11 +442,11 @@ export const createTransaction = async (req, res) => {
             })),
         });
     } catch (error) {
-        res.status(500).json({ message: "Error creating transaction", error: error.message });
+        next(error);
     }
 };
 
-export const listSubscriptions = async (req, res) => {
+export const listSubscriptions = async (req, res, next) => {
     try {
         const subscriptions = await ExpenseSubscription.find({ user: req.user._id })
             .populate("account", "name type")
@@ -433,11 +454,11 @@ export const listSubscriptions = async (req, res) => {
 
         res.status(200).json({ subscriptions });
     } catch (error) {
-        res.status(500).json({ message: "Error loading subscriptions", error: error.message });
+        next(error);
     }
 };
 
-export const createSubscription = async (req, res) => {
+export const createSubscription = async (req, res, next) => {
     try {
         const { name, amount, category = "Other", frequency = "monthly", accountId, description = "", nextDueDate, reminderDays = 3 } = req.body;
 
@@ -465,19 +486,19 @@ export const createSubscription = async (req, res) => {
         const populated = await ExpenseSubscription.findById(subscription._id).populate("account", "name type");
         res.status(201).json({ subscription: populated });
     } catch (error) {
-        res.status(500).json({ message: "Error creating subscription", error: error.message });
+        next(error);
     }
 };
 
-export const updateSubscription = async (req, res) => {
+export const updateSubscription = async (req, res, next) => {
     try {
-        const payload = {
-            ...req.body,
-        };
+        const { accountId, ...payload } = req.body;
 
-        if (payload.accountId) {
-            payload.account = payload.accountId;
-            delete payload.accountId;
+        if (accountId) {
+            if (!(await ownsAccount(req.user._id, accountId))) {
+                return res.status(404).json({ message: "Subscription account not found" });
+            }
+            payload.account = accountId;
         }
 
         const subscription = await ExpenseSubscription.findOneAndUpdate(
@@ -492,11 +513,11 @@ export const updateSubscription = async (req, res) => {
 
         res.status(200).json({ subscription });
     } catch (error) {
-        res.status(500).json({ message: "Error updating subscription", error: error.message });
+        next(error);
     }
 };
 
-export const deleteSubscription = async (req, res) => {
+export const deleteSubscription = async (req, res, next) => {
     try {
         const subscription = await ExpenseSubscription.findOneAndDelete({
             _id: req.params.id,
@@ -509,17 +530,17 @@ export const deleteSubscription = async (req, res) => {
 
         res.status(200).json({ message: "Subscription deleted", id: req.params.id });
     } catch (error) {
-        res.status(500).json({ message: "Error deleting subscription", error: error.message });
+        next(error);
     }
 };
 
-export const listKnownPlaces = async (req, res) => {
+export const listKnownPlaces = async (req, res, next) => {
     try {
         const search = String(req.query.search || "").trim();
         const query = { user: req.user._id };
 
         if (search) {
-            query.name = { $regex: search, $options: "i" };
+            query.name = { $regex: escapeRegex(search), $options: "i" };
         }
 
         const places = await KnownSpendPlace.find(query)
@@ -528,20 +549,20 @@ export const listKnownPlaces = async (req, res) => {
 
         res.status(200).json({ places });
     } catch (error) {
-        res.status(500).json({ message: "Error loading known places", error: error.message });
+        next(error);
     }
 };
 
-export const listBudgets = async (req, res) => {
+export const listBudgets = async (req, res, next) => {
     try {
         const budgets = await ExpenseBudget.find({ user: req.user._id }).sort({ category: 1 });
         res.status(200).json({ budgets });
     } catch (error) {
-        res.status(500).json({ message: "Error loading budgets", error: error.message });
+        next(error);
     }
 };
 
-export const upsertBudget = async (req, res) => {
+export const upsertBudget = async (req, res, next) => {
     try {
         const { category, monthlyLimit, alertThreshold = 0.8, isActive = true } = req.body;
 
@@ -563,21 +584,28 @@ export const upsertBudget = async (req, res) => {
 
         res.status(200).json({ budget });
     } catch (error) {
-        res.status(500).json({ message: "Error saving budget", error: error.message });
+        next(error);
     }
 };
 
 const escapeCsv = (value) => {
-    const text = String(value ?? "");
+    let text = String(value ?? "");
+
+    // Spreadsheet apps run text cells that start with these characters as formulas.
+    // A leading quote makes them plain text. Numbers are left alone.
+    if (typeof value === "string" && /^[=+\-@\t\r]/.test(text)) {
+        text = `'${text}`;
+    }
+
     if (/[",\n]/.test(text)) {
         return `"${text.replace(/"/g, '""')}"`;
     }
     return text;
 };
 
-export const exportMonthlyCsv = async (req, res) => {
+export const exportMonthlyCsv = async (req, res, next) => {
     try {
-        const month = String(req.query.month || monthKeyFromDate(new Date()));
+        const month = String(req.query.month || getUserMonthKey(req.user));
         const transactions = await ExpenseTransaction.find({ user: req.user._id, monthKey: month })
             .populate("account", "name type")
             .populate("transferToAccount", "name type")
@@ -605,6 +633,6 @@ export const exportMonthlyCsv = async (req, res) => {
         res.setHeader("Content-Disposition", `attachment; filename=expenses-${month}.csv`);
         res.status(200).send(csv);
     } catch (error) {
-        res.status(500).json({ message: "Error exporting monthly data", error: error.message });
+        next(error);
     }
 };

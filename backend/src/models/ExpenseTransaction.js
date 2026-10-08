@@ -71,10 +71,12 @@ const expenseTransactionSchema = new mongoose.Schema(
     },
 );
 
+// A transaction date is a calendar day stored at UTC midnight, so its month is read in UTC.
+// Reading it in the server's own timezone would shift days near a month boundary.
 expenseTransactionSchema.pre("save", function () {
     const date = this.transactionDate || new Date();
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, "0");
     this.monthKey = `${year}-${month}`;
 });
 

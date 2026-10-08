@@ -1,9 +1,11 @@
 import { createContext, useState, useEffect, useCallback } from "react";
 import habitService from "../services/habitService";
+import useAuth from "../hooks/useAuth";
 
 const HabitContext = createContext(null);
 
 export const HabitProvider = ({ children }) => {
+    const { isAuthenticated } = useAuth();
     const [habits, setHabits] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -22,16 +24,20 @@ export const HabitProvider = ({ children }) => {
         }
     }, []);
 
-    // Effect: Fetch automatically on mount
+    // Effect: Fetch once the user is logged in, and drop the data again on logout
     useEffect(() => {
         // Pushing the fetch to the next event loop tick prevents the synchronous double-render
         const fetchTimer = setTimeout(() => {
-            fetchHabits();
+            if (isAuthenticated) {
+                fetchHabits();
+            } else {
+                setHabits([]);
+            }
         }, 0);
 
         // Cleanup function prevents memory leaks
         return () => clearTimeout(fetchTimer);
-    }, [fetchHabits]);
+    }, [fetchHabits, isAuthenticated]);
 
     // Create
     const createHabit = async (data) => {

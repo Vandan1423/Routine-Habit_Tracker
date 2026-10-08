@@ -6,9 +6,10 @@ import {
     getXPHistory,
 } from "../controllers/gamificationController.js";
 import { protect } from "../middlewares/authMiddleware.js";
+import { settleDays } from "../middlewares/dayRolloverMiddleware.js";
 
 // Apply the 'protect' middleware to all gamification routes
-router.use(protect);
+router.use(protect, settleDays);
 
 // --- GAMIFICATION ROUTES ---
 // Base URL: /api/gamification
