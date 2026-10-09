@@ -65,6 +65,15 @@ const expenseTransactionSchema = new mongoose.Schema(
             default: "",
             trim: true,
         },
+        // Set while it is in Trash, see utils/trash.js
+        deletedAt: {
+            type: Date,
+            default: null,
+        },
+        purgeAt: {
+            type: Date,
+            default: null,
+        },
     },
     {
         timestamps: true,

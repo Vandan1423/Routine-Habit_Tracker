@@ -1,0 +1,96 @@
+/* Closes by its height when the recap is put away, taking the space above it along */
+.frame {
+    overflow: hidden;
+}
+
+/* The one filled surface on Today: quieter than a card, and gone once it has been read */
+.recap {
+    margin-top: var(--s-6);
+    padding: var(--s-3) 14px;
+    border-radius: var(--r-3);
+    background: var(--fill);
+}
+
+.head,
+.body {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--s-4);
+}
+
+.label {
+    color: var(--ink-2);
+    font-size: var(--fs-caption);
+    line-height: var(--lh-meta);
+    font-weight: var(--fw-medium);
+}
+
+/* Sits in the corner without making the heading's line any taller */
+.recap .dismiss {
+    flex: none;
+    margin: -5px -8px -5px 0;
+    color: var(--ink-2);
+}
+
+/* The surface is already the colour a quiet button turns when pointed at */
+@media (hover: hover) {
+    .recap .dismiss:hover {
+        background: var(--fill-strong);
+    }
+}
+
+.recap .dismiss:active {
+    background: var(--fill-strong);
+}
+
+.body {
+    margin-top: 2px;
+}
+
+.text {
+    min-width: 0;
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+}
+
+.loss {
+    flex: none;
+    color: var(--loss);
+    font-weight: var(--fw-medium);
+}
+
+/* Several days at once: a line for each, the way a week is drawn beside the day */
+.days {
+    display: grid;
+    gap: var(--s-2);
+    margin-top: var(--s-3);
+    padding-top: var(--s-3);
+    border-top: 1px solid var(--line-strong);
+}
+
+.day {
+    display: grid;
+    grid-template-columns: 10ch minmax(0, 1fr) 5ch 5ch;
+    align-items: center;
+    gap: var(--s-2);
+    color: var(--ink-2);
+    font-size: var(--fs-caption);
+    line-height: var(--lh-caption);
+}
+
+.count,
+.cost {
+    text-align: right;
+}
+
+.cost {
+    color: var(--loss);
+}
+
+/* bp: phone */
+@media (max-width: 699.98px) {
+    .recap {
+        margin-top: var(--s-5);
+    }
+}

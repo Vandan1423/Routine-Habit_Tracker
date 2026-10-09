@@ -1,0 +1,128 @@
+/* The frame is the dialog's own panel (Dialog.module.css); these are the field and the list inside it */
+.menu {
+    overflow: hidden;
+}
+
+/* ── The field: no box of its own, the whole top of the panel is the field ── */
+.search {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: var(--s-3);
+    height: var(--s-12);
+    padding: 0 var(--s-4);
+    border-bottom: 1px solid var(--line);
+    cursor: text;
+}
+
+.searchIcon {
+    flex: none;
+    color: var(--ink-3);
+}
+
+/* .search .input: outranks the base rule for inputs whichever file loads last */
+.search .input {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    color: var(--ink);
+    font-size: var(--fs-item);
+    line-height: var(--lh-item);
+    outline: none;
+    appearance: none;
+}
+
+.search .input::placeholder {
+    color: var(--ink-3);
+    opacity: 1;
+}
+
+/* ── The list ── */
+.list {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: 23rem;
+    padding: var(--s-1);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    /* A row brought into view by the arrow keys stays clear of the edges */
+    scroll-padding-block: var(--s-8) var(--s-1);
+}
+
+.list:empty {
+    display: none;
+}
+
+.group + .group {
+    margin-top: var(--s-1);
+}
+
+.groupLabel {
+    composes: groupLabel from "../ui/Floating.module.css";
+}
+
+.row {
+    composes: row from "../ui/Floating.module.css";
+}
+
+.rowIcon {
+    composes: rowIcon from "../ui/Floating.module.css";
+}
+
+.rowText {
+    composes: rowText from "../ui/Floating.module.css";
+}
+
+/* What is said after the name: a routine's hours, how far a habit has got */
+.detail {
+    margin-inline-start: var(--s-2);
+    color: var(--ink-3);
+    font-size: var(--fs-meta);
+}
+
+.rowEnd {
+    composes: rowEnd from "../ui/Floating.module.css";
+    align-items: center;
+    gap: var(--s-2);
+    font-size: var(--fs-meta);
+}
+
+.tick {
+    color: var(--ink);
+}
+
+.empty {
+    padding: var(--s-5) var(--s-4);
+    color: var(--ink-2);
+}
+
+/* ── The keys, said once at the foot ── */
+.foot {
+    display: flex;
+    flex: none;
+    gap: var(--s-4);
+    padding: var(--s-2) var(--s-4);
+    border-top: 1px solid var(--line);
+    color: var(--ink-3);
+    font-size: var(--fs-caption);
+    line-height: var(--lh-body);
+}
+
+/* A device with no keys to name */
+@media (any-hover: none) {
+    .foot {
+        display: none;
+    }
+}
+
+@media (pointer: coarse) {
+    /* 16px: anything smaller makes iOS zoom the page when the field is focused */
+    .search .input {
+        font-size: 1rem;
+    }
+}

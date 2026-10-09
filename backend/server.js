@@ -5,6 +5,7 @@ import app from "./app.js";
 //Import functions
 import connectDB from "./src/config/db.js";
 import { sweepEndedDays } from "./src/utils/dailyPenaltyJob.js";
+import { purgeExpiredTrash } from "./src/utils/trashKinds.js";
 import { isEmailVerificationRequired } from "./src/controllers/authController.js";
 import { usesTestSender } from "./src/utils/sendEmail.js";
 
@@ -25,6 +26,12 @@ if (isEmailVerificationRequired() && usesTestSender()) {
 // It doesn't have to run: a user's own next request settles their days as well.
 cron.schedule("5,35 * * * *", () => {
     sweepEndedDays();
+});
+
+// Twice an hour as well, let go of whatever has been in Trash for as long as its owner chose.
+// Opening Trash does the same for that one account, so a sweep that is missed costs nothing.
+cron.schedule("20,50 * * * *", () => {
+    purgeExpiredTrash().catch((error) => console.error("Error emptying expired Trash:", error));
 });
 
 app.listen(process.env.PORT || 4000, () => {

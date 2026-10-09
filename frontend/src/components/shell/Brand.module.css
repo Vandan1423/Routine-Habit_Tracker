@@ -1,0 +1,31 @@
+.brand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-2);
+    color: var(--ink);
+}
+
+.name {
+    font-size: var(--fs-item);
+    line-height: var(--lh-item);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--track-heading);
+}
+
+/* Drawn at one size everywhere, like a glyph */
+.mark {
+    display: inline-flex;
+    flex: none;
+    gap: 2px;
+}
+
+.mark i {
+    width: 5px;
+    height: 12px;
+    border-radius: 1.5px;
+    background: var(--accent);
+}
+
+.mark i:last-child {
+    background: var(--fill-strong);
+}

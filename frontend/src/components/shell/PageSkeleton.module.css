@@ -1,0 +1,46 @@
+.delayed {
+    animation: appear var(--t-base) var(--ease) var(--t-base) both;
+}
+
+@keyframes appear {
+    from {
+        opacity: 0;
+    }
+}
+
+.column {
+    max-width: var(--reading);
+}
+
+.eyebrow {
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+}
+
+.title {
+    height: 1.5rem;
+    margin-block: var(--s-2) var(--s-8);
+}
+
+.rows {
+    margin-top: var(--s-2);
+}
+
+.row {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    min-height: var(--control-lg);
+    font-size: var(--fs-item);
+    line-height: var(--lh-item);
+}
+
+.row + .row {
+    border-top: 1px solid var(--line);
+}
+
+.check {
+    flex: none;
+    width: var(--check);
+    height: var(--check);
+}

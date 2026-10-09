@@ -1,0 +1,55 @@
+/* Seven equal cells. A day that is on is filled with ink, like a done segment of the Day Strip. */
+.group {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: var(--s-1);
+    max-width: 23rem;
+}
+
+.day {
+    position: relative;
+    height: var(--control-md);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-2);
+    background: var(--raised);
+    color: var(--ink-2);
+    font-size: var(--fs-meta);
+    font-weight: var(--fw-medium);
+    line-height: 1;
+    text-align: center;
+    user-select: none;
+    transition:
+        background-color var(--t-fast) var(--ease),
+        border-color var(--t-fast) var(--ease),
+        color var(--t-fast) var(--ease);
+}
+
+/* Reaches the smallest comfortable pointer target even though the cell is drawn shorter */
+.day::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    inset-block: min(0px, calc((100% - var(--hit)) / 2));
+}
+
+@media (hover: hover) {
+    .day:hover {
+        border-color: var(--ink-3);
+        color: var(--ink);
+    }
+}
+
+.day:active {
+    transform: translateY(0.5px);
+}
+
+.day[data-pressed] {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--on-accent);
+}
+
+.day[data-disabled] {
+    opacity: 0.45;
+    pointer-events: none;
+}

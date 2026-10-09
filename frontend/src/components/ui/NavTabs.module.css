@@ -1,0 +1,45 @@
+.tabs {
+    display: flex;
+    gap: var(--s-5);
+    border-bottom: 1px solid var(--line);
+}
+
+/* .tabs .tab: outranks the base rule for links whichever file loads last */
+.tabs .tab {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    height: var(--control-lg);
+    /* The underline sits on the row's own rule */
+    margin-bottom: -1px;
+    border-bottom: 2px solid transparent;
+    color: var(--ink-2);
+    font-size: var(--fs-control);
+    font-weight: var(--fw-medium);
+    white-space: nowrap;
+    transition:
+        color var(--t-fast) var(--ease),
+        border-color var(--t-fast) var(--ease);
+}
+
+/* Easier to hit than the word alone */
+.tabs .tab::after {
+    content: "";
+    position: absolute;
+    inset: 0 calc(var(--s-2) * -1);
+}
+
+@media (hover: hover) {
+    .tabs .tab:hover {
+        color: var(--ink);
+    }
+}
+
+.tabs .tab[aria-current="page"] {
+    border-bottom-color: var(--accent);
+    color: var(--ink);
+}
+
+.tabs .tab:focus-visible {
+    outline-offset: -2px;
+}

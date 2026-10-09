@@ -1,0 +1,63 @@
+/* The document itself scrolls; the sidebar stays put beside it (see Sidebar.module.css) */
+.shell {
+    display: grid;
+    grid-template-columns: calc(var(--side-w) + env(safe-area-inset-left, 0px)) minmax(0, 1fr);
+    min-height: 100vh;
+    min-height: 100dvh;
+    background: var(--paper);
+}
+
+.main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+    outline: none;
+}
+
+/* Out of sight until the keyboard reaches it: the first Tab on any screen */
+.shell .skip {
+    position: fixed;
+    top: var(--s-2);
+    left: var(--s-2);
+    z-index: var(--z-popover);
+    padding: var(--s-2) var(--s-3);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-2);
+    background: var(--raised);
+    box-shadow: var(--shadow-float);
+    color: var(--ink);
+    font-size: var(--fs-control);
+    font-weight: var(--fw-medium);
+    transform: translateY(calc(-100% - var(--s-4)));
+}
+
+.shell .skip:focus-visible {
+    transform: none;
+}
+
+/* Folded by choice on a desktop, or always on a tablet: the sidebar is a rail of icons */
+.folded {
+    grid-template-columns: calc(var(--rail-w) + env(safe-area-inset-left, 0px)) minmax(0, 1fr);
+}
+
+/* bp: tablet */
+@media (max-width: 1099.98px) {
+    .shell {
+        grid-template-columns: calc(var(--rail-w) + env(safe-area-inset-left, 0px)) minmax(0, 1fr);
+    }
+}
+
+/* bp: phone */
+@media (max-width: 699.98px) {
+    .shell {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .main {
+        padding-left: env(safe-area-inset-left, 0px);
+        /* Room for the tab bar, which is fixed to the bottom edge */
+        padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
+    }
+}

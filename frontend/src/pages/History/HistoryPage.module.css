@@ -1,0 +1,150 @@
+/* The head of the screen, set like the head of a day so that it starts where Today and Plan do */
+.header {
+    composes: header from "../../components/day/DayHeader.module.css";
+}
+
+.text {
+    composes: text from "../../components/day/DayHeader.module.css";
+}
+
+.eyebrow {
+    composes: eyebrow from "../../components/day/DayHeader.module.css";
+    /* Holds its line until the first day on record is known */
+    white-space: pre-wrap;
+}
+
+/* The interface's own face. Only a date is set in the serif. */
+.title {
+    font-size: var(--fs-figure);
+    line-height: calc(var(--fs-date) * var(--lh-date));
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--track-title);
+}
+
+.state {
+    margin-top: var(--s-10);
+}
+
+/* The month in a sentence, before the calendar shows the same thing day by day */
+.summary {
+    display: flow-root;
+    margin-top: var(--s-8);
+    color: var(--ink-2);
+    font-size: var(--fs-item);
+    line-height: var(--lh-item);
+    text-wrap: pretty;
+}
+
+.summary b {
+    color: var(--ink);
+    font-weight: var(--fw-medium);
+}
+
+.calendar {
+    margin-top: var(--s-6);
+}
+
+.legend {
+    max-width: 60ch;
+    margin-top: var(--s-4);
+    padding-top: var(--s-3);
+    border-top: 1px solid var(--line);
+    color: var(--ink-3);
+    font-size: var(--fs-caption);
+    line-height: var(--lh-meta);
+    text-wrap: pretty;
+}
+
+/* ── Beside it ── */
+
+.heading {
+    composes: heading from "../../components/day/WeekAside.module.css";
+}
+
+/* ── One day ── */
+
+/* The way back to the month, where a day's greeting sits */
+.back {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-1);
+    border-radius: var(--r-1);
+    color: var(--ink-2);
+    transition: color var(--t-fast) var(--ease);
+}
+
+@media (hover: hover) {
+    .back:hover {
+        color: var(--ink);
+    }
+}
+
+/* The two buttons that turn to the day before and the day after */
+.turn {
+    display: flex;
+    flex: none;
+    gap: var(--s-1);
+}
+
+/* What was left undone that the record cannot name: said under the list, in the list's own quiet voice */
+.unnamed {
+    max-width: 60ch;
+    margin-top: var(--s-6);
+    color: var(--ink-2);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-body);
+    text-wrap: pretty;
+}
+
+/* The week the day belongs to: each day is a line that leads to itself */
+.week {
+    display: grid;
+    gap: 2px;
+}
+
+.weekDay {
+    composes: day from "../../components/day/WeekAside.module.css";
+    min-height: var(--control-sm);
+    margin-inline: calc(var(--s-2) * -1);
+    padding-inline: var(--s-2);
+    border-radius: var(--r-2);
+    transition:
+        background-color var(--t-fast) var(--ease),
+        color var(--t-fast) var(--ease);
+}
+
+.weekDay[aria-current="page"] {
+    background: var(--fill);
+    color: var(--ink);
+    font-weight: var(--fw-medium);
+}
+
+@media (hover: hover) {
+    a.weekDay:hover {
+        background: var(--hover);
+        color: var(--ink);
+    }
+
+    a.weekDay[aria-current="page"]:hover {
+        background: var(--fill);
+    }
+}
+
+.count {
+    text-align: right;
+}
+
+/* bp: phone */
+@media (max-width: 699.98px) {
+    .header {
+        align-items: center;
+    }
+
+    .summary {
+        margin-top: var(--s-6);
+    }
+
+    .state {
+        margin-top: var(--s-8);
+    }
+}

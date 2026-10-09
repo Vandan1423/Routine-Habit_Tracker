@@ -41,3 +41,26 @@ export const calculateStreak = async (habitId, userId, todayStr) => {
 
     return streak;
 };
+
+// The longest run of consecutive completed days a habit has ever had
+export const calculateBestStreak = async (habitId, userId) => {
+    const logs = await HabitLog.find({
+        habit: habitId,
+        user: userId,
+        completed: true,
+    })
+        .select("date")
+        .sort({ date: 1 });
+
+    let best = 0;
+    let run = 0;
+    let previous = null;
+
+    for (const { date } of logs) {
+        run = previous && addDays(previous, 1) === date ? run + 1 : 1;
+        if (run > best) best = run;
+        previous = date;
+    }
+
+    return best;
+};

@@ -1,0 +1,174 @@
+.side {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-nav);
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-1);
+    height: 100vh;
+    height: 100dvh;
+    padding: var(--s-5) var(--s-3) var(--s-3);
+    padding-top: max(var(--s-5), env(safe-area-inset-top, 0px));
+    padding-left: max(var(--s-3), env(safe-area-inset-left, 0px));
+    overflow-y: auto;
+    border-right: 1px solid var(--line);
+    background: var(--paper-side);
+    scrollbar-width: none;
+
+    /* The sidebar is a shade darker than the page, so what is pressed or chosen on it goes a shade darker too */
+    --side-hover: color-mix(in srgb, var(--fill-strong) 50%, transparent);
+    --side-chosen: var(--fill-strong);
+}
+
+/* The name, and beside it the control that folds the sidebar down to a rail */
+.head {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-2);
+    margin-bottom: var(--s-3);
+}
+
+.brand {
+    padding: var(--s-1) var(--s-2);
+    border-radius: var(--r-2);
+}
+
+/* .side .fold: outranks IconButton's own colour whichever file loads last */
+.side .fold {
+    color: var(--ink-3);
+}
+
+@media (hover: hover) {
+    .side .fold:hover {
+        background: var(--side-hover);
+        color: var(--ink);
+    }
+}
+
+.side .fold:active {
+    background: var(--side-chosen);
+    color: var(--ink);
+}
+
+/* ── The way into the command menu: a row like the screens below it, in quieter ink ── */
+/* button.jump: outranks the base rule for buttons whichever file loads last */
+button.jump {
+    position: relative;
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: var(--s-2);
+    width: 100%;
+    height: var(--control-md);
+    margin-bottom: var(--s-3);
+    padding: 0 var(--s-2);
+    border-radius: var(--r-2);
+    color: var(--ink-3);
+    font-size: var(--fs-control);
+    font-weight: var(--fw-medium);
+    text-align: start;
+    transition:
+        background-color var(--t-fast) var(--ease),
+        color var(--t-fast) var(--ease);
+}
+
+.jumpLabel {
+    flex: 1;
+}
+
+@media (hover: hover) {
+    button.jump:hover {
+        background: var(--side-hover);
+        color: var(--ink);
+    }
+}
+
+button.jump:active {
+    background: var(--side-chosen);
+    color: var(--ink);
+}
+
+/* ── The screens ── */
+.nav {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: var(--s-5);
+}
+
+.group {
+    display: grid;
+    gap: 1px;
+}
+
+/* .nav .item: outranks the base rule for links whichever file loads last */
+.nav .item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+    height: var(--control-md);
+    padding: 0 var(--s-2);
+    border-radius: var(--r-2);
+    color: var(--ink-2);
+    font-size: var(--fs-control);
+    font-weight: var(--fw-medium);
+    transition:
+        background-color var(--t-fast) var(--ease),
+        color var(--t-fast) var(--ease);
+}
+
+@media (hover: hover) {
+    .nav .item:hover {
+        background: var(--side-hover);
+        color: var(--ink);
+    }
+}
+
+.nav .item:active {
+    background: var(--side-chosen);
+    color: var(--ink);
+}
+
+/* Where you are */
+.nav .item[aria-current="page"] {
+    background: var(--side-chosen);
+    color: var(--ink);
+}
+
+/* ── The rail: the same things, icons only ── */
+.rail {
+    align-items: center;
+    padding-inline: 0;
+    padding-left: env(safe-area-inset-left, 0px);
+}
+
+.rail .head {
+    flex-direction: column;
+    gap: var(--s-1);
+}
+
+.rail .brand {
+    padding: var(--s-2);
+}
+
+.rail button.jump {
+    justify-content: center;
+    width: var(--control-lg);
+    height: var(--control-lg);
+    padding: 0;
+    color: var(--ink-2);
+}
+
+.rail .nav {
+    align-items: center;
+}
+
+.rail .nav .item {
+    justify-content: center;
+    width: var(--control-lg);
+    height: var(--control-lg);
+    padding: 0;
+}

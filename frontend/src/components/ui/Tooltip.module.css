@@ -1,0 +1,32 @@
+.positioner {
+    z-index: var(--z-tooltip);
+}
+
+.popup {
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+    padding: 3px 7px;
+    border-radius: var(--r-1);
+    background: var(--tip);
+    color: var(--on-tip);
+    font-size: var(--fs-caption);
+    line-height: var(--lh-meta);
+    font-weight: var(--fw-medium);
+    white-space: nowrap;
+    transform-origin: var(--transform-origin);
+    transition:
+        opacity var(--t-fast) var(--ease),
+        transform var(--t-fast) var(--ease);
+}
+
+.popup[data-starting-style],
+.popup[data-ending-style] {
+    opacity: 0;
+    transform: scale(0.96);
+}
+
+/* Moving from one control to the next, the label changes without fading out and in again */
+.popup[data-instant] {
+    transition: none;
+}

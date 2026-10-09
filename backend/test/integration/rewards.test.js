@@ -146,12 +146,12 @@ describe("reward rules", { skip: skipWithoutDatabase }, () => {
         it("returns level-up coins and the perfect-day bonus, and does not pay them twice", async () => {
             const { client, complete, undo, routine, stats } = await setup();
 
-            // 75 XP from three hard habits, then one routine: 10 XP + 20 perfect-day bonus crosses level 2
+            // 75 XP from three hard habits, then the one routine still open: 10 XP + 20 perfect-day bonus crosses level 2
+            const item = await routine();
             for (let i = 0; i < 3; i++) {
                 const habit = (await client.post("/habits", { title: `Hard ${i}`, difficulty: "hard" })).body.habit;
                 await client.post(`/habits/${habit._id}/log`, { quantity: 1 });
             }
-            const item = await routine();
             const before = await stats();
             assert.deepEqual([before.level, before.totalXp, before.coins], [1, 75, 0]);
 

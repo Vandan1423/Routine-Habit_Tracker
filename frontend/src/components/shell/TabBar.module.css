@@ -1,0 +1,46 @@
+.tabs {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: var(--z-nav);
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    /* Clear of the home indicator, and of a notch when the phone is on its side */
+    padding: 0 max(var(--s-2), env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px)
+        max(var(--s-2), env(safe-area-inset-left, 0px));
+    border-top: 1px solid var(--line);
+    background: var(--paper);
+}
+
+/* .tabs .tab: outranks the base rules for links and buttons whichever file loads last */
+.tabs .tab {
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: 2px;
+    height: var(--tabbar-h);
+    border-radius: var(--r-2);
+    color: var(--ink-2);
+    font-size: var(--fs-micro);
+    line-height: var(--lh-micro);
+    font-weight: var(--fw-medium);
+    text-align: center;
+    user-select: none;
+    -webkit-touch-callout: none;
+    transition: color var(--t-fast) var(--ease);
+}
+
+.tabs .tab:active {
+    color: var(--ink);
+}
+
+/* Where you are: full ink and a heavier label */
+.tabs .tab[aria-current="page"],
+.tabs .current {
+    color: var(--ink);
+    font-weight: var(--fw-semibold);
+}
+
+.tabs .tab:focus-visible {
+    outline-offset: -4px;
+}

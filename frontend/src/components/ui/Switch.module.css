@@ -1,0 +1,98 @@
+.switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    vertical-align: middle;
+    cursor: pointer;
+}
+
+.control {
+    --width: 30px;
+    --height: 18px;
+    --thumb: calc(var(--height) - 4px);
+    --travel: calc(var(--width) - var(--height));
+
+    position: relative;
+    flex: none;
+    width: var(--width);
+    height: var(--height);
+}
+
+@media (pointer: coarse) {
+    .control {
+        --width: 38px;
+        --height: 22px;
+    }
+}
+
+.input {
+    position: absolute;
+    inset: min(0px, calc((100% - var(--hit)) / 2));
+    appearance: none;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.track {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--r-full);
+    background: var(--ink-3);
+    pointer-events: none;
+    transition: background-color var(--t-base) var(--ease);
+}
+
+.thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: var(--thumb);
+    height: var(--thumb);
+    border-radius: var(--r-full);
+    background: var(--on-accent);
+    transition:
+        transform var(--t-base) var(--ease-out),
+        width var(--t-fast) var(--ease);
+}
+
+.input:checked + .track {
+    background: var(--accent);
+}
+
+.input:checked + .track .thumb {
+    transform: translateX(var(--travel));
+}
+
+/* Pressed, the thumb stretches towards where it is about to go */
+.input:active + .track .thumb {
+    width: calc(var(--thumb) + 3px);
+}
+
+.input:checked:active + .track .thumb {
+    transform: translateX(calc(var(--travel) - 3px));
+}
+
+.input:focus-visible + .track {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+}
+
+.label {
+    color: var(--ink);
+}
+
+.input:disabled {
+    cursor: default;
+}
+
+.input:disabled + .track {
+    opacity: 0.45;
+}
+
+.switch:has(.input:disabled) {
+    cursor: default;
+}
+
+.switch:has(.input:disabled) .label {
+    color: var(--ink-3);
+}

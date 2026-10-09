@@ -28,6 +28,9 @@ const habitLogSchema = new mongoose.Schema({
         default: "",
         trim: true,
     },
+    xpEarned: {
+        type: Number, // What completing it paid, so that undoing it takes back exactly that. Absent until completed.
+    },
     createdAt: {
         type: Date,
         default: Date.now,

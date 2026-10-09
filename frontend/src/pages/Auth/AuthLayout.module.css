@@ -1,0 +1,216 @@
+/* One column on its own; from a desktop's width, the column and a picture of a day beside it */
+.frame {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 100vh;
+    min-height: 100dvh;
+    background: var(--paper);
+}
+
+.side {
+    display: flex;
+    justify-content: center;
+    padding: var(--s-8) var(--gutter) var(--s-6);
+}
+
+.column {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 22.5rem;
+}
+
+.home {
+    align-self: flex-start;
+    border-radius: var(--r-1);
+}
+
+/* Above the middle, where the eye lands first */
+.body {
+    margin-block: clamp(var(--s-10), 15vh, 9rem) var(--s-12);
+}
+
+/* The interface's own face. Only a date is set in the serif. */
+.title {
+    font-size: var(--fs-figure);
+    line-height: var(--lh-figure);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--track-title);
+    text-wrap: balance;
+}
+
+.lead,
+.notice {
+    margin-top: var(--s-2);
+    color: var(--ink-2);
+    text-wrap: pretty;
+    overflow-wrap: anywhere;
+}
+
+/* Something that has just happened is said in full ink */
+.notice {
+    color: var(--ink);
+}
+
+/* ── The form ── */
+
+.form {
+    display: grid;
+    gap: var(--s-4);
+    margin-top: var(--s-6);
+}
+
+/* The button, and beside it the quieter way out */
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--s-2) var(--s-4);
+    margin-top: var(--s-2);
+}
+
+.formError {
+    color: var(--loss);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+}
+
+.slow {
+    color: var(--ink-2);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+    text-wrap: pretty;
+}
+
+/* A line of text with something to press in it: "Didn't arrive? Send it again" */
+.more {
+    margin-top: var(--s-6);
+    color: var(--ink-2);
+}
+
+/* .column a, .column .textButton: outrank the base rules for links and buttons whichever file loads last */
+.column .link,
+.column .textButton {
+    border-radius: var(--r-1);
+    color: var(--ink);
+    font-weight: var(--fw-medium);
+    text-decoration: underline;
+    text-decoration-color: var(--line-strong);
+    text-underline-offset: 3px;
+    transition: text-decoration-color var(--t-fast) var(--ease);
+}
+
+.column .textButton {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-weight: var(--fw-medium);
+    cursor: pointer;
+}
+
+.column .textButton[aria-disabled="true"] {
+    color: var(--ink-3);
+    cursor: default;
+}
+
+@media (hover: hover) {
+    .column .link:hover,
+    .column .textButton:not([aria-disabled="true"]):hover {
+        text-decoration-color: currentColor;
+    }
+}
+
+/* The last line: the way to the neighbouring page at one end, the privacy note at the other */
+.foot {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--s-2) var(--s-6);
+    margin-top: auto;
+    padding-top: var(--s-4);
+    border-top: 1px solid var(--line);
+    color: var(--ink-2);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+}
+
+.column .privacy {
+    margin-inline-start: auto;
+    border-radius: var(--r-1);
+    color: var(--ink-2);
+    transition: color var(--t-fast) var(--ease);
+}
+
+@media (hover: hover) {
+    .column .privacy:hover {
+        color: var(--ink);
+    }
+}
+
+/* ── The picture of a day ── */
+
+.sample {
+    display: none;
+}
+
+/* bp: desktop */
+@media (min-width: 1100px) {
+    .frame {
+        grid-template-columns: minmax(30rem, 5fr) 7fr;
+    }
+
+    .side {
+        justify-content: flex-end;
+        padding-inline: var(--s-16);
+    }
+
+    .column {
+        margin-inline: auto;
+    }
+
+    /* Stays where it is while a long form scrolls, and runs off the foot of the window like a page that carries on */
+    .sample {
+        position: sticky;
+        top: 0;
+        display: flex;
+        flex-direction: column;
+        gap: var(--s-8);
+        height: 100vh;
+        height: 100dvh;
+        /* Its first line starts level with the page's heading: past the name's row, then the same drop */
+        padding: calc(var(--s-8) + var(--lh-item) + clamp(var(--s-10), 15vh, 9rem)) var(--s-16) 0;
+        overflow: hidden;
+        border-inline-start: 1px solid var(--line);
+        background: var(--paper-side);
+        user-select: none;
+    }
+}
+
+.about {
+    max-width: 30rem;
+}
+
+.claim {
+    font-size: var(--fs-heading);
+    line-height: var(--lh-heading);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--track-heading);
+}
+
+.claimText {
+    margin-top: var(--s-1);
+    color: var(--ink-2);
+    text-wrap: pretty;
+}
+
+/* bp: phone */
+@media (max-width: 699.98px) {
+    .side {
+        padding-block: var(--s-6) var(--s-4);
+    }
+
+    .body {
+        margin-block: var(--s-12) var(--s-10);
+    }
+}

@@ -57,6 +57,23 @@ const routineSchema = new mongoose.Schema({
         type: Date,
         default: Date.now,
     },
+    // Where it stands once deleted, see utils/trash.js. isActive is false from the moment it is in Trash.
+    deletedAt: {
+        type: Date,
+        default: null, // When it was moved to Trash
+    },
+    purgeAt: {
+        type: Date,
+        default: null, // When Trash lets go of it
+    },
+    purgedAt: {
+        type: Date,
+        default: null, // When Trash did let go: it can no longer be recovered, and only past days still name it
+    },
+    xpHeld: {
+        type: Number,
+        default: 0, // The XP it had earned, taken from the account while it is in Trash and given back if it is recovered
+    },
 });
 
 const Routine = mongoose.model("Routine", routineSchema);

@@ -1,0 +1,92 @@
+.progress {
+    margin-top: var(--s-8);
+}
+
+.top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--s-4);
+}
+
+.message {
+    min-width: 0;
+    color: var(--ink-2);
+    font-size: var(--fs-item);
+    line-height: var(--lh-item);
+}
+
+.message b {
+    color: var(--ink);
+    font-weight: var(--fw-medium);
+}
+
+.count {
+    flex: none;
+    color: var(--ink-2);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-item);
+}
+
+.count b {
+    color: var(--ink);
+    font-weight: var(--fw-semibold);
+}
+
+.strip {
+    margin-top: var(--s-3);
+}
+
+/* The foot of the list: the XP column, added up */
+.total {
+    margin-top: var(--s-6);
+    padding-top: var(--s-3);
+    border-top: 1px solid var(--line);
+    color: var(--ink-2);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+}
+
+.sum,
+.entry {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--s-4);
+}
+
+.sum b {
+    color: var(--ink);
+    font-weight: var(--fw-semibold);
+}
+
+/* A line that comes and goes: it opens and closes by its height, so what is inside keeps its own spacing */
+.line {
+    overflow: hidden;
+}
+
+.entry {
+    padding-bottom: var(--s-2);
+}
+
+.lost {
+    color: var(--loss);
+}
+
+.note {
+    display: block;
+    padding-top: var(--s-2);
+    color: var(--ink-3);
+}
+
+/* bp: phone */
+@media (max-width: 699.98px) {
+    .progress {
+        margin-top: var(--s-6);
+    }
+
+    /* The sentence usually takes two lines here. Room for two is kept, so the list under it
+       stays where it is when a tick changes the words. */
+    .message {
+        min-height: calc(var(--lh-item) * 2);
+    }
+}

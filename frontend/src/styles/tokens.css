@@ -1,0 +1,226 @@
+/*
+ * Design tokens: every colour, size and timing the redesigned interface uses.
+ * Components read these and hold no raw values of their own.
+ * The look is "Ink and saffron", chosen from design/today-directions.html.
+ *
+ * Breakpoints cannot be variables, so they are written out wherever they are used,
+ * each with a "bp:" comment naming it. This is the whole set:
+ *   phone    up to 699px     bottom tabs, one column
+ *   tablet   700 to 1099px   narrow rail
+ *   desktop  1100px and up   sidebar
+ */
+
+:root {
+    /* ── Colour: light, warm paper. index.html sets data-theme before the first paint. ── */
+    color-scheme: light;
+
+    --paper: #faf8f4; /* the page */
+    --paper-side: #f3f0ea; /* the sidebar and other quieter areas */
+    --raised: #fffefc; /* what sits on the paper: fields, menus, dialogs */
+
+    --ink: #1f1d1a; /* text */
+    --ink-2: #6b665e; /* secondary text */
+    --ink-3: #736d64; /* meta, placeholders. 4.5:1 or better on the page, the sidebar and anything raised. */
+
+    --line: #e7e3db; /* hairlines */
+    --line-strong: #d3cec3; /* control borders */
+    --box-line: #8b857c; /* the outline of an unticked box, which is all there is to see of it: 3:1 on the page */
+
+    --fill: #f0ece5; /* quiet fills: tracks, the selected nav item */
+    --fill-strong: #dedad0; /* empty strip segments, bar tracks */
+    --hover: #f2efe9; /* row and button hover */
+    --raised-fill: var(--fill); /* the row picked out on something raised: a menu, the command menu */
+
+    /* Ink itself is the accent: checks, filled segments, primary buttons */
+    --accent: #1f1d1a;
+    --accent-soft: #e2ded5;
+    --on-accent: #faf8f4;
+
+    --now: #a85800; /* saffron, for "now" and "next" and nothing else */
+    --loss: #b4321f; /* XP lost; also what an error is shown in */
+    --late: #96590a; /* done late */
+
+    --focus: var(--accent);
+    --scrim: rgb(31 29 26 / 0.32); /* behind dialogs. Dimmed, never blurred. */
+    /* A tooltip: the one surface that is darker than the page it sits on */
+    --tip: var(--ink);
+    --on-tip: var(--paper);
+    /* Only for things that float: menus, dialogs, toasts */
+    --shadow-float: 0 1px 2px rgb(31 29 26 / 0.06), 0 8px 24px rgb(31 29 26 / 0.1);
+
+    /* ── Space: a 4px grid ── */
+    --s-1: 4px;
+    --s-2: 8px;
+    --s-3: 12px;
+    --s-4: 16px;
+    --s-5: 20px;
+    --s-6: 24px;
+    --s-8: 32px;
+    --s-10: 40px;
+    --s-12: 48px;
+    --s-16: 64px;
+
+    /* ── Radius: three for controls and surfaces, one for marks (strip segments, bars) ── */
+    --r-mark: 2px;
+    --r-1: 5px;
+    --r-2: 7px;
+    --r-3: 10px;
+    --r-full: 999px;
+
+    /* ── Type ── */
+    /* Arial stands in until the typeface has arrived (index.html asks for it at once): its letters are
+       within half a percent as wide, so no line changes where it breaks when the real one takes over */
+    --font-ui: "Hanken Grotesk Variable", Arial, system-ui, -apple-system, "Segoe UI", sans-serif;
+    /* The date title on Today and nothing else */
+    --font-date: "Newsreader Variable", Georgia, "Times New Roman", serif;
+
+    /* In rem, so the interface follows the reader's own browser font size. The pixel values assume the usual 16. */
+    --fs-micro: 0.6875rem; /* 11  keys, tab labels */
+    --fs-caption: 0.75rem; /* 12 */
+    --fs-label: 0.78125rem; /* 12.5  block labels */
+    --fs-meta: 0.8125rem; /* 13 */
+    --fs-control: 0.84375rem; /* 13.5  buttons, navigation */
+    --fs-body: 0.875rem; /* 14 */
+    --fs-item: 0.9375rem; /* 15  item titles, the line under the date */
+    --fs-heading: 1.125rem; /* 18 */
+    --fs-figure: 1.75rem; /* 28  the one large number on a screen */
+    --fs-date: 2.125rem; /* 34 */
+
+    --lh-micro: 1rem; /* 16 */
+    --lh-caption: 1rem;
+    --lh-meta: 1.125rem; /* 18 */
+    --lh-body: 1.25rem; /* 20 */
+    --lh-item: 1.375rem; /* 22 */
+    --lh-heading: 1.5rem; /* 24 */
+    --lh-figure: 2rem; /* 32 */
+    --lh-date: 1.2;
+
+    --fw-regular: 400;
+    --fw-medium: 500;
+    --fw-semibold: 600;
+
+    --track-heading: -0.01em;
+    --track-title: -0.022em;
+    --track-date: -0.012em;
+
+    /* ── Motion: three durations, two curves, one spring ── */
+    --t-fast: 120ms; /* hover, press */
+    --t-base: 220ms; /* a state changing */
+    --t-slow: 340ms; /* progress filling, something settling */
+    --ease: cubic-bezier(0.2, 0, 0, 1);
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    /* The one spring, for the completion check settling and for numbers landing. It is SPRING from
+       src/lib/motion.js written out as a curve (sampled from the library's own spring), and runs for
+       --t-spring: most of the way there in a quarter of a second, the rest spent coming to rest. */
+    --t-spring: 500ms;
+    --spring: linear(
+        0, 0.14, 0.3956, 0.6311, 0.8032, 0.9116, 0.9714, 0.9995, 1.0096, 1.0109, 1.0088, 1.0059, 1.0035,
+        1.0018, 1.0008, 1.0002, 1
+    );
+
+    /* ── Controls ── */
+    --control-sm: 28px;
+    --control-md: 32px;
+    --control-lg: 40px;
+    --field: 36px;
+    --check: 18px;
+    /* The smallest area that responds to a pointer, however small the control looks */
+    --hit: 40px;
+    /* One line in a list of things to do: how tall it stands, and the size its title is set in */
+    --row: 44px;
+    --fs-row: var(--fs-item);
+
+    /* ── Layers ── */
+    --z-sticky: 10;
+    --z-nav: 20;
+    /* What opens over the page, in the order one may sit on another */
+    --z-scrim: 100;
+    --z-dialog: 110;
+    --z-popover: 120;
+    --z-toast: 130;
+    --z-tooltip: 140;
+
+    /* ── Overlays ── */
+    --dialog-sm: 360px; /* a question */
+    --dialog-md: 480px; /* a form */
+    --dialog-lg: 640px;
+    --menu-min: 184px;
+    --menu-max: 320px;
+    --toast-max: 440px;
+
+    /* ── Shell: the navigation around every screen ── */
+    --side-w: 232px; /* the sidebar, desktop */
+    --rail-w: 60px; /* the icon rail, tablet */
+    --tabbar-h: 52px; /* the bottom tabs, phone. The home indicator's inset is added below it. */
+    --gutter: 48px; /* between the edge of a screen and what is on it */
+    --reading: 640px; /* the widest a column of text or a list runs */
+    --aside: 248px; /* the quiet column beside it on a wide screen */
+    /* How much of the window the navigation covers, so toasts sit clear of it. Set in base.css while the shell is on screen. */
+    --shell-inset-left: 0px;
+    --shell-inset-bottom: 0px;
+}
+
+/* A real dark palette: warm charcoal, with every tone chosen for it rather than inverted */
+:root[data-theme="dark"] {
+    color-scheme: dark;
+
+    --paper: #1b1a18;
+    --paper-side: #161514;
+    --raised: #252320;
+
+    --ink: #ece8e1;
+    --ink-2: #a69f94;
+    --ink-3: #918b80;
+
+    --line: #2d2a27;
+    --line-strong: #403c37;
+    --box-line: #756f66;
+
+    --fill: #262422;
+    --fill-strong: #3a3733;
+    --hover: #22201e;
+    /* --fill is all but the colour of --raised here, so a picked-out row would not show */
+    --raised-fill: #33302c;
+
+    --accent: #ece8e1;
+    --accent-soft: #3a3733;
+    --on-accent: #1b1a18;
+
+    --now: #efa43a;
+    --loss: #e8735c;
+    --late: #d9a441;
+
+    --scrim: rgb(0 0 0 / 0.5);
+    --tip: var(--fill-strong);
+    --on-tip: var(--ink);
+    --shadow-float: 0 1px 2px rgb(0 0 0 / 0.3), 0 10px 28px rgb(0 0 0 / 0.4);
+}
+
+/* Fingers need more room than a mouse pointer does */
+@media (pointer: coarse) {
+    :root {
+        --control-sm: 32px;
+        --control-md: 40px;
+        --control-lg: 44px;
+        --field: 44px;
+        --check: 22px;
+        --hit: 44px;
+    }
+}
+
+/* bp: tablet and below */
+@media (max-width: 1099.98px) {
+    :root {
+        --gutter: 32px;
+    }
+}
+
+/* bp: phone */
+@media (max-width: 699.98px) {
+    :root {
+        --fs-date: 1.8125rem; /* 29 */
+        --gutter: 20px;
+        --row: 54px; /* the title sits over its meta line */
+        --fs-row: 1rem; /* 16 */
+    }
+}

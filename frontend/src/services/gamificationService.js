@@ -10,15 +10,6 @@ const gamificationService = {
             return null;
         }
     },
-    getXPHistory: async () => {
-        try {
-            const response = await api.get("/gamification/xp-history");
-            return response.data;
-        } catch (error) {
-            console.error("Failed to fetch XP history:", error);
-            return null;
-        }
-    },
 };
 
 export default gamificationService;

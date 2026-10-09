@@ -1,0 +1,32 @@
+.header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--s-4);
+}
+
+.text {
+    min-width: 0;
+}
+
+.eyebrow {
+    margin-bottom: var(--s-1);
+    color: var(--ink-2);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+}
+
+.title {
+    font-family: var(--font-date);
+    font-size: var(--fs-date);
+    line-height: var(--lh-date);
+    font-weight: var(--fw-medium);
+    letter-spacing: var(--track-date);
+}
+
+/* bp: phone */
+@media (max-width: 699.98px) {
+    .header {
+        align-items: center;
+    }
+}

@@ -1,0 +1,66 @@
+.button {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    width: var(--control-md);
+    height: var(--control-md);
+    border: 1px solid transparent;
+    border-radius: var(--r-2);
+    color: var(--ink-2);
+    transition:
+        background-color var(--t-fast) var(--ease),
+        border-color var(--t-fast) var(--ease),
+        color var(--t-fast) var(--ease);
+}
+
+/* The pointer target is never smaller than --hit, whatever the drawn size */
+.button::after {
+    content: "";
+    position: absolute;
+    inset: min(0px, calc((100% - var(--hit)) / 2));
+}
+
+.button:active {
+    transform: translateY(0.5px);
+    background: var(--fill);
+    color: var(--ink);
+}
+
+.sm {
+    width: var(--control-sm);
+    height: var(--control-sm);
+}
+
+.lg {
+    width: var(--control-lg);
+    height: var(--control-lg);
+}
+
+.secondary {
+    background: var(--raised);
+    border-color: var(--line-strong);
+    color: var(--ink);
+}
+
+@media (hover: hover) {
+    .ghost:hover {
+        background: var(--fill);
+        color: var(--ink);
+    }
+
+    .secondary:hover {
+        background: var(--hover);
+    }
+}
+
+/* The menu, panel or dialog this button opens is showing */
+.button[data-popup-open] {
+    background: var(--fill);
+    color: var(--ink);
+}
+
+.button:disabled {
+    opacity: 0.45;
+    pointer-events: none;
+}

@@ -64,6 +64,23 @@ export const loginAccountRateLimit = rateLimit({
     legacyHeaders: false,
 });
 
+// At most 5 wrong passwords per account per 15 minutes on the requests that ask a signed-in person for their
+// password again (changing it, deleting the account). Without this, a borrowed session could be used to guess it.
+// Must run after `protect`.
+export const passwordCheckRateLimit = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5,
+    keyGenerator: (req) => `password-check:${req.user._id}`,
+    skipSuccessfulRequests: true, // the right password never counts against the account
+    message: {
+        success: false,
+        message:
+            "Too many wrong passwords for this account, please try again after 15 minutes",
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
 // At most 3 confirmation emails per address per hour, counting sign-up and "send it again" together.
 // Must run after the body is validated.
 export const verificationEmailRateLimit = rateLimit({

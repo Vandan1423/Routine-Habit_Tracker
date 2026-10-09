@@ -1,0 +1,88 @@
+.form {
+    display: grid;
+    gap: var(--s-5);
+}
+
+/* The day, and beside it the way to take it away again */
+.date {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--s-2);
+}
+
+.dateField {
+    flex: 1;
+}
+
+/* A group of fields under one name, without the box a browser draws around one */
+.group {
+    min-width: 0;
+    border: 0;
+}
+
+.legend {
+    padding: 0;
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+    font-weight: var(--fw-medium);
+}
+
+.hint {
+    margin-top: 2px;
+    color: var(--ink-2);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+    text-wrap: pretty;
+}
+
+.milestones {
+    display: grid;
+    gap: var(--s-2);
+    margin-top: var(--s-3);
+}
+
+.milestone {
+    display: flex;
+    align-items: center;
+    gap: var(--s-1);
+}
+
+.milestoneField {
+    flex: 1;
+}
+
+/* .group .add: outranks Button's own margin whichever file loads last */
+.group .add {
+    margin-top: var(--s-3);
+}
+
+/* What can carry the goal: a short list that scrolls by itself once it outgrows the form */
+.choices {
+    display: grid;
+    gap: 1px;
+    max-height: 208px;
+    margin-top: var(--s-2);
+    margin-inline: calc(var(--s-2) * -1);
+    padding-inline: var(--s-2);
+    overflow-y: auto;
+}
+
+/* .choices .choice: outranks Checkbox's own layout whichever file loads last */
+.choices .choice {
+    display: flex;
+    min-height: var(--control-lg);
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+}
+
+.kind {
+    margin-inline-start: var(--s-2);
+    color: var(--ink-3);
+    font-size: var(--fs-meta);
+}
+
+.formError {
+    color: var(--loss);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+}

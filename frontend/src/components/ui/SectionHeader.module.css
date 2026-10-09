@@ -1,0 +1,32 @@
+.header {
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+    min-height: var(--control-sm);
+    border-bottom: 1px solid var(--line);
+    color: var(--ink-2);
+    font-size: var(--fs-label);
+    line-height: var(--lh-body);
+    transition: color var(--t-base) var(--ease);
+}
+
+.current {
+    color: var(--ink);
+}
+
+.title {
+    font-weight: var(--fw-semibold);
+}
+
+.meta {
+    color: var(--ink-3);
+    font-size: var(--fs-caption);
+}
+
+/* Small buttons here are shorter than the header, so they never make it taller */
+.actions {
+    display: flex;
+    align-items: center;
+    gap: var(--s-1);
+    margin-inline-start: auto;
+}

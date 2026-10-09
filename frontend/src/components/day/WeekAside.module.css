@@ -1,0 +1,53 @@
+.heading {
+    margin-bottom: var(--s-3);
+    color: var(--ink-2);
+    font-size: var(--fs-label);
+    line-height: var(--lh-body);
+    font-weight: var(--fw-semibold);
+}
+
+.week {
+    display: grid;
+    gap: var(--s-2);
+}
+
+/* The day, its strip, its count */
+.day {
+    display: grid;
+    grid-template-columns: 4ch minmax(0, 1fr) 5ch;
+    align-items: center;
+    gap: var(--s-2);
+    color: var(--ink-3);
+    font-size: var(--fs-caption);
+    line-height: var(--lh-caption);
+}
+
+.today {
+    color: var(--ink);
+    font-weight: var(--fw-medium);
+}
+
+.count {
+    text-align: right;
+}
+
+.figure {
+    font-size: var(--fs-figure);
+    line-height: var(--lh-figure);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--track-title);
+}
+
+.figure small {
+    color: var(--ink-2);
+    font-size: var(--fs-body);
+    font-weight: var(--fw-medium);
+    letter-spacing: 0;
+}
+
+.note {
+    margin-top: 6px;
+    color: var(--ink-2);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+}

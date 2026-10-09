@@ -1,0 +1,28 @@
+.positioner {
+    composes: positioner from "./Floating.module.css";
+}
+
+.popup {
+    composes: surface from "./Floating.module.css";
+    padding: var(--s-3) var(--s-4) var(--s-4);
+}
+
+.title {
+    font-size: var(--fs-meta);
+    line-height: var(--lh-body);
+    font-weight: var(--fw-semibold);
+}
+
+.description {
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+    color: var(--ink-2);
+}
+
+.title + .description {
+    margin-top: 2px;
+}
+
+.popup > :where(.title, .description) + :where(:not(.title, .description)) {
+    margin-top: var(--s-3);
+}

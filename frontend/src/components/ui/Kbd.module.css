@@ -1,0 +1,37 @@
+/* Drawn from the colour of the text around it, so it sits right on any button or surface */
+.kbd {
+    display: inline-block;
+    min-width: 18px;
+    padding: 0 5px;
+    border: 1px solid color-mix(in srgb, currentColor 24%, transparent);
+    border-radius: var(--r-1);
+    color: color-mix(in srgb, currentColor 72%, transparent);
+    font-family: inherit;
+    font-size: var(--fs-micro);
+    font-weight: var(--fw-regular);
+    line-height: var(--lh-micro);
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* Two keys pressed one after the other */
+.sequence {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-1);
+    white-space: nowrap;
+}
+
+.then {
+    font-size: var(--fs-micro);
+    line-height: var(--lh-micro);
+    opacity: 0.72;
+}
+
+/* Nothing on this device can hover, so it is a phone or a tablet on its own: there are no keys to name */
+@media (any-hover: none) {
+    .kbd,
+    .sequence {
+        display: none;
+    }
+}

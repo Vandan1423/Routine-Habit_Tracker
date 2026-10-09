@@ -1,4 +1,5 @@
 import Joi from "joi";
+import { TRASH_DAYS } from "../utils/trash.js";
 
 export const registerSchema = Joi.object({
     name: Joi.string().min(2).max(50).required().trim().messages({
@@ -70,4 +71,37 @@ export const resetTokenParamSchema = Joi.object({
         .messages({
             "string.pattern.base": "Invalid or expired reset token.",
         }),
+});
+
+// ── Changes a signed-in person makes to their own account ──
+
+export const updateProfileSchema = Joi.object({
+    name: registerSchema.extract("name").optional(),
+    // How long Trash keeps what is deleted from now on
+    trashDays: Joi.number().valid(...TRASH_DAYS),
+})
+    .min(1)
+    .messages({ "object.min": "No valid fields to update." });
+
+// The password the account has now, asked for again before anything that could lock its owner out
+const currentPassword = Joi.string().max(128).required().messages({
+    "string.base": "Your current password must be a string.",
+    "string.empty": "Enter your current password.",
+    "string.max": "That isn't your current password.",
+    "any.required": "Enter your current password.",
+});
+
+export const changePasswordSchema = Joi.object({
+    currentPassword,
+    newPassword: registerSchema.extract("password").messages({
+        "string.base": "The new password must be a string.",
+        "string.empty": "Choose a new password.",
+        "string.min": "The new password must be at least 6 characters long.",
+        "string.max": "The new password cannot exceed 128 characters.",
+        "any.required": "Choose a new password.",
+    }),
+});
+
+export const deleteAccountSchema = Joi.object({
+    password: currentPassword,
 });

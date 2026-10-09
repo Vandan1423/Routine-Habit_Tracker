@@ -1,565 +1,284 @@
-.page {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-    padding-bottom: 32px;
-    animation: pageIn 320ms ease both;
+/* The head of the screen, set like the head of a day so that it starts where Today and Plan do */
+.header {
+    composes: header from "../../components/day/DayHeader.module.css";
 }
 
-@keyframes pageIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+.text {
+    composes: text from "../../components/day/DayHeader.module.css";
 }
 
-.loadingScreen {
-    min-height: 55vh;
+.eyebrow {
+    composes: eyebrow from "../../components/day/DayHeader.module.css";
+    /* Holds its line until the accounts are known */
+    white-space: pre-wrap;
+}
+
+/* The interface's own face. Only a date is set in the serif. */
+.title {
+    font-size: var(--fs-figure);
+    line-height: calc(var(--fs-date) * var(--lh-date));
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--track-title);
+}
+
+.state {
+    margin-top: var(--s-10);
+}
+
+/* ── The month on show, and the two buttons that turn it ── */
+
+.months {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 10px;
+    gap: var(--s-1);
+    min-height: var(--control-sm);
+    margin-top: var(--s-6);
 }
 
-.loadingPulse {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: var(--brand-primary);
-    animation: pulse 800ms ease-in-out infinite;
+.month {
+    margin-inline-end: var(--s-2);
+    font-size: var(--fs-item);
+    line-height: var(--lh-item);
+    font-weight: var(--fw-semibold);
 }
 
-@keyframes pulse {
-    0%,
-    100% {
-        transform: scale(0.85);
-        opacity: 0.45;
-    }
-    50% {
-        transform: scale(1.2);
-        opacity: 1;
-    }
-}
-
-.hero {
-    position: relative;
-    overflow: hidden;
-    border-radius: 28px;
-    background:
-        radial-gradient(circle at top right, rgba(45, 158, 99, 0.18), transparent 35%),
-        radial-gradient(circle at bottom left, rgba(26, 122, 74, 0.12), transparent 30%),
-        linear-gradient(135deg, #0d1f14 0%, #163424 55%, #123021 100%);
-    color: white;
-    padding: 26px;
-    box-shadow: var(--shadow-lg);
-}
-
-.heroGlow {
-    position: absolute;
-    inset: auto -80px -80px auto;
-    width: 240px;
-    height: 240px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(45, 158, 99, 0.32), transparent 65%);
+.months button:disabled {
+    opacity: 0.35;
     pointer-events: none;
 }
 
-.heroHeader {
-    display: grid;
-    grid-template-columns: 1.2fr 0.9fr;
-    gap: 20px;
-    position: relative;
-    z-index: 1;
+/* The month in a sentence, before anything is drawn */
+.summary {
+    display: flow-root;
+    margin-top: var(--s-3);
+    color: var(--ink-2);
+    font-size: var(--fs-item);
+    line-height: var(--lh-item);
+    text-wrap: pretty;
 }
 
-.kicker {
-    margin: 0 0 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.22em;
-    font-size: 11px;
-    color: rgba(255, 255, 255, 0.55);
-    font-weight: 700;
+.summary b {
+    color: var(--ink);
+    font-weight: var(--fw-medium);
 }
 
-.hero h1 {
-    margin: 0;
-    font-family: var(--font-display);
-    font-size: clamp(32px, 4vw, 54px);
-    line-height: 0.96;
-    letter-spacing: -0.03em;
+/* ── A part of the screen: a small heading with a hairline, then its lines ── */
+
+.section {
+    composes: block from "../../components/day/DayBlock.module.css";
 }
 
-.heroCopy {
-    max-width: 56ch;
-    margin: 14px 0 0;
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 14px;
-    line-height: 1.7;
+.head {
+    composes: head from "../../components/day/DayBlock.module.css";
 }
 
-.heroStatRail {
-    display: grid;
-    gap: 12px;
+.caption {
+    max-width: 60ch;
+    margin-top: var(--s-3);
+    color: var(--ink-3);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+    text-wrap: pretty;
 }
 
-.statCard {
-    border-radius: 20px;
-    padding: 16px 18px;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(12px);
+.rows > :first-child {
+    margin-top: var(--s-1);
 }
 
-.statCardAccent {
-    background: linear-gradient(135deg, rgba(45, 158, 99, 0.45), rgba(45, 158, 99, 0.16));
+/* A picture, with air between it and the heading */
+.picture {
+    margin-top: var(--s-4);
 }
 
-.statLabel,
-.statHint,
-.chartCopy span,
-.insightCard span,
-.accountMeta span,
-.subscriptionCard p,
-.transactionCard p,
-.placeCard p,
-.sectionHeader p {
-    color: rgba(255, 255, 255, 0.64);
+/* Holds a picture's place until the picture arrives */
+.chartWait {
+    display: flow-root;
 }
 
-.statCard,
-.statCardAccent,
-.sectionBlock,
-.accountCard,
-.chartCard,
-.heroChartCard,
-.insightCard,
-.subscriptionCard,
-.placeCard,
-.transactionCard {
-    box-shadow: var(--shadow-md);
+.more {
+    margin-top: var(--s-4);
 }
 
-.statLabel {
-    display: block;
-    margin-bottom: 6px;
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
-    font-size: 10px;
-    font-weight: 700;
+/* ── The ledger ── */
+
+.ledgerDay {
+    margin-top: var(--s-5);
 }
 
-.statValue {
-    display: block;
-    font-size: 26px;
-    line-height: 1;
-    letter-spacing: -0.03em;
-}
-
-.statHint {
-    display: block;
-    margin-top: 8px;
-    font-size: 12px;
-}
-
-.heroBody {
-    display: grid;
-    grid-template-columns: 1.1fr 0.6fr;
-    gap: 18px;
-    margin-top: 18px;
-    position: relative;
-    z-index: 1;
-}
-
-.heroChartCard,
-.insightCard,
-.accountCard,
-.sectionBlock,
-.chartCard,
-.subscriptionCard,
-.placeCard,
-.transactionCard {
-    border-radius: 22px;
-    background: rgba(255, 255, 255, 0.96);
-    border: 1px solid var(--border-subtle);
-}
-
-.heroChartCard {
-    padding: 18px;
-}
-
-.chartCopy {
+.ledgerHead {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 14px;
+    gap: var(--s-3);
+    padding-bottom: var(--s-1);
+    color: var(--ink-2);
+    font-size: var(--fs-caption);
+    line-height: var(--lh-meta);
+    font-weight: var(--fw-regular);
 }
 
-.chartCopy strong,
-.insightCard strong,
-.accountMeta strong,
-.subscriptionCard strong,
-.placeCard strong,
-.transactionCard strong {
-    display: block;
-    color: var(--text-primary);
+/* A line's place in the list. It is this that grows and shrinks as a line arrives or leaves. */
+.frame {
+    position: relative;
 }
 
-.chartCopy strong {
-    font-size: 16px;
+/* As wide as the line's hover tint, so clipping it on the way in or out does not cut the tint short */
+.clipped {
+    margin-inline: calc(var(--s-2) * -1);
+    padding-inline: var(--s-2);
+    overflow: hidden;
 }
 
-.heroInsightColumn {
+/* The same line as a row on Today, without the check: this is a record, not something to do */
+.row {
+    composes: row from "../../components/day/DayRow.module.css";
+    position: relative;
+}
+
+.main {
+    composes: main from "../../components/day/DayRow.module.css";
+}
+
+/* The name is the button that opens the line; the whole row takes the press */
+.name {
+    composes: title from "../../components/day/DayRow.module.css";
+    border-radius: var(--r-1);
+}
+
+.name::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: var(--r-2);
+}
+
+.meta {
+    composes: meta from "../../components/day/DayRow.module.css";
+    /* Three things can be said here, and on a narrow screen they may need a second line */
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+/* Above the button that covers the row */
+.menu {
+    composes: menu from "../../components/day/DayRow.module.css";
+    position: relative;
+}
+
+.amount {
+    flex: none;
+    color: var(--ink);
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    text-align: right;
+    white-space: nowrap;
+}
+
+/* Money that only moved between two accounts was neither spent nor earned: it is the quiet figure */
+.transfer {
+    color: var(--ink-3);
+}
+
+.income {
+    font-weight: var(--fw-medium);
+}
+
+/* ── Subscriptions ── */
+
+.paused .name,
+.paused .amount {
+    color: var(--ink-3);
+}
+
+/* Past its day. The colour of something done late, not the colour of a loss. */
+.late {
+    color: var(--late);
+}
+
+/* Above the button that covers the row */
+.row .pay {
+    position: relative;
+    flex: none;
+}
+
+/* ── Limits: a name and how it stands, a bar, and the two figures ── */
+
+.limit {
     display: grid;
-    gap: 12px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: var(--s-1) var(--s-3);
+    width: calc(100% + var(--s-4));
+    margin-inline: calc(var(--s-2) * -1);
+    padding: var(--s-2);
+    border-radius: var(--r-2);
+    transition: background-color var(--t-fast) var(--ease);
 }
 
-.insightCard {
-    padding: 18px;
+@media (hover: hover) {
+    .limit:hover {
+        background: var(--hover);
+    }
 }
 
-.insightCard span,
-.accountMeta span,
-.placeCard p,
-.transactionCard p,
-.sectionHeader p,
-.subscriptionCard p {
-    color: var(--text-muted);
-    margin: 0;
+.limitName {
+    min-width: 0;
+    font-size: var(--fs-row);
+    line-height: var(--lh-item);
+    font-weight: var(--fw-medium);
+    overflow-wrap: anywhere;
 }
 
-.insightCard strong {
-    margin-top: 6px;
-    font-size: 22px;
+.limitWords,
+.limitFigures {
+    color: var(--ink-2);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+    white-space: nowrap;
 }
 
-.insightCard p {
-    margin: 8px 0 0;
-    color: var(--text-secondary);
-}
-
-.accountsGrid,
-.twoColumnGrid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
-}
-
-.accountCard {
-    padding: 20px;
-}
-
-.accountMeta {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 16px;
-}
-
-.balanceBadge {
-    border-radius: 999px;
-    padding: 10px 14px;
-    background: var(--brand-primary-subtle);
-    color: var(--brand-primary-dark);
-    font-weight: 700;
-}
-
-.balanceEdit {
-    display: grid;
-    gap: 8px;
-}
-
-.balanceEdit span,
-.field span {
-    font-size: 12px;
-    color: var(--text-muted);
-    font-weight: 700;
-    letter-spacing: 0.02em;
-}
-
-.balanceEditRow {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 10px;
-}
-
-.balanceEditRow input,
-.field input,
-.field select {
-    border: 1px solid var(--border-medium);
-    border-radius: 14px;
-    padding: 12px 14px;
-    font-family: var(--font-body);
-    font-size: 14px;
-    background: white;
-    color: var(--text-primary);
-    outline: none;
-    transition: border-color var(--transition-base), box-shadow var(--transition-base);
-}
-
-.balanceEditRow input:focus,
-.field input:focus,
-.field select:focus {
-    border-color: var(--brand-primary-light);
-    box-shadow: 0 0 0 4px rgba(45, 158, 99, 0.12);
-}
-
-.balanceEditRow button,
-.formActions button {
-    border: none;
-    border-radius: 14px;
-    background: linear-gradient(135deg, var(--brand-primary-light), var(--brand-primary-dark));
-    color: white;
-    font-weight: 700;
-    padding: 12px 16px;
-    cursor: pointer;
-}
-
-.balanceEditRow button:disabled,
-.formActions button:disabled {
-    opacity: 0.7;
-    cursor: wait;
-}
-
-.sectionBlock {
-    padding: 22px;
-    background: rgba(255, 255, 255, 0.96);
-}
-
-.sectionHeader {
-    display: flex;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 18px;
-}
-
-.sectionHeader h2 {
-    margin: 0 0 6px;
-    font-size: 20px;
-    letter-spacing: -0.02em;
-}
-
-.sectionHeader p {
-    color: var(--text-muted);
-    margin: 0;
-    max-width: 62ch;
-}
-
-.logForm,
-.subscriptionForm {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 14px;
-}
-
-.field {
-    display: grid;
-    gap: 8px;
-}
-
-.fieldWide {
-    grid-column: span 2;
-}
-
-.formActions {
+.limitBar {
     grid-column: 1 / -1;
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
 }
 
-.ghostButton {
-    border: 1px solid var(--border-medium) !important;
-    background: white !important;
-    color: var(--text-primary) !important;
+.limitFigures {
+    grid-column: 1 / -1;
+    color: var(--ink-3);
 }
 
-.budgetForm {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 14px;
+/* Past the limit: the bar is full, and it and the words take the muted warning tone */
+.over {
+    --accent: var(--late);
 }
 
-.budgetList {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    margin-top: 18px;
+.over .limitWords {
+    color: var(--late);
 }
 
-.budgetCard {
-    border-radius: 20px;
-    padding: 16px 18px;
-    border: 1px solid var(--border-subtle);
-    background: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
+/* ── Beside the column ── */
+
+.heading {
+    composes: heading from "../../components/day/WeekAside.module.css";
 }
 
-.budgetOver {
-    border-color: rgba(180, 35, 24, 0.24);
-    background: rgba(180, 35, 24, 0.04);
+.under {
+    margin-top: var(--s-2);
+    /* The button's own padding, so its words line up with the facts above */
+    margin-inline-start: -9px;
 }
 
-.budgetWarning {
-    border-color: rgba(197, 157, 79, 0.24);
-    background: rgba(197, 157, 79, 0.06);
-}
-
-.budgetMeta {
-    text-align: right;
-}
-
-.budgetMeta span {
-    display: block;
-    font-weight: 800;
-    color: var(--text-primary);
-}
-
-.budgetMeta small {
-    display: block;
-    margin-top: 4px;
-    color: var(--text-muted);
-}
-
-.subscriptionList,
-.placeList,
-.transactionList {
-    display: grid;
-    gap: 12px;
-    margin-top: 18px;
-}
-
-.subscriptionCard,
-.placeCard,
-.transactionCard {
-    padding: 16px 18px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 14px;
-}
-
-.subscriptionMeta,
-.transactionMeta {
-    text-align: right;
-}
-
-.cardActions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    margin-top: 10px;
-    flex-wrap: wrap;
-}
-
-.cardActions button {
-    border: 1px solid var(--border-medium);
-    background: white;
-    color: var(--text-primary);
-    border-radius: 999px;
-    padding: 8px 12px;
-    font-size: 12px;
-    font-weight: 700;
-    cursor: pointer;
-}
-
-.dangerButton {
-    border-color: rgba(180, 35, 24, 0.22) !important;
-    color: #b42318 !important;
-}
-
-.subscriptionMeta span,
-.transactionMeta span {
-    display: block;
-    font-weight: 800;
-    color: var(--text-primary);
-}
-
-.subscriptionMeta small,
-.transactionMeta small {
-    display: block;
-    margin-top: 4px;
-    color: var(--text-muted);
-}
-
-.chartStack {
-    display: grid;
-    grid-template-columns: 1.2fr 0.8fr;
-    gap: 16px;
-}
-
-.chartCard {
-    padding: 14px;
-}
-
-.debit {
-    color: #b42318 !important;
-}
-
-.credit {
-    color: #117a4a !important;
-}
-
-@media (max-width: 1080px) {
-    .heroHeader,
-    .heroBody,
-    .chartStack,
-    .accountsGrid,
-    .twoColumnGrid {
-        grid-template-columns: 1fr;
+/* bp: phone */
+@media (max-width: 699.98px) {
+    .header {
+        align-items: center;
     }
 
-    .logForm,
-    .subscriptionForm,
-    .budgetForm {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+    .state {
+        margin-top: var(--s-8);
     }
 
-    .budgetList {
-        grid-template-columns: 1fr;
-    }
-}
-
-@media (max-width: 720px) {
-    .page {
-        gap: 14px;
-    }
-
-    .hero,
-    .sectionBlock,
-    .accountCard {
-        padding: 18px;
-        border-radius: 20px;
-    }
-
-    .logForm,
-    .subscriptionForm,
-    .budgetForm {
-        grid-template-columns: 1fr;
-    }
-
-    .fieldWide {
-        grid-column: span 1;
-    }
-
-    .subscriptionCard,
-    .placeCard,
-    .transactionCard,
-    .accountMeta {
-        align-items: flex-start;
-        flex-direction: column;
-    }
-
-    .subscriptionMeta,
-    .transactionMeta {
-        text-align: left;
+    .months {
+        margin-top: var(--s-5);
     }
 }

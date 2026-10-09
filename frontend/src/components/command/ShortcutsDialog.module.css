@@ -1,0 +1,55 @@
+/* Two columns of groups where there is room; a group is never split between them */
+.groups {
+    columns: 2;
+    column-gap: var(--s-10);
+}
+
+.group {
+    break-inside: avoid;
+}
+
+.group + .group {
+    margin-top: var(--s-5);
+}
+
+.title {
+    padding-bottom: var(--s-1);
+    border-bottom: 1px solid var(--line);
+    color: var(--ink-2);
+    font-size: var(--fs-label);
+    line-height: var(--lh-body);
+    font-weight: var(--fw-semibold);
+}
+
+.row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-4);
+    min-height: var(--control-md);
+}
+
+.row dd {
+    margin: 0;
+}
+
+.keys {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: var(--s-1);
+    color: var(--ink-2);
+}
+
+.or {
+    color: var(--ink-3);
+    font-size: var(--fs-micro);
+    line-height: var(--lh-micro);
+}
+
+/* bp: phone */
+@media (max-width: 699.98px) {
+    .groups {
+        columns: 1;
+    }
+}

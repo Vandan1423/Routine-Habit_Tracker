@@ -1,18 +1,11 @@
 import User from "../models/User.js";
-import Routine from "../models/Routine.js";
-import RoutineLog from "../models/RoutineLog.js";
 import Habit from "../models/Habit.js";
 import { applyPenalty } from "./penaltyEngine.js";
 import { calculateStreak } from "./streakCalculator.js";
 import { updateDailyStreak } from "./dailyStreakCalculator.js";
-import { addDailyXp, syncHabitTotals } from "./dailySummary.js";
-import {
-    addDays,
-    existedOn,
-    getTodayIn,
-    getUserToday,
-    getWeekday,
-} from "./dateRules.js";
+import { addDailyXp } from "./dailySummary.js";
+import { missCost, readDay } from "./dayPlan.js";
+import { addDays, getTodayIn, getUserToday } from "./dateRules.js";
 
 // However long someone stays away, at most this many of their most recent days are charged
 const MAX_DAYS_CHARGED = 7;
@@ -24,59 +17,30 @@ const EARLIEST_TIMEZONE = "Pacific/Kiritimati";
  * Charges the XP penalties for one day that has ended, and completes that day's summary.
  */
 const chargeMissedDay = async (user, day) => {
-    // Routine totals, perfect-day status and its bonus for that day, as they finally stood
+    // The day's totals, perfect-day status and its bonus, as they finally stood
     await updateDailyStreak(user._id, day);
 
+    const { routines, habits, doneRoutineIds, doneHabitIds } = await readDay(user, day);
     let totalXpLost = 0;
 
+    const charge = async (kind, item, reason, metadata) => {
+        const penalty = missCost(kind, item);
+        if (penalty <= 0) return;
+
+        const { xpLost } = await applyPenalty(user._id, penalty, reason, metadata);
+        totalXpLost += xpLost;
+    };
+
     // --- A. ROUTINES that were due that day and never completed ---
-    const [routines, routineLogs] = await Promise.all([
-        Routine.find({
-            user: user._id,
-            isActive: true,
-            $or: [
-                { isRecurring: true, recurringDays: getWeekday(day) },
-                { isRecurring: false, date: day },
-            ],
-        }),
-        RoutineLog.find({ user: user._id, date: day }).select("routine"),
-    ]);
-    const completedRoutineIds = new Set(
-        routineLogs.map((log) => log.routine.toString()),
-    );
-
     for (const routine of routines) {
-        if (!existedOn(routine, day, user.timezone)) continue;
-        if (completedRoutineIds.has(routine._id.toString())) continue;
-
-        const penalty = Math.floor((routine.xpReward || 0) / 2);
-        if (penalty > 0) {
-            const { xpLost } = await applyPenalty(
-                user._id,
-                penalty,
-                "routine_missed",
-                { routineId: routine._id, date: day },
-            );
-            totalXpLost += xpLost;
-        }
+        if (doneRoutineIds.has(routine._id.toString())) continue;
+        await charge("routine", routine, "routine_missed", { routineId: routine._id, date: day });
     }
 
     // --- B. HABITS that were due that day and didn't reach their target ---
-    const { dueHabits, completedIds } = await syncHabitTotals(user, day);
-
-    for (const habit of dueHabits) {
-        if (completedIds.has(habit._id.toString())) continue;
-
-        const penalty = Math.floor((habit.xpReward || 0) / 3);
-        if (penalty > 0) {
-            const { xpLost } = await applyPenalty(
-                user._id,
-                penalty,
-                "habit_missed",
-                { habitId: habit._id, date: day },
-            );
-            totalXpLost += xpLost;
-        }
+    for (const habit of habits) {
+        if (doneHabitIds.has(habit._id.toString())) continue;
+        await charge("habit", habit, "habit_missed", { habitId: habit._id, date: day });
     }
 
     // --- C. The day's net XP goes down by what was lost ---

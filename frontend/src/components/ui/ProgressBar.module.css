@@ -1,0 +1,22 @@
+.track {
+    display: block;
+    overflow: hidden;
+    border-radius: var(--r-mark);
+    background: var(--fill-strong);
+}
+
+.sm {
+    height: 3px;
+}
+
+.md {
+    height: 6px;
+}
+
+.bar {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--accent);
+    transition: width var(--t-slow) var(--ease-out);
+}

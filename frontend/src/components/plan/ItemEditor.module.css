@@ -1,0 +1,99 @@
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-5);
+}
+
+/* Two fields that belong together: start and end, target and unit */
+.pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s-3);
+    align-items: start;
+}
+
+/* A choice, and the fields that follow from it */
+.group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+}
+
+/* A label over a control that has none of its own */
+.labelled {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+}
+
+.label {
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+    font-weight: var(--fw-medium);
+}
+
+.choice {
+    align-self: flex-start;
+}
+
+/* Four parts of the day share the width of the form */
+.labelled .wide {
+    align-self: stretch;
+}
+
+.shortcuts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-1);
+    margin-top: var(--s-2);
+    /* The buttons' own padding, so their words line up with the label above */
+    margin-inline-start: -9px;
+}
+
+.form .more {
+    align-self: flex-start;
+    margin-inline-start: -9px;
+}
+
+/* What it is worth and what leaving it costs: plain, and always the last thing read */
+.stakes {
+    padding-top: var(--s-4);
+    border-top: 1px solid var(--line);
+    color: var(--ink-2);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-body);
+    text-wrap: pretty;
+}
+
+/* Always in the page, so it is announced when it gets its words */
+.failure {
+    display: none;
+    gap: var(--s-2);
+    color: var(--loss);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-body);
+}
+
+.failure svg {
+    flex: none;
+    margin-top: 2px;
+}
+
+.failed {
+    display: flex;
+}
+
+/* "Delete" keeps to the far side, away from the two that close the form */
+.dialog .delete {
+    margin-inline-end: auto;
+    color: var(--loss);
+}
+
+/* bp: phone. On a sheet the three actions share the width; "Delete" needs less of it. */
+@media (max-width: 699.98px) {
+    .dialog .delete {
+        flex: 0 1 auto;
+        margin-inline-end: 0;
+    }
+}

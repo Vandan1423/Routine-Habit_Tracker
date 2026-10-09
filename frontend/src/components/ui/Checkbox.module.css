@@ -1,0 +1,147 @@
+.checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    vertical-align: middle;
+    cursor: pointer;
+}
+
+.control {
+    position: relative;
+    flex: none;
+    width: var(--check);
+    height: var(--check);
+}
+
+/* The real checkbox: unseen, and larger than the box so it is easy to hit */
+.input {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: var(--hit);
+    height: var(--hit);
+    transform: translate(-50%, -50%);
+    appearance: none;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.box {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    border: 1.5px solid var(--box-line);
+    border-radius: var(--r-1);
+    pointer-events: none;
+    transition:
+        border-color var(--t-fast) var(--ease),
+        background-color var(--t-base) var(--ease),
+        transform var(--t-fast) var(--ease);
+}
+
+@media (hover: hover) {
+    .input:hover + .box {
+        border-color: var(--ink-2);
+    }
+}
+
+.next .input:not(:checked) + .box {
+    border-color: var(--now);
+}
+
+.input:active + .box {
+    transform: scale(0.9);
+}
+
+.input:focus-visible + .box {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+}
+
+.input:checked + .box {
+    border-color: var(--accent);
+    background: var(--accent);
+}
+
+/* How far a counted habit has got */
+.fill {
+    position: absolute;
+    inset: auto 0 0;
+    background: color-mix(in srgb, var(--accent) 32%, transparent);
+    transition: height var(--t-slow) var(--ease-out);
+}
+
+/* The tick is drawn like a pen stroke when the box is checked, and is simply gone when it is unchecked */
+.tick {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    fill: none;
+    stroke: var(--on-accent);
+    stroke-width: 1.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.tick path {
+    stroke-dasharray: 14;
+    stroke-dashoffset: 14;
+}
+
+.input:checked + .box .tick path {
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset var(--t-base) var(--ease-out) calc(var(--t-fast) / 2);
+}
+
+/* Just ticked: the box comes back from the press on the spring, in place of the plain return */
+.settling .input + .box {
+    transform: none;
+    animation: settle var(--t-spring) var(--spring);
+}
+
+@keyframes settle {
+    from {
+        scale: 0.88;
+    }
+}
+
+.label {
+    color: var(--ink);
+}
+
+.input:disabled {
+    cursor: default;
+}
+
+.input:disabled + .box {
+    opacity: 0.45;
+    transform: none;
+}
+
+.checkbox:has(.input:disabled) {
+    cursor: default;
+}
+
+.checkbox:has(.input:disabled) .label {
+    color: var(--ink-3);
+}
+
+/* ── The box as a drawing (CheckMark): how something stood when its day closed ── */
+
+.mark {
+    display: block;
+}
+
+.marked .box {
+    border-color: var(--accent);
+    background: var(--accent);
+}
+
+.marked .tick path {
+    stroke-dashoffset: 0;
+}
+
+.missed .box {
+    border-color: var(--loss);
+}

@@ -1,0 +1,19 @@
+.error {
+    display: grid;
+    gap: var(--s-6);
+    min-width: 0;
+}
+
+/* Development only: what was thrown */
+.detail {
+    max-width: 100%;
+    margin: 0;
+    padding: var(--s-3);
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: var(--r-2);
+    background: var(--fill);
+    color: var(--ink-2);
+    font-size: var(--fs-caption);
+    line-height: var(--lh-meta);
+}

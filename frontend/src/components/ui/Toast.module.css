@@ -1,0 +1,125 @@
+/*
+ * Toasts sit at the bottom of the screen, centred on the content (clear of the navigation, see --shell-inset-*).
+ * The library gives each toast its place in the queue (--toast-index, 0 is the newest), the height of the
+ * ones in front of it (--toast-offset-y), and how far it has been dragged (--toast-swipe-movement-*).
+ */
+.viewport {
+    position: fixed;
+    z-index: var(--z-toast);
+    left: var(--shell-inset-left);
+    right: 0;
+    bottom: calc(var(--shell-inset-bottom) + env(safe-area-inset-bottom, 0px) + var(--s-5));
+    /* No box of its own, so only the toasts themselves take clicks */
+    height: 0;
+}
+
+.toast {
+    /* Each toast rests on the bottom edge and is lifted by the newer ones beneath it */
+    --lift: calc(var(--toast-offset-y) * -1 - var(--toast-index) * var(--s-2));
+
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    z-index: calc(10 - var(--toast-index));
+    width: max-content;
+    max-width: min(var(--toast-max), calc(100% - var(--s-4) * 2));
+    border: 1px solid var(--line);
+    border-radius: var(--r-3);
+    background: var(--raised);
+    /* Standing on something raised, a quiet fill has to show against it (in dark, --fill is all but --raised) */
+    --fill: var(--raised-fill);
+    --hover: var(--raised-fill);
+    box-shadow: var(--shadow-float);
+    color: var(--ink);
+    font-size: var(--fs-control);
+    line-height: var(--lh-body);
+    cursor: default;
+    user-select: none;
+    translate: -50% 0;
+    transform: translateX(var(--toast-swipe-movement-x))
+        translateY(calc(var(--lift) + var(--toast-swipe-movement-y)));
+    transition:
+        transform var(--t-slow) var(--ease-out),
+        opacity var(--t-base) var(--ease);
+}
+
+/* Rises a little as it appears, and sinks a little as it goes */
+.toast[data-starting-style] {
+    opacity: 0;
+    transform: translateY(var(--s-4));
+}
+
+.toast[data-ending-style] {
+    opacity: 0;
+    transform: translateY(calc(var(--lift) + var(--s-2)));
+}
+
+/* Swiped away, it carries on the way it was pushed */
+.toast[data-ending-style][data-swipe-direction="down"] {
+    transform: translateY(calc(var(--lift) + var(--toast-swipe-movement-y) + 100%));
+}
+
+.toast[data-ending-style][data-swipe-direction="left"] {
+    transform: translateX(calc(var(--toast-swipe-movement-x) - 100%)) translateY(var(--lift));
+}
+
+.toast[data-ending-style][data-swipe-direction="right"] {
+    transform: translateX(calc(var(--toast-swipe-movement-x) + 100%)) translateY(var(--lift));
+}
+
+.toast[data-swiping] {
+    transition-duration: 0ms;
+}
+
+/* More than three: the oldest wait out of sight */
+.toast[data-limited] {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.content {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    min-height: calc(var(--control-lg) - 2px);
+    padding: 5px 14px;
+}
+
+.alert {
+    color: var(--loss);
+}
+
+.text {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: var(--s-3);
+    min-width: 0;
+}
+
+.message {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.detail {
+    min-width: 0;
+    color: var(--ink-2);
+    text-wrap: pretty;
+}
+
+/* Two lines or more: a little air above and below, so the text does not touch the edge */
+.content:has(.detail) {
+    padding-block: 7px;
+}
+
+/* The buttons sit closer to the edge than the text does */
+.action,
+.close {
+    flex: none;
+    margin-inline-end: -8px;
+}
+
+.action + .close {
+    margin-inline-start: -4px;
+}

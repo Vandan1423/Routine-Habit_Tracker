@@ -1,0 +1,184 @@
+/* Wider than the text column by its own padding, so the hover tint has room around the row */
+.row {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    min-height: var(--row);
+    margin-inline: calc(var(--s-2) * -1);
+    padding-inline: var(--s-2);
+    border-radius: var(--r-2);
+    /* Brought into view from the keyboard, it stops short of the window's edge */
+    scroll-margin-block: var(--s-12);
+    transition: background-color var(--t-fast) var(--ease);
+}
+
+@media (hover: hover) {
+    .row:hover {
+        background: var(--hover);
+    }
+}
+
+/* The padding only shows when a long name runs onto a second line and the row grows to hold it */
+.main {
+    display: flex;
+    flex: 1;
+    align-items: baseline;
+    gap: 10px;
+    min-width: 0;
+    padding-block: 6px;
+}
+
+/* A long name takes a second line before it is cut */
+.title {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: var(--fs-row);
+    line-height: var(--lh-item);
+    font-weight: var(--fw-medium);
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    transition: color var(--t-base) var(--ease);
+}
+
+.meta {
+    flex: none;
+    color: var(--ink-3);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+}
+
+.meta b {
+    font-weight: var(--fw-medium);
+}
+
+.now {
+    color: var(--now);
+}
+
+.late {
+    color: var(--late);
+}
+
+/* Done: the row settles to secondary ink, and what it was worth becomes what it paid */
+.done .title {
+    color: var(--ink-3);
+}
+
+.xp {
+    flex: none;
+    min-width: 34px;
+    color: var(--ink-3);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+    text-align: right;
+    transition: color var(--t-base) var(--ease);
+}
+
+.done .xp {
+    color: var(--ink);
+}
+
+/* Just done: the figure comes down onto the line on the spring, from the edge it is set against */
+.landing .xp {
+    transform-origin: 100% 50%;
+    animation: land var(--t-spring) var(--spring);
+}
+
+@keyframes land {
+    from {
+        scale: 1.18;
+    }
+}
+
+/* The row's own actions wait out of sight until the row is pointed at, reached by keyboard, or its menu is open */
+.menu {
+    display: flex;
+    flex: none;
+    opacity: 0;
+    transition: opacity var(--t-fast) var(--ease);
+}
+
+.row:has(:focus-visible) .menu,
+.menu:has([data-popup-open]) {
+    opacity: 1;
+}
+
+@media (hover: hover) {
+    .row:hover .menu {
+        opacity: 1;
+    }
+}
+
+/* Nothing to point with: always there, quietly, in a column of its own next to what the row is worth */
+@media (hover: none) {
+    .menu {
+        order: 1;
+        opacity: 1;
+    }
+
+    .row .menu button {
+        color: var(--ink-3);
+    }
+
+    .xp {
+        order: 2;
+    }
+}
+
+/* bp: phone */
+@media (max-width: 699.98px) {
+    .main {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0;
+        padding-block: var(--s-2);
+    }
+
+    .title {
+        max-width: 100%;
+    }
+}
+
+/* ── A day that is over: the same line, with nothing on it to press ── */
+
+.past {
+    position: relative;
+}
+
+@media (hover: hover) {
+    .past:hover {
+        background: none;
+    }
+
+    .past:has(.link):hover {
+        background: var(--hover);
+    }
+}
+
+/* What was done stands in full ink, as a record of it; what was left is the quieter line */
+.past .title {
+    color: var(--ink-2);
+}
+
+.past.done .title {
+    color: var(--ink);
+}
+
+/* What leaving it cost, where what it was worth would stand */
+.past .lost {
+    color: var(--loss);
+}
+
+/* Its name leads to its own page; the whole row takes the press */
+.link {
+    border-radius: var(--r-1);
+}
+
+.link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: var(--r-2);
+}

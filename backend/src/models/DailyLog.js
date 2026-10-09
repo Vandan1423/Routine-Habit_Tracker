@@ -28,7 +28,11 @@ const dailyLogSchema = new mongoose.Schema({
     },
     isPerfectDay: {
         type: Boolean,
-        default: false, // True ONLY if completedRoutines === totalRoutines
+        default: false, // True only if something was due and every routine and habit due was done
+    },
+    isRestDay: {
+        type: Boolean,
+        default: false, // True if nothing was due: such a day neither adds to the account's run nor ends it
     },
     xpEarned: {
         type: Number,

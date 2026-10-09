@@ -1,90 +1,130 @@
-.page {
-    min-height: 100vh;
-    width: 100%;
-    background: linear-gradient(135deg, #1f9b6c 0%, #0f5b3f 100%);
+/* A page of prose, open to anyone: the name, then one reading column */
+.frame {
     display: flex;
     justify-content: center;
-    font-family:
-        -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
-        "Ubuntu", "Cantarell", sans-serif;
-    padding: 40px 20px;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: var(--s-8) var(--gutter) var(--s-12);
+    background: var(--paper);
 }
 
-.card {
+.column {
+    display: flex;
+    flex-direction: column;
     width: 100%;
-    max-width: 720px;
-    height: fit-content;
-    padding: 48px;
-    background: #fff;
-    border-radius: 30px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    color: #333;
-    font-size: 15px;
-    line-height: 1.7;
-    overflow-wrap: anywhere;
+    max-width: var(--reading);
 }
 
+.home {
+    align-self: flex-start;
+    border-radius: var(--r-1);
+}
+
+/* Set a size up from the interface: this is read from start to end, not glanced at */
+.article {
+    margin-top: clamp(var(--s-10), 10vh, 6rem);
+    color: var(--ink-2);
+    font-size: var(--fs-item);
+    line-height: 1.6;
+}
+
+.eyebrow {
+    margin-bottom: var(--s-1);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+}
+
+/* The interface's own face. Only a date is set in the serif. */
 .title {
-    font-size: 28px;
-    font-weight: 700;
-    color: #1a1a1a;
-    margin-bottom: 4px;
+    color: var(--ink);
+    font-size: var(--fs-figure);
+    line-height: var(--lh-figure);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--track-title);
 }
 
-.updated {
-    font-size: 13px;
-    color: #666;
-    margin-bottom: 20px;
+.lead {
+    margin-top: var(--s-4);
+    color: var(--ink);
 }
 
-.card h2 {
-    font-size: 18px;
-    font-weight: 700;
-    color: #0f5b3f;
-    margin: 28px 0 8px;
+/* Each part under a hairline, as the parts of a screen are */
+.section {
+    margin-top: var(--s-8);
+    padding-top: var(--s-5);
+    border-top: 1px solid var(--line);
 }
 
-.card p {
-    margin-bottom: 12px;
+.section > * + * {
+    margin-top: var(--s-3);
 }
 
-.card ul {
-    margin: 0 0 12px;
-    padding-left: 22px;
+.heading {
+    color: var(--ink);
+    font-size: var(--fs-item);
+    line-height: var(--lh-item);
+    font-weight: var(--fw-semibold);
 }
 
-.card li {
-    margin-bottom: 8px;
+/* What is kept: each kind named, then said in full */
+.kept {
+    display: grid;
+    gap: var(--s-3);
 }
 
-.back {
-    margin-top: 32px;
+.kept dt {
+    color: var(--ink);
+    font-weight: var(--fw-medium);
 }
 
-.link {
-    color: #1f9b6c;
-    text-decoration: none;
-    font-weight: 600;
-    transition: color 0.3s ease;
+.list {
+    display: grid;
+    gap: var(--s-2);
 }
 
-.link:hover {
-    color: #0f5b3f;
+/* A small mark in the margin, the size of a Day Strip segment's end */
+.list li {
+    position: relative;
+    padding-inline-start: var(--s-4);
+}
+
+.list li::before {
+    content: "";
+    position: absolute;
+    top: calc(0.8em - 2px);
+    left: 0;
+    width: 6px;
+    height: 4px;
+    border-radius: var(--r-mark);
+    background: var(--line-strong);
+}
+
+.foot {
+    margin-top: var(--s-10);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+}
+
+/* .column .link: outranks the base rule for links whichever file loads last */
+.column .link {
+    border-radius: var(--r-1);
+    color: var(--ink);
+    font-weight: var(--fw-medium);
     text-decoration: underline;
+    text-decoration-color: var(--line-strong);
+    text-underline-offset: 3px;
+    transition: text-decoration-color var(--t-fast) var(--ease);
 }
 
-@media (max-width: 480px) {
-    .page {
-        padding: 20px 12px;
+@media (hover: hover) {
+    .column .link:hover {
+        text-decoration-color: var(--ink);
     }
+}
 
-    .card {
-        padding: 28px 22px;
-        border-radius: 24px;
-        font-size: 14px;
-    }
-
-    .title {
-        font-size: 22px;
+/* bp: phone */
+@media (max-width: 699.98px) {
+    .frame {
+        padding-block: var(--s-6) var(--s-10);
     }
 }

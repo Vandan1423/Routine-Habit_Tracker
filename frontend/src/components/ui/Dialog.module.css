@@ -1,0 +1,241 @@
+/*
+ * Dialog and ConfirmDialog. One frame, shown two ways: a panel near the top of the window,
+ * or a sheet that comes up from the bottom edge on a phone.
+ * The library sets [data-starting-style] and [data-ending-style] as the panel enters and leaves,
+ * and the --drawer-* variables while a sheet is being dragged.
+ */
+
+/* The page behind is dimmed, never blurred */
+.backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-scrim);
+    background: var(--scrim);
+    /* A sheet being dragged away takes the dimming with it */
+    opacity: calc(1 - var(--drawer-swipe-progress, 0));
+    transition: opacity var(--t-base) var(--ease);
+}
+
+/* iOS 26 Safari: a fixed backdrop stops short of the browser's own toolbars; one set against the body does not */
+@supports (-webkit-touch-callout: none) {
+    .backdrop {
+        position: absolute;
+        min-height: 100dvh;
+    }
+}
+
+.backdrop[data-starting-style],
+.backdrop[data-ending-style] {
+    opacity: 0;
+}
+
+.backdrop[data-swiping] {
+    transition-duration: 0ms;
+}
+
+/* Anchored to the top rather than centred, so a form does not jump when a message opens inside it */
+.viewport {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-dialog);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: clamp(var(--s-6), 14vh, 9rem) var(--s-4) var(--s-6);
+}
+
+.popup {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: var(--dialog-md);
+    max-height: 100%;
+    border: 1px solid var(--line);
+    background: var(--raised);
+    /* Standing on something raised, a quiet fill has to show against it (in dark, --fill is all but --raised) */
+    --fill: var(--raised-fill);
+    --hover: var(--raised-fill);
+    box-shadow: var(--shadow-float);
+    color: var(--ink);
+    outline: none;
+}
+
+.sm {
+    max-width: var(--dialog-sm);
+}
+
+.lg {
+    max-width: var(--dialog-lg);
+}
+
+/* ── As a panel ── */
+.panel {
+    border-radius: var(--r-3);
+    transition:
+        opacity var(--t-base) var(--ease),
+        transform var(--t-base) var(--ease-out);
+}
+
+.panel[data-starting-style],
+.panel[data-ending-style] {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+}
+
+/* Leaving is quicker than arriving */
+.panel[data-ending-style] {
+    transition-duration: var(--t-fast);
+}
+
+/* A question asked on top of this one: step back while it is answered */
+.panel[data-nested-dialog-open] {
+    transform: scale(0.985);
+}
+
+/* ── As a sheet ── */
+.sheetViewport {
+    align-items: flex-end;
+    padding: var(--s-10) 0 0;
+    touch-action: none;
+}
+
+.sheet {
+    /* The sheet runs on below the edge of the screen, so pulling it upwards never shows a gap under it */
+    --bleed: var(--s-12);
+
+    max-height: calc(100% + var(--bleed));
+    margin-bottom: calc(var(--bleed) * -1);
+    padding-bottom: var(--bleed);
+    border-width: 1px 0 0;
+    border-radius: var(--r-3) var(--r-3) 0 0;
+    touch-action: none;
+    transform: translateY(var(--drawer-swipe-movement-y, 0px));
+    transition: transform var(--t-slow) var(--ease-out);
+    will-change: transform;
+}
+
+.sheet[data-starting-style],
+.sheet[data-ending-style] {
+    transform: translateY(calc(100% - var(--bleed)));
+}
+
+/* Thrown down hard, it leaves faster */
+.sheet[data-ending-style] {
+    transition-duration: calc(var(--drawer-swipe-strength, 1) * var(--t-slow));
+}
+
+.sheet[data-swiping] {
+    transition-duration: 0ms;
+    user-select: none;
+}
+
+/* A sheet wider than a phone (asked for by name on a large screen) keeps its sides */
+.sheet.sm,
+.sheet.lg {
+    border-width: 1px 1px 0;
+}
+
+.sheet:not(.sm, .lg) {
+    max-width: none;
+}
+
+.handle {
+    flex: none;
+    align-self: center;
+    width: 36px;
+    height: 4px;
+    margin-top: var(--s-2);
+    border-radius: var(--r-full);
+    background: var(--line-strong);
+}
+
+/* ── Inside ── */
+.content {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+/* Clear of the home indicator, and of the on-screen keyboard while a field has it open */
+.sheet .content {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--drawer-keyboard-inset, 0px));
+}
+
+.header {
+    display: flex;
+    flex: none;
+    align-items: flex-start;
+    gap: var(--s-3);
+    padding: var(--s-5) var(--s-5) 0;
+}
+
+.handle + .content .header {
+    padding-top: var(--s-3);
+}
+
+.heading {
+    flex: 1;
+    min-width: 0;
+}
+
+.title {
+    font-size: var(--fs-item);
+    line-height: var(--lh-item);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--track-heading);
+}
+
+.description {
+    margin-top: 2px;
+    color: var(--ink-2);
+}
+
+/* In the corner, beside the title. (.popup in the selector so this outranks the button's own position.) */
+.popup .close {
+    position: absolute;
+    top: calc(var(--s-5) - 3px);
+    right: var(--s-3);
+}
+
+.header:has(~ .close) {
+    padding-inline-end: var(--s-12);
+}
+
+.handle + .content .close {
+    top: calc(var(--s-5) + 1px);
+}
+
+.body {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: var(--s-4) var(--s-5) var(--s-5);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    touch-action: auto;
+}
+
+.footer {
+    display: flex;
+    flex: none;
+    justify-content: flex-end;
+    gap: var(--s-2);
+    padding: var(--s-5);
+}
+
+/* Under a body, the actions get a line of their own */
+.body + .footer {
+    padding-block: var(--s-3);
+    border-top: 1px solid var(--line);
+}
+
+/* On a sheet the actions share the width, so each is easy to reach with a thumb */
+.sheet .footer > * {
+    flex: 1;
+}
+
+.sheet .body + .footer {
+    padding-bottom: var(--s-4);
+}

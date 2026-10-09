@@ -1,0 +1,126 @@
+.heading {
+    composes: heading from "../../components/day/WeekAside.module.css";
+}
+
+.day {
+    width: 100%;
+    color: var(--ink-3);
+    font-size: var(--fs-caption);
+    line-height: var(--lh-caption);
+    transition:
+        background-color var(--t-fast) var(--ease),
+        color var(--t-fast) var(--ease);
+}
+
+.today {
+    color: var(--ink);
+    font-weight: var(--fw-medium);
+}
+
+.count {
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Beside the list: a line for each day, as Today draws its week ── */
+
+.column .days {
+    display: grid;
+    /* The lines are taller than they look, so the gap between them is taken out of each */
+    margin-block: calc(var(--s-1) * -1);
+}
+
+/* Wider than the column by its own padding, so the tint has room around the words */
+.column .day {
+    display: grid;
+    grid-template-columns: 4ch minmax(0, 1fr) 3ch;
+    align-items: center;
+    gap: var(--s-2);
+    width: calc(100% + var(--s-4));
+    min-height: var(--control-sm);
+    margin-inline: calc(var(--s-2) * -1);
+    padding-inline: var(--s-2);
+    border-radius: var(--r-1);
+    text-align: start;
+}
+
+/* The strip's length is the day's share of the fullest day */
+.load {
+    display: block;
+    min-width: 0;
+}
+
+.load > * {
+    display: flex;
+}
+
+.column .count {
+    text-align: right;
+}
+
+.column .day[aria-pressed="true"] {
+    background: var(--fill);
+    color: var(--ink);
+}
+
+@media (hover: hover) {
+    .column .day:hover {
+        background: var(--hover);
+        color: var(--ink);
+    }
+
+    .column .day[aria-pressed="true"]:hover {
+        background: var(--fill);
+    }
+}
+
+/* ── Above the list: seven cells, the day over its count ── */
+
+.row .days {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: var(--s-1);
+}
+
+.row .day {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    min-height: var(--hit);
+    border: 1px solid var(--line);
+    border-radius: var(--r-2);
+}
+
+.row .count {
+    color: var(--ink-2);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+    font-weight: var(--fw-medium);
+}
+
+.row .today .count {
+    color: var(--ink);
+}
+
+/* The chosen day is filled with ink, like a weekday that is on in the form */
+.row .day[aria-pressed="true"] {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--on-accent);
+}
+
+.row .day[aria-pressed="true"] .count {
+    color: inherit;
+}
+
+@media (hover: hover) {
+    .row .day:not([aria-pressed="true"]):hover {
+        border-color: var(--line-strong);
+        color: var(--ink);
+    }
+}
+
+.day:active {
+    transform: translateY(0.5px);
+}

@@ -1,0 +1,8 @@
+/* A placeholder line keeps the whole height of the line of words it stands for: its margins stay inside */
+.line {
+    display: flow-root;
+}
+
+.grow {
+    flex: 1;
+}

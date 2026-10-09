@@ -1,0 +1,141 @@
+/* Measured, so the labels can drop their counts when the strip is very short */
+.strip {
+    display: flex;
+    gap: var(--s-3);
+    container-type: inline-size;
+}
+
+/* Each part of the day is as wide as its share of the items, and never narrower than its own label */
+.group {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    gap: var(--s-2);
+}
+
+.segments {
+    display: flex;
+    gap: 3px;
+    transition: gap var(--t-slow) var(--ease-out);
+}
+
+.segment {
+    flex: 1;
+    min-width: 0;
+    height: 6px;
+    overflow: hidden;
+    border-radius: var(--r-mark);
+    background: var(--fill-strong);
+    transition: border-radius var(--t-slow) var(--ease-out);
+}
+
+/* Just filled: the segment swells as the ink lands in it, and settles on the spring */
+.landing {
+    animation: swell var(--t-spring) var(--spring);
+}
+
+@keyframes swell {
+    from {
+        scale: 1 1.8;
+    }
+}
+
+/* A finished part of the day: its segments close up into one unbroken stroke.
+   Once they have met, the ink runs under the joins too, so no hairline of paper can show between them. */
+.sealed .segments {
+    gap: 0;
+    border-radius: var(--r-mark);
+    background: var(--accent);
+    transition:
+        gap var(--t-slow) var(--ease-out),
+        background-color 0s var(--t-slow);
+}
+
+.sealed .segment {
+    border-radius: 0;
+}
+
+.sealed .segment:first-child {
+    border-start-start-radius: var(--r-mark);
+    border-end-start-radius: var(--r-mark);
+}
+
+.sealed .segment:last-child {
+    border-start-end-radius: var(--r-mark);
+    border-end-end-radius: var(--r-mark);
+}
+
+.fill {
+    display: block;
+    height: 100%;
+    background: var(--accent);
+    transition: width var(--t-slow) var(--ease-out);
+}
+
+/* A day that is over: what was left undone is an outline in the colour of a loss, as on the short strips */
+.over .open {
+    background: none;
+    box-shadow: inset 0 0 0 1px var(--loss);
+}
+
+.label {
+    display: flex;
+    gap: 6px;
+    color: var(--ink-3);
+    font-size: var(--fs-caption);
+    line-height: var(--lh-caption);
+    white-space: nowrap;
+    transition: color var(--t-base) var(--ease);
+}
+
+/* The part of the day the clock is in */
+.current .label {
+    color: var(--ink);
+    font-weight: var(--fw-medium);
+}
+
+.sealed .label {
+    color: var(--ink-2);
+}
+
+/* bp: phone */
+@media (max-width: 699.98px) {
+    .strip {
+        gap: var(--s-2);
+    }
+}
+
+/* Too short for four labels with their counts: the names alone */
+@container (max-width: 339.98px) {
+    .count {
+        display: none;
+    }
+}
+
+/* ── A day in one short strip ── */
+.mini {
+    display: flex;
+    gap: 2px;
+}
+
+.mini i {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 4px;
+    border-radius: 1px;
+    background: var(--fill-strong);
+}
+
+.mini .on {
+    background: var(--accent);
+}
+
+/* Over, and left undone: an outline in the colour of a loss */
+.settled i:not(.on) {
+    background: none;
+    box-shadow: inset 0 0 0 1px var(--loss);
+}
+
+.blank i {
+    background: var(--fill);
+}

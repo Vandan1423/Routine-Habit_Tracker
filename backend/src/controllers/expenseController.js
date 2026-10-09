@@ -4,6 +4,7 @@ import ExpenseSubscription from "../models/ExpenseSubscription.js";
 import ExpenseTransaction from "../models/ExpenseTransaction.js";
 import KnownSpendPlace from "../models/KnownSpendPlace.js";
 import { getUserToday } from "../utils/dateRules.js";
+import { KEPT, trashStamp } from "../utils/trash.js";
 
 const CATEGORIES = [
     "Food & Dining",
@@ -71,7 +72,7 @@ const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 // Accounts and subscriptions referenced by a request must belong to the user making it
 const ownsAccount = (userId, accountId) => ExpenseAccount.exists({ _id: accountId, user: userId });
-const ownsSubscription = (userId, subscriptionId) => ExpenseSubscription.exists({ _id: subscriptionId, user: userId });
+const ownsSubscription = (userId, subscriptionId) => ExpenseSubscription.exists({ _id: subscriptionId, user: userId, ...KEPT });
 
 const getRefId = (value) => {
     if (!value) {
@@ -123,22 +124,50 @@ const buildAccountBalanceMap = (accounts = [], transactions = []) => {
     return balances;
 };
 
-const aggregateSummary = (accounts, transactions, subscriptions, places, currentMonthKey) => {
-    const previousMonthKey = shiftMonth(currentMonthKey, -1);
+// A transaction's date is a calendar day kept at UTC midnight
+const dayOf = (transaction) => new Date(transaction.transactionDate).toISOString().slice(0, 10);
 
-    const currentMonthExpenses = transactions.filter(
-        (transaction) => transaction.type === "expense" && transaction.monthKey === currentMonthKey,
-    );
-    const lastMonthExpenses = transactions.filter(
-        (transaction) => transaction.type === "expense" && transaction.monthKey === previousMonthKey,
-    );
+const sumOf = (transactions) =>
+    transactions.reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0);
+
+// What was spent, by the place it was spent at, largest first
+const totalsByPlace = (expenses) =>
+    Object.values(
+        expenses.reduce((acc, transaction) => {
+            const key = transaction.placeName || "Other";
+            if (!acc[key]) {
+                acc[key] = {
+                    name: key,
+                    total: 0,
+                    count: 0,
+                };
+            }
+            acc[key].total += Number(transaction.amount || 0);
+            acc[key].count += 1;
+            return acc;
+        }, {}),
+    ).sort((a, b) => b.total - a.total);
+
+/**
+ * Everything the Expenses screen shows for one month.
+ * @param {String} today - the user's own today, "YYYY-MM-DD"
+ * @param {String} month - the month on show, "YYYY-MM". The month today is in unless another was asked for.
+ */
+const aggregateSummary = (accounts, transactions, subscriptions, places, today, month) => {
+    const currentMonthKey = today.slice(0, 7);
+    const previousMonthKey = shiftMonth(currentMonthKey, -1);
+    const expenses = transactions.filter((transaction) => transaction.type === "expense");
+    const expensesIn = (monthKey) => expenses.filter((transaction) => transaction.monthKey === monthKey);
+
+    const currentMonthExpenses = expensesIn(currentMonthKey);
+    const lastMonthExpenses = expensesIn(previousMonthKey);
+    const monthExpenses = expensesIn(month);
+    const monthBefore = expensesIn(shiftMonth(month, -1));
 
     const monthSeries = Array.from({ length: 6 }, (_, index) => {
-        const monthKey = shiftMonth(currentMonthKey, index - 5);
-        const monthTransactions = transactions.filter(
-            (transaction) => transaction.type === "expense" && transaction.monthKey === monthKey,
-        );
-        const total = monthTransactions.reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0);
+        const monthKey = shiftMonth(month, index - 5);
+        const monthTransactions = expensesIn(monthKey);
+        const total = sumOf(monthTransactions);
         const byCategory = monthTransactions.reduce((acc, transaction) => {
             const key = transaction.category || "Other";
             acc[key] = (acc[key] || 0) + Number(transaction.amount || 0);
@@ -156,7 +185,7 @@ const aggregateSummary = (accounts, transactions, subscriptions, places, current
         };
     });
 
-    const categoryTotals = currentMonthExpenses.reduce((acc, transaction) => {
+    const categoryTotals = monthExpenses.reduce((acc, transaction) => {
         const key = transaction.category || "Other";
         acc[key] = (acc[key] || 0) + Number(transaction.amount || 0);
         return acc;
@@ -164,19 +193,16 @@ const aggregateSummary = (accounts, transactions, subscriptions, places, current
 
     const categoryBudgets = {};
 
-    const placeTotals = transactions.filter((transaction) => transaction.type === "expense").reduce((acc, transaction) => {
-        const key = transaction.placeName || "Other";
-        if (!acc[key]) {
-            acc[key] = {
-                name: key,
-                total: 0,
-                count: 0,
-            };
-        }
-        acc[key].total += Number(transaction.amount || 0);
-        acc[key].count += 1;
-        return acc;
-    }, {});
+    // Months are written "YYYY-MM", so they sort as text
+    const monthKeys = transactions.map((transaction) => transaction.monthKey).filter(Boolean).sort();
+
+    // The same stretch of the month before: on the 9th, what had been spent by the 9th of last month.
+    // Only said of the month that is still running.
+    const dayOfMonth = today.slice(8);
+    const previousMonthToDate =
+        month === currentMonthKey
+            ? sumOf(lastMonthExpenses.filter((transaction) => dayOf(transaction).slice(8) <= dayOfMonth))
+            : null;
 
     const recentTransactions = transactions.slice().sort((a, b) => new Date(b.transactionDate) - new Date(a.transactionDate)).slice(0, 16);
     const balances = buildAccountBalanceMap(accounts, transactions);
@@ -186,15 +212,28 @@ const aggregateSummary = (accounts, transactions, subscriptions, places, current
             ...account.toObject(),
             currentBalance: balances.get(account._id.toString()) || 0,
         })),
+        today,
         currentMonthKey,
-        currentMonthExpensesTotal: currentMonthExpenses.reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0),
-        lastMonthExpensesTotal: lastMonthExpenses.reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0),
+        currentMonthExpensesTotal: sumOf(currentMonthExpenses),
+        lastMonthExpensesTotal: sumOf(lastMonthExpenses),
         currentMonthExpenseCount: currentMonthExpenses.length,
+        // The month on show, and how far the months with anything in them reach
+        month,
+        firstMonth: monthKeys[0] ?? null,
+        lastMonth: monthKeys.at(-1) ?? null,
+        monthExpensesTotal: sumOf(monthExpenses),
+        monthExpenseCount: monthExpenses.length,
+        monthIncomeTotal: sumOf(
+            transactions.filter((transaction) => transaction.type === "income" && transaction.monthKey === month),
+        ),
+        previousMonthExpensesTotal: sumOf(monthBefore),
+        previousMonthToDate,
         monthSeries,
         categoryTotals: Object.entries(categoryTotals)
             .map(([category, total]) => ({ category, total }))
             .sort((a, b) => b.total - a.total),
-        placeTotals: Object.values(placeTotals).sort((a, b) => b.total - a.total),
+        placeTotals: totalsByPlace(expenses),
+        monthPlaceTotals: totalsByPlace(monthExpenses),
         recentTransactions,
         subscriptions,
         suggestedPlaces: places.map((place) => place.name).sort((a, b) => a.localeCompare(b)),
@@ -206,16 +245,24 @@ export const getSummary = async (req, res, next) => {
     try {
         const accounts = await ensureDefaultAccounts(req.user._id);
         const [transactions, subscriptions, places] = await Promise.all([
-            ExpenseTransaction.find({ user: req.user._id })
+            ExpenseTransaction.find({ user: req.user._id, ...KEPT })
                 .populate("account", "name type")
                 .populate("transferToAccount", "name type")
                 .sort({ transactionDate: -1 }),
-            ExpenseSubscription.find({ user: req.user._id }).sort({ isActive: -1, nextDueDate: 1 }),
+            ExpenseSubscription.find({ user: req.user._id, ...KEPT }).sort({ isActive: -1, nextDueDate: 1 }),
             KnownSpendPlace.find({ user: req.user._id }).sort({ transactionCount: -1, lastVisitedAt: -1 }),
         ]);
         const budgets = await ExpenseBudget.find({ user: req.user._id, isActive: true });
 
-        const summary = aggregateSummary(accounts, transactions, subscriptions, places, getUserMonthKey(req.user));
+        const today = getUserToday(req.user);
+        const summary = aggregateSummary(
+            accounts,
+            transactions,
+            subscriptions,
+            places,
+            today,
+            req.query.month || today.slice(0, 7),
+        );
         summary.budgets = budgets;
         res.status(200).json(summary);
     } catch (error) {
@@ -226,7 +273,7 @@ export const getSummary = async (req, res, next) => {
 export const getAccounts = async (req, res, next) => {
     try {
         const accounts = await ensureDefaultAccounts(req.user._id);
-        const transactions = await ExpenseTransaction.find({ user: req.user._id }).sort({ transactionDate: 1 });
+        const transactions = await ExpenseTransaction.find({ user: req.user._id, ...KEPT }).sort({ transactionDate: 1 });
         const balances = buildAccountBalanceMap(accounts, transactions);
 
         res.status(200).json({
@@ -258,7 +305,7 @@ export const updateAccount = async (req, res, next) => {
             return res.status(404).json({ message: "Account not found" });
         }
 
-        const transactions = await ExpenseTransaction.find({ user: req.user._id }).sort({ transactionDate: 1 });
+        const transactions = await ExpenseTransaction.find({ user: req.user._id, ...KEPT }).sort({ transactionDate: 1 });
         const balances = buildAccountBalanceMap([account], transactions);
 
         res.status(200).json({
@@ -274,10 +321,18 @@ export const updateAccount = async (req, res, next) => {
 
 export const listTransactions = async (req, res, next) => {
     try {
-        const transactions = await ExpenseTransaction.find({ user: req.user._id })
+        const query = { user: req.user._id, ...KEPT };
+
+        // One month of them when a month is asked for; all of them otherwise
+        if (req.query.month) {
+            query.monthKey = req.query.month;
+        }
+
+        const transactions = await ExpenseTransaction.find(query)
             .populate("account", "name type")
             .populate("transferToAccount", "name type")
-            .sort({ transactionDate: -1 });
+            // The newest day first, and within a day the one logged last
+            .sort({ transactionDate: -1, createdAt: -1 });
 
         res.status(200).json({ transactions });
     } catch (error) {
@@ -287,7 +342,7 @@ export const listTransactions = async (req, res, next) => {
 
 export const updateTransaction = async (req, res, next) => {
     try {
-        const existing = await ExpenseTransaction.findOne({ _id: req.params.id, user: req.user._id });
+        const existing = await ExpenseTransaction.findOne({ _id: req.params.id, user: req.user._id, ...KEPT });
         if (!existing) {
             return res.status(404).json({ message: "Transaction not found" });
         }
@@ -336,16 +391,22 @@ export const updateTransaction = async (req, res, next) => {
 
 export const deleteTransaction = async (req, res, next) => {
     try {
-        const transaction = await ExpenseTransaction.findOneAndDelete({
-            _id: req.params.id,
-            user: req.user._id,
-        });
+        // Into Trash: it stops counting towards balances and totals at once, and can be recovered as it was
+        const transaction = await ExpenseTransaction.findOneAndUpdate(
+            { _id: req.params.id, user: req.user._id, ...KEPT },
+            { $set: trashStamp(req.user) },
+            { returnDocument: "after" },
+        );
 
         if (!transaction) {
             return res.status(404).json({ message: "Transaction not found" });
         }
 
-        res.status(200).json({ message: "Transaction deleted", id: req.params.id });
+        res.status(200).json({
+            message: "Transaction moved to Trash",
+            id: req.params.id,
+            purgeAt: transaction.purgeAt,
+        });
     } catch (error) {
         next(error);
     }
@@ -431,7 +492,7 @@ export const createTransaction = async (req, res, next) => {
             .populate("transferToAccount", "name type");
 
         const refreshedAccounts = await ExpenseAccount.find({ user: req.user._id }).sort({ sortOrder: 1, createdAt: 1 });
-        const allTransactions = await ExpenseTransaction.find({ user: req.user._id }).sort({ transactionDate: 1 });
+        const allTransactions = await ExpenseTransaction.find({ user: req.user._id, ...KEPT }).sort({ transactionDate: 1 });
         const balances = buildAccountBalanceMap(refreshedAccounts, allTransactions);
 
         res.status(201).json({
@@ -448,7 +509,7 @@ export const createTransaction = async (req, res, next) => {
 
 export const listSubscriptions = async (req, res, next) => {
     try {
-        const subscriptions = await ExpenseSubscription.find({ user: req.user._id })
+        const subscriptions = await ExpenseSubscription.find({ user: req.user._id, ...KEPT })
             .populate("account", "name type")
             .sort({ isActive: -1, nextDueDate: 1 });
 
@@ -502,7 +563,7 @@ export const updateSubscription = async (req, res, next) => {
         }
 
         const subscription = await ExpenseSubscription.findOneAndUpdate(
-            { _id: req.params.id, user: req.user._id },
+            { _id: req.params.id, user: req.user._id, ...KEPT },
             payload,
             { new: true, runValidators: true },
         ).populate("account", "name type");
@@ -519,16 +580,21 @@ export const updateSubscription = async (req, res, next) => {
 
 export const deleteSubscription = async (req, res, next) => {
     try {
-        const subscription = await ExpenseSubscription.findOneAndDelete({
-            _id: req.params.id,
-            user: req.user._id,
-        });
+        const subscription = await ExpenseSubscription.findOneAndUpdate(
+            { _id: req.params.id, user: req.user._id, ...KEPT },
+            { $set: trashStamp(req.user) },
+            { returnDocument: "after" },
+        );
 
         if (!subscription) {
             return res.status(404).json({ message: "Subscription not found" });
         }
 
-        res.status(200).json({ message: "Subscription deleted", id: req.params.id });
+        res.status(200).json({
+            message: "Subscription moved to Trash",
+            id: req.params.id,
+            purgeAt: subscription.purgeAt,
+        });
     } catch (error) {
         next(error);
     }
@@ -606,7 +672,7 @@ const escapeCsv = (value) => {
 export const exportMonthlyCsv = async (req, res, next) => {
     try {
         const month = String(req.query.month || getUserMonthKey(req.user));
-        const transactions = await ExpenseTransaction.find({ user: req.user._id, monthKey: month })
+        const transactions = await ExpenseTransaction.find({ user: req.user._id, monthKey: month, ...KEPT })
             .populate("account", "name type")
             .populate("transferToAccount", "name type")
             .sort({ transactionDate: -1 });

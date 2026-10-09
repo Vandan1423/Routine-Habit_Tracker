@@ -7,6 +7,9 @@ import {
     logoutAll,          
     refreshAccessToken,
     getMe,
+    updateProfile,
+    changePassword,
+    deleteAccount,
     forgotPassword,
     resetPassword,
     verifyEmail,
@@ -19,15 +22,19 @@ import {
     validateRegister,
 } from "../middlewares/validationMiddleware.js";
 import {
+    changePasswordSchema,
+    deleteAccountSchema,
     forgotPasswordSchema,
     resendVerificationSchema,
     resetPasswordSchema,
     resetTokenParamSchema,
+    updateProfileSchema,
     verificationTokenParamSchema,
 } from "../Schema/AuthSchema.js";
 import {
     authRateLimit,
     loginAccountRateLimit,
+    passwordCheckRateLimit,
     passwordResetRateLimit,
     verificationEmailRateLimit,
 } from "../middlewares/rateLimitMiddleware.js";
@@ -76,7 +83,27 @@ router
     );
 
 // --- PROTECTED ROUTES (Requires valid access token) ---
-router.route("/me").get(protect, getMe);
+router
+    .route("/me")
+    .get(protect, getMe)
+    .put(protect, validate({ body: updateProfileSchema }), updateProfile);
+router
+    .route("/password")
+    .put(
+        protect,
+        validate({ body: changePasswordSchema }),
+        passwordCheckRateLimit,
+        changePassword,
+    );
+// A POST rather than DELETE /me: the password travels in the body, which not every proxy passes on for a DELETE
+router
+    .route("/delete-account")
+    .post(
+        protect,
+        validate({ body: deleteAccountSchema }),
+        passwordCheckRateLimit,
+        deleteAccount,
+    );
 router.route("/logout").post(protect, logoutUser);
 router.route("/logout-all").post(protect, logoutAll); 
 

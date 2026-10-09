@@ -1,0 +1,142 @@
+.header {
+    composes: header from "../../components/day/DayHeader.module.css";
+}
+
+.text {
+    composes: text from "../../components/day/DayHeader.module.css";
+}
+
+/* The way back, where a day's greeting sits */
+.back {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-1);
+    margin-bottom: var(--s-1);
+    border-radius: var(--r-1);
+    color: var(--ink-2);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+    transition: color var(--t-fast) var(--ease);
+}
+
+@media (hover: hover) {
+    .back:hover {
+        color: var(--ink);
+    }
+}
+
+/* A long name runs onto a second line rather than being cut */
+.title {
+    font-size: var(--fs-figure);
+    line-height: calc(var(--fs-date) * var(--lh-date));
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--track-title);
+    overflow-wrap: anywhere;
+    text-wrap: balance;
+}
+
+.line {
+    display: flow-root;
+}
+
+.state {
+    margin-top: var(--s-10);
+}
+
+/* How it has gone, in a sentence, before the calendar shows the same thing day by day */
+.summary {
+    margin-top: var(--s-6);
+    color: var(--ink-2);
+    font-size: var(--fs-item);
+    line-height: var(--lh-item);
+    text-wrap: pretty;
+}
+
+.summary b {
+    color: var(--ink);
+    font-weight: var(--fw-medium);
+}
+
+.calendar {
+    max-width: 22rem;
+    margin-top: var(--s-8);
+}
+
+/* ── A day's mark: a small square, like the check it was ticked with ── */
+
+.mark {
+    position: relative;
+    display: block;
+    width: 10px;
+    height: 10px;
+    border-radius: var(--r-mark);
+    overflow: hidden;
+}
+
+.done {
+    background: var(--accent);
+}
+
+.late {
+    background: var(--late);
+}
+
+.partial {
+    box-shadow: inset 0 0 0 1px var(--ink-3);
+}
+
+.partial i {
+    position: absolute;
+    inset: auto 0 0;
+    background: var(--accent);
+}
+
+.missed {
+    box-shadow: inset 0 0 0 1.5px var(--loss);
+}
+
+.legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2) var(--s-5);
+    max-width: 22rem;
+    margin-top: var(--s-4);
+    padding-top: var(--s-3);
+    border-top: 1px solid var(--line);
+    color: var(--ink-2);
+    font-size: var(--fs-caption);
+    line-height: var(--lh-caption);
+}
+
+.legend li {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ── Beside it: what it is ── */
+
+.heading {
+    composes: heading from "../../components/day/WeekAside.module.css";
+}
+
+.stakes {
+    margin-top: var(--s-4);
+    padding-top: var(--s-3);
+    border-top: 1px solid var(--line);
+    color: var(--ink-2);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-body);
+    text-wrap: pretty;
+}
+
+.notes {
+    margin-top: var(--s-10);
+}
+
+.notes p {
+    max-width: 60ch;
+    color: var(--ink-2);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}

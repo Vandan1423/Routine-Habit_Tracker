@@ -1,0 +1,184 @@
+.block {
+    margin-top: var(--s-8);
+}
+
+/* The hairline runs as wide as the rows' hover tint does */
+.block .head {
+    position: relative;
+    margin-inline: calc(var(--s-2) * -1);
+    padding-inline: var(--s-2);
+}
+
+/* The heading is the button that folds the block. Its label is what is read and focused;
+   the whole width of the heading takes the press, a little taller than it is drawn. */
+.toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-1);
+    border-radius: var(--r-1);
+}
+
+.toggle::after {
+    content: "";
+    position: absolute;
+    inset: calc((var(--hit) - var(--control-sm)) / -2) 0;
+}
+
+/* Waits out of sight until the heading is pointed at or reached by keyboard. A folded block always shows it. */
+.chevron {
+    color: var(--ink-3);
+    opacity: 0;
+    transition:
+        opacity var(--t-fast) var(--ease),
+        rotate var(--t-base) var(--ease);
+}
+
+.toggle:focus-visible .chevron,
+.folded .chevron {
+    opacity: 1;
+}
+
+.folded .chevron {
+    rotate: -90deg;
+}
+
+@media (hover: hover) {
+    .head:hover .chevron {
+        opacity: 1;
+    }
+}
+
+@media (hover: none) {
+    .chevron {
+        opacity: 1;
+    }
+}
+
+.complete {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--ink-2);
+    font-weight: var(--fw-medium);
+}
+
+/*
+ * The rows fold away under the heading. The wrapper is as wide as the rows' hover tint, so that
+ * clipping them on the way does not cut the tint off at the sides.
+ */
+.fold {
+    display: grid;
+    grid-template-rows: 1fr;
+    margin-inline: calc(var(--s-2) * -1);
+    transition: grid-template-rows var(--t-slow) var(--ease-out);
+}
+
+.folded .fold {
+    grid-template-rows: 0fr;
+}
+
+.rows {
+    min-height: 0;
+    padding-inline: var(--s-2);
+    overflow: hidden;
+    transition: opacity var(--t-base) var(--ease);
+}
+
+/* The air above the first row belongs to the row, so it folds away with it */
+.rows > :first-child {
+    margin-top: var(--s-1);
+}
+
+.folded .rows {
+    opacity: 0;
+}
+
+/* The clock, as a thin saffron line between what has started and what is still ahead */
+.now {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    height: 14px;
+    margin-inline: calc(var(--s-2) * -1);
+    padding-inline: var(--s-2);
+    color: var(--now);
+    font-size: var(--fs-micro);
+    font-weight: var(--fw-medium);
+    line-height: 14px;
+}
+
+/* A dot under the column of checks */
+.now::before {
+    content: "";
+    flex: none;
+    width: 5px;
+    height: 5px;
+    margin-inline: calc((var(--check) - 5px) / 2);
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.now::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: currentColor;
+    opacity: 0.45;
+}
+
+/*
+ * The moment a part of the day is finished. An ink line is drawn along the hairline under its heading,
+ * left to right, and then lets go; "Complete" arrives at the far end with its tick drawn as a stroke.
+ */
+.sealing .head::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 -1px;
+    height: 1px;
+    background: var(--ink);
+    transform-origin: 0 50%;
+    animation:
+        underline var(--t-slow) var(--ease-out) backwards,
+        let-go var(--t-base) var(--ease) calc(var(--t-slow) + var(--t-base)) forwards;
+}
+
+.sealing .complete {
+    animation: arrive var(--t-base) var(--ease) backwards;
+}
+
+/* A little longer than the tick's own length, so nothing of it shows before it is drawn */
+.sealing .complete path {
+    stroke-dasharray: 17;
+    animation: tick var(--t-slow) var(--ease-out) var(--t-fast) backwards;
+}
+
+@keyframes underline {
+    from {
+        scale: 0 1;
+    }
+}
+
+@keyframes let-go {
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes arrive {
+    from {
+        opacity: 0;
+    }
+}
+
+@keyframes tick {
+    from {
+        stroke-dashoffset: 17;
+    }
+}
+
+/* bp: phone */
+@media (max-width: 699.98px) {
+    .block {
+        margin-top: var(--s-6);
+    }
+}

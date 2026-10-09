@@ -1,0 +1,115 @@
+.heading {
+    composes: heading from "../../components/day/WeekAside.module.css";
+}
+
+.count {
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+}
+
+/* .lists .item: outranks the base rules for links and buttons whichever file loads last */
+.lists .item {
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+    color: var(--ink-2);
+    font-size: var(--fs-control);
+    line-height: var(--lh-body);
+    font-weight: var(--fw-medium);
+    text-align: start;
+    transition:
+        background-color var(--t-fast) var(--ease),
+        color var(--t-fast) var(--ease);
+}
+
+.name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.lists .new {
+    color: var(--ink-3);
+}
+
+.lists .item:active {
+    transform: translateY(0.5px);
+}
+
+/* ── Beside the list: a line for each ── */
+
+.column .items {
+    display: grid;
+    gap: 1px;
+}
+
+/* Wider than the column by its own padding, so the tint has room around the words */
+.column .item {
+    width: calc(100% + var(--s-4));
+    min-height: var(--control-md);
+    margin-inline: calc(var(--s-2) * -1);
+    padding-inline: var(--s-2);
+    border-radius: var(--r-2);
+}
+
+.column .name {
+    flex: 1;
+}
+
+.column .item[aria-current="page"] {
+    background: var(--fill);
+    color: var(--ink);
+}
+
+@media (hover: hover) {
+    .column .item:hover {
+        background: var(--hover);
+        color: var(--ink);
+    }
+
+    .column .item[aria-current="page"]:hover {
+        background: var(--fill);
+    }
+}
+
+/* ── Above the list: one line that scrolls sideways when the lists outgrow it ── */
+
+.row .items {
+    display: flex;
+    gap: var(--s-2);
+    margin-inline: calc(var(--gutter) * -1);
+    padding-inline: var(--gutter);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.row .item {
+    flex: none;
+    min-height: var(--control-lg);
+    padding-inline: var(--s-3);
+    border: 1px solid var(--line);
+    border-radius: var(--r-2);
+    white-space: nowrap;
+}
+
+.row .name {
+    max-width: 22ch;
+}
+
+/* The list that is open is filled with ink, like a chosen day of the week on Plan */
+.row .item[aria-current="page"] {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--on-accent);
+}
+
+.row .item[aria-current="page"] .count {
+    color: inherit;
+}
+
+@media (hover: hover) {
+    .row .item:not([aria-current="page"]):hover {
+        border-color: var(--line-strong);
+        color: var(--ink);
+    }
+}

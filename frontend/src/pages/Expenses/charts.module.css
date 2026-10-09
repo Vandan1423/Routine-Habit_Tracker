@@ -1,0 +1,161 @@
+/*
+ * Recharts draws with SVG and names its parts with classes of its own (.recharts-…). They are coloured
+ * and set from here, with the tokens, so the pictures follow the theme like everything else.
+ */
+
+.chart {
+    min-width: 0;
+}
+
+.chart :global(.recharts-wrapper),
+.ring :global(.recharts-wrapper) {
+    font: inherit;
+}
+
+/* The picture can be walked with the arrow keys; the ring around it is the app's own */
+.chart :global(.recharts-surface),
+.ring :global(.recharts-surface) {
+    border-radius: var(--r-1);
+    outline-offset: 2px;
+}
+
+/* The scale: hairlines across, and small quiet figures */
+.chart :global(.recharts-cartesian-grid line) {
+    stroke: var(--line);
+}
+
+.chart :global(.recharts-cartesian-axis-tick-value) {
+    fill: var(--ink-3);
+    font-size: var(--fs-caption);
+}
+
+/* ── Six months ── */
+
+.line :global(.recharts-area-curve) {
+    stroke: var(--accent);
+    stroke-width: 1.5;
+}
+
+.line :global(.recharts-area-area) {
+    fill: var(--fill);
+    fill-opacity: 1;
+}
+
+.dot {
+    fill: var(--paper);
+    stroke: var(--accent);
+    stroke-width: 1.5;
+}
+
+.dotShown {
+    fill: var(--accent);
+    stroke: var(--paper);
+    stroke-width: 1.5;
+}
+
+.dotActive {
+    fill: var(--accent);
+    stroke: var(--paper);
+    stroke-width: 2;
+}
+
+.cursorLine {
+    stroke: var(--line-strong);
+}
+
+/* ── By category ── */
+
+.categoryName {
+    fill: var(--ink);
+    font-size: var(--fs-meta);
+}
+
+.bar :global(.recharts-rectangle) {
+    fill: var(--accent);
+}
+
+.amount {
+    fill: var(--ink-2);
+    font-size: var(--fs-meta);
+}
+
+.cursorBand {
+    fill: var(--hover);
+}
+
+/* ── By place ── */
+
+.places {
+    display: grid;
+    gap: var(--s-4);
+}
+
+.ring {
+    width: 116px;
+    height: 116px;
+}
+
+.slice {
+    fill: var(--accent);
+    stroke: var(--paper);
+    stroke-width: 2;
+}
+
+.sliceRest {
+    fill: var(--fill-strong);
+    stroke: var(--paper);
+    stroke-width: 2;
+}
+
+.ring :global(.recharts-sector):focus {
+    outline: none;
+}
+
+.legend {
+    display: grid;
+    gap: var(--s-2);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+}
+
+.place {
+    display: flex;
+    align-items: baseline;
+    gap: var(--s-2);
+}
+
+/* The slice's own ink, so the list can be read against the ring */
+.key,
+.keyRest {
+    flex: none;
+    align-self: center;
+    width: 8px;
+    height: 8px;
+    border-radius: var(--r-mark);
+    background: var(--accent);
+}
+
+.keyRest {
+    background: var(--fill-strong);
+}
+
+.placeName {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.placeTotal {
+    flex: none;
+    color: var(--ink-2);
+}
+
+/* ── What is said beside the pointer ── */
+
+.tip {
+    composes: popup from "../../components/ui/Tooltip.module.css";
+}
+
+.tip b {
+    font-weight: var(--fw-semibold);
+}

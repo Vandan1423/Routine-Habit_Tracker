@@ -1,173 +1,108 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useRef, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import AuthLayout, { FormError, SlowNote } from "./AuthLayout";
+import { Button, Input } from "../../components/ui";
+import useSlow from "../../hooks/useSlow";
+import { RESET_SENT, SLOW_WORDS, checkEmail, requestFailure } from "../../lib/authWords";
+import { startsFocused } from "../../lib/platform";
 import authService from "../../services/authService";
-import styles from "./ForgotPasswordPage.module.css";
+import styles from "./AuthLayout.module.css";
 
-export default function ForgotPasswordPage() {
-    const [email, setEmail] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [message, setMessage] = useState("");
-    const [error, setError] = useState("");
-    const [submitted, setSubmitted] = useState(false);
+const NO_ERRORS = {};
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError("");
-        setMessage("");
+/**
+ * Asks for a link to choose a new password. The server answers the same way whether or not the address
+ * has an account, and so does this page.
+ */
+const ForgotPasswordPage = () => {
+    const { state } = useLocation();
+    const emailRef = useRef(null);
 
-        if (!email) {
-            setError("Please enter your email address");
+    const [email, setEmail] = useState(state?.email ?? "");
+    const [errors, setErrors] = useState(NO_ERRORS);
+    const [busy, setBusy] = useState(false);
+    const [sentTo, setSentTo] = useState("");
+    const slow = useSlow(busy);
+
+    const onward = state?.from ? { from: state.from } : undefined;
+
+    const submit = async (event) => {
+        event.preventDefault();
+        if (busy) return;
+
+        const found = checkEmail({ email });
+        if (found.email) {
+            setErrors(found);
+            emailRef.current?.focus();
             return;
         }
 
-        setLoading(true);
+        setBusy(true);
         try {
-            const response = await authService.forgotPassword(email);
-            setMessage(response.message);
-            setSubmitted(true);
-            setEmail("");
-        } catch (err) {
-            setError(err.message);
+            await authService.forgotPassword(email.trim());
+            setSentTo(email.trim());
+        } catch (error) {
+            setErrors(requestFailure(error));
         } finally {
-            setLoading(false);
+            setBusy(false);
         }
     };
 
-    return (
-        <div className={styles.page}>
-            <div className={styles.backgroundShapes}>
-                <div className={styles.shape1}></div>
-                <div className={styles.shape2}></div>
-                <div className={styles.shape3}></div>
-            </div>
-
-            <div className={styles.container}>
-                <form className={styles.form} onSubmit={handleSubmit}>
-                    <div className={styles.logoSection}>
-                        <div className={styles.logo}>
-                            <svg
-                                width="50"
-                                height="50"
-                                viewBox="0 0 50 50"
-                                fill="none"
-                            >
-                                <circle
-                                    cx="25"
-                                    cy="25"
-                                    r="23"
-                                    stroke="url(#gradient1)"
-                                    strokeWidth="2"
-                                />
-                                <path
-                                    d="M25 15 L32 25 L25 35 L18 25 Z"
-                                    fill="url(#gradient1)"
-                                />
-                                <defs>
-                                    <linearGradient
-                                        id="gradient1"
-                                        x1="0%"
-                                        y1="0%"
-                                        x2="100%"
-                                        y2="100%"
-                                    >
-                                        <stop
-                                            offset="0%"
-                                            stopColor="#1f9b6c"
-                                            stopOpacity="0.9"
-                                        />
-                                        <stop
-                                            offset="100%"
-                                            stopColor="#0f5b3f"
-                                            stopOpacity="0.8"
-                                        />
-                                    </linearGradient>
-                                </defs>
-                            </svg>
-                        </div>
-                        <h2 className={styles.brandName}>Life Tracker</h2>
-                    </div>
-
-                    <h1 className={styles.title}>Forgot Password?</h1>
-                    <p className={styles.subtitle}>
-                        Enter your email address and we'll send you a link to
-                        reset your password.
-                    </p>
-
-                    {error && <div className={styles.errorBox}>❌ {error}</div>}
-
-                    {message && !submitted && (
-                        <div className={styles.successBox}>✓ {message}</div>
-                    )}
-
-                    {submitted && (
-                        <div className={styles.messageBox}>
-                            <p className={styles.successMessage}>
-                                ✓ Email sent successfully!
-                            </p>
-                            <p>
-                                Check your email for a password reset link. The
-                                link will expire in 15 minutes.
-                            </p>
-                        </div>
-                    )}
-
-                    {!submitted && (
-                        <>
-                            <div className={styles.inputGroup}>
-                                <input
-                                    type="email"
-                                    placeholder="Email Address"
-                                    className={styles.input}
-                                    value={email}
-                                    onChange={(e) => {
-                                        setEmail(e.target.value);
-                                        setError("");
-                                    }}
-                                    disabled={loading}
-                                    required
-                                />
-                            </div>
-
-                            <button
-                                type="submit"
-                                className={styles.submitButton}
-                                disabled={loading}
-                            >
-                                <span>
-                                    {loading
-                                        ? "Sending..."
-                                        : "Send Reset Link"}
-                                </span>
-                                {!loading && (
-                                    <svg
-                                        width="20"
-                                        height="20"
-                                        viewBox="0 0 20 20"
-                                        fill="none"
-                                    >
-                                        <path
-                                            d="M7 3L14 10L7 17"
-                                            stroke="currentColor"
-                                            strokeWidth="2"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                        />
-                                    </svg>
-                                )}
-                            </button>
-                        </>
-                    )}
-
-                    <div className={styles.footer}>
-                        <p>
-                            Remember your password?{" "}
-                            <Link to="/login" className={styles.link}>
-                                Back to Login
-                            </Link>
-                        </p>
-                    </div>
-                </form>
-            </div>
-        </div>
+    const back = (
+        <Link to="/login" state={{ ...onward, email: (sentTo || email).trim() || undefined }} className={styles.link}>
+            Back to sign in
+        </Link>
     );
-}
+
+    if (sentTo) {
+        return (
+            <AuthLayout title={RESET_SENT.title} lead={RESET_SENT.text(sentTo)} foot={back}>
+                <p className={styles.more}>
+                    Wrong address?{" "}
+                    <button type="button" className={styles.textButton} onClick={() => setSentTo("")}>
+                        Use a different one
+                    </button>
+                    .
+                </p>
+            </AuthLayout>
+        );
+    }
+
+    return (
+        <AuthLayout
+            title="Reset your password"
+            lead="Enter your account’s email and we’ll send a link to choose a new one."
+            foot={back}
+        >
+            <form className={styles.form} onSubmit={submit} noValidate>
+                <Input
+                    ref={emailRef}
+                    label="Email"
+                    type="email"
+                    name="email"
+                    autoComplete="username"
+                    inputMode="email"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    autoFocus={startsFocused}
+                    value={email}
+                    error={errors.email}
+                    onChange={(event) => {
+                        setEmail(event.target.value);
+                        setErrors(NO_ERRORS);
+                    }}
+                />
+                <FormError>{errors.form}</FormError>
+                <div className={styles.actions}>
+                    <Button type="submit" variant="primary" size="lg" loading={busy}>
+                        Send the link
+                    </Button>
+                </div>
+                {slow && <SlowNote>{SLOW_WORDS}</SlowNote>}
+            </form>
+        </AuthLayout>
+    );
+};
+
+export default ForgotPasswordPage;

@@ -7,6 +7,9 @@ import {
     reorderRoutines,
     completeRoutine,
     uncompleteRoutine,
+    getAllRoutines,
+    restoreRoutine,
+    getRoutineHistory,
 } from "../controllers/routineController.js";
 import { protect } from "../middlewares/authMiddleware.js"; // Ensure the path matches your structure
 import { settleDays } from "../middlewares/dayRolloverMiddleware.js";
@@ -29,6 +32,9 @@ router
     .route("/reorder")
     .put(validate({ body: reorderRoutinesSchema }), reorderRoutines);
 
+// Every routine in the plan, whatever day it falls on
+router.get("/all", getAllRoutines);
+
 // Standard CRUD routes
 router
     .route("/")
@@ -38,6 +44,12 @@ router
     .route("/:id")
     .put(validate({ params: idParam, body: updateRoutineSchema }), updateRoutine)
     .delete(validate({ params: idParam }), deleteRoutine);
+// Brings back a routine that was deleted
+router.post("/:id/restore", validate({ params: idParam }), restoreRoutine);
+
+// The days a routine was done, done late or missed
+router.get("/:id/history", validate({ params: idParam }), getRoutineHistory);
+
 router.post(
     "/:id/complete",
     validate({ params: idParam, body: completeRoutineSchema }),

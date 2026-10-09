@@ -1,0 +1,40 @@
+/* The field itself is drawn by Field.module.css, exactly as an Input is */
+.positioner {
+    composes: positioner from "./Floating.module.css";
+}
+
+.popup {
+    composes: surface from "./Floating.module.css";
+    min-width: var(--anchor-width);
+}
+
+/* Shorter than a menu: about seven times show, with the saved one in the middle */
+.list {
+    composes: list from "./Floating.module.css";
+    position: relative;
+    min-width: 0;
+    max-height: min(var(--available-height, 100vh), 15rem);
+}
+
+.row {
+    composes: row from "./Floating.module.css";
+}
+
+.rowText {
+    composes: rowText from "./Floating.module.css";
+}
+
+.rowEnd {
+    composes: rowEnd from "./Floating.module.css";
+}
+
+.tick {
+    color: var(--ink);
+}
+
+.empty {
+    padding: var(--s-2) var(--s-3);
+    color: var(--ink-2);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+}

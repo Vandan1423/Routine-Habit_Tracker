@@ -1,0 +1,169 @@
+/* The head of the screen, set like the head of a day so that it starts where Today and Plan do */
+.header {
+    composes: header from "../../components/day/DayHeader.module.css";
+}
+
+.text {
+    composes: text from "../../components/day/DayHeader.module.css";
+}
+
+.eyebrow {
+    composes: eyebrow from "../../components/day/DayHeader.module.css";
+    overflow-wrap: anywhere;
+}
+
+/* The interface's own face. Only a date is set in the serif. */
+.title {
+    font-size: var(--fs-figure);
+    line-height: calc(var(--fs-date) * var(--lh-date));
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--track-title);
+}
+
+/* ── A group of settings: a small heading, then one line each, with a hairline between ── */
+
+.section {
+    margin-top: var(--s-10);
+}
+
+.row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-3) var(--s-8);
+    min-height: var(--s-16);
+    padding-block: var(--s-3);
+}
+
+.row + .row {
+    border-top: 1px solid var(--line);
+}
+
+.what {
+    flex: 1;
+    min-width: 0;
+}
+
+.name {
+    font-size: var(--fs-item);
+    line-height: var(--lh-item);
+    font-weight: var(--fw-medium);
+}
+
+.note {
+    max-width: 44ch;
+    margin-top: 2px;
+    color: var(--ink-2);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+    text-wrap: pretty;
+}
+
+.control {
+    display: flex;
+    flex: none;
+    align-items: center;
+    max-width: 100%;
+}
+
+/* Something that is stated rather than set: the email, the zone */
+.value {
+    color: var(--ink);
+    text-align: end;
+    overflow-wrap: anywhere;
+}
+
+.aside {
+    margin-inline-start: var(--s-2);
+    color: var(--ink-3);
+}
+
+/* The name: a field and its button on one line. The error opens under the field without moving the button. */
+.inline {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--s-2);
+}
+
+.nameField {
+    width: 15rem;
+    max-width: 100%;
+}
+
+.foot {
+    margin-top: var(--s-10);
+    padding-top: var(--s-4);
+    border-top: 1px solid var(--line);
+    color: var(--ink-2);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+}
+
+/* .foot a: outranks the base rule for links whichever file loads last */
+.foot a {
+    border-radius: var(--r-1);
+    text-decoration: underline;
+    text-decoration-color: var(--line-strong);
+    text-underline-offset: 3px;
+    transition: text-decoration-color var(--t-fast) var(--ease);
+}
+
+@media (hover: hover) {
+    .foot a:hover {
+        text-decoration-color: currentColor;
+    }
+}
+
+/* Nothing on this device can hover, so it has no keyboard to speak of */
+@media (any-hover: none) {
+    .keyboard {
+        display: none;
+    }
+}
+
+/* ── The forms in the two dialogs ── */
+
+.form {
+    display: grid;
+    gap: var(--s-4);
+}
+
+.formError {
+    color: var(--loss);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+}
+
+/* bp: phone */
+@media (max-width: 699.98px) {
+    .header {
+        align-items: center;
+    }
+
+    .section {
+        margin-top: var(--s-8);
+    }
+
+    /* Anything wider than a switch goes under its words */
+    .stack {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .stack .control {
+        justify-content: flex-start;
+    }
+
+    .stack .value {
+        text-align: start;
+    }
+
+    .inline,
+    .nameField {
+        width: 100%;
+    }
+
+    .inline > :first-child {
+        flex: 1;
+    }
+}

@@ -3,6 +3,7 @@ import crypto from "crypto";
 import User, { PRIVATE_USER_FIELDS } from "../models/User.js";
 import ExpressError from "../utils/ExpressError.js";
 import sendEmail from "../utils/sendEmail.js";
+import eraseAccount from "../utils/eraseAccount.js";
 import {
     passwordResetEmail,
     verificationEmail,
@@ -384,6 +385,113 @@ export const getMe = async (req, res) => {
     res.status(200).json({
         user: req.user,
     });
+};
+
+// PUT /api/auth/me
+// What an account's owner may change here: the name it goes by, and how long Trash keeps what they delete
+export const updateProfile = async (req, res, next) => {
+    try {
+        const { name, trashDays } = req.body;
+
+        const user = await User.findByIdAndUpdate(
+            req.user._id,
+            {
+                ...(name !== undefined ? { name } : {}),
+                ...(trashDays !== undefined ? { trashDays } : {}),
+            },
+            { returnDocument: "after" },
+        ).select(PRIVATE_USER_FIELDS);
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found.",
+            });
+        }
+
+        res.status(200).json({ success: true, user });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// A wrong password is answered with 400, never 401: to a client, 401 means "your session has run out"
+const wrongPassword = (res) =>
+    res.status(400).json({
+        success: false,
+        code: "WRONG_PASSWORD",
+        message: "That isn't your current password.",
+    });
+
+// PUT /api/auth/password
+// Changes the password and signs out every other device. The one that asked stays signed in.
+export const changePassword = async (req, res, next) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        const user = await User.findById(req.user._id);
+
+        if (!user || !(await user.matchPassword(currentPassword))) {
+            return wrongPassword(res);
+        }
+
+        if (newPassword === currentPassword) {
+            return res.status(400).json({
+                success: false,
+                message: "The new password is the same as the current one.",
+            });
+        }
+
+        user.password = newPassword; // hashed by the model as it is saved
+        // A reset link asked for under the old password is finished too
+        user.passwordResetToken = undefined;
+        user.passwordResetExpiry = undefined;
+        await user.save({ validateBeforeSave: false });
+
+        // Sessions are removed in one operation of their own, so a refresh happening meanwhile isn't overwritten.
+        // previousToken is matched too, in case this client never received its latest rotation.
+        const here = req.cookies?.refreshToken;
+        await User.updateOne(
+            { _id: user._id },
+            here
+                ? {
+                      $pull: {
+                          refreshTokens: {
+                              token: { $ne: here },
+                              previousToken: { $ne: here },
+                          },
+                      },
+                  }
+                : { $set: { refreshTokens: [] } },
+        );
+
+        res.status(200).json({
+            success: true,
+            message: "Password changed. Your other devices have been signed out.",
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// POST /api/auth/delete-account
+// Removes the account and everything in it, for good. The password is asked for again first.
+export const deleteAccount = async (req, res, next) => {
+    try {
+        const user = await User.findById(req.user._id);
+
+        if (!user || !(await user.matchPassword(req.body.password))) {
+            return wrongPassword(res);
+        }
+
+        await eraseAccount(user._id);
+
+        res.clearCookie("refreshToken", getCookieOptions()).status(200).json({
+            success: true,
+            message: "Your account has been deleted.",
+        });
+    } catch (error) {
+        next(error);
+    }
 };
 
 // POST /api/auth/verify-email/:token

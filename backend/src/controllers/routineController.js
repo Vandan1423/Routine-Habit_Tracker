@@ -4,11 +4,14 @@ import { awardXP, revokeXP } from "../utils/rewardEngine.js";
 import { updateDailyStreak } from "../utils/dailyStreakCalculator.js";
 import { addDailyXp } from "../utils/dailySummary.js";
 import {
+    addDays,
     getUserClockTime,
     getUserToday,
     getWeekday,
     isRoutineScheduledOn,
 } from "../utils/dateRules.js";
+import { buildHistory, missedDaysOf } from "../utils/itemHistory.js";
+import { moveItemToTrash, restoreItemFromTrash } from "../utils/itemTrash.js";
 
 // @desc    Create a new routine
 // @route   POST /api/routines
@@ -101,6 +104,30 @@ export const getRoutines = async (req, res, next) => {
     }
 };
 
+// @desc    Every routine in the plan: the repeating ones, the one-off tasks still to come,
+//          and the one-off tasks of the last few days, so the week today is in can be shown whole
+// @route   GET /api/routines/all
+export const getAllRoutines = async (req, res, next) => {
+    try {
+        const today = getUserToday(req.user);
+
+        const routines = await Routine.find({
+            user: req.user._id,
+            isActive: true,
+            // A week starts on a different day in different places: six days back covers any of them.
+            // A one-off task older than that is over, and no longer part of the plan.
+            $or: [
+                { isRecurring: true },
+                { isRecurring: false, date: { $gte: addDays(today, -6) } },
+            ],
+        }).sort({ startTime: 1, order: 1 });
+
+        res.status(200).json({ routines, today });
+    } catch (error) {
+        next(error);
+    }
+};
+
 // @desc    Update a routine
 // @route   PUT /api/routines/:id
 export const updateRoutine = async (req, res, next) => {
@@ -109,6 +136,7 @@ export const updateRoutine = async (req, res, next) => {
         let routine = await Routine.findOne({
             _id: req.params.id,
             user: req.user._id,
+            isActive: true,
         });
 
         if (!routine) {
@@ -129,29 +157,83 @@ export const updateRoutine = async (req, res, next) => {
     }
 };
 
-// @desc    Soft delete a routine
+// @desc    Move a routine to Trash. The XP it earned goes with it, and comes back if it is recovered.
 // @route   DELETE /api/routines/:id
 export const deleteRoutine = async (req, res, next) => {
     try {
-        const routine = await Routine.findOne({
-            _id: req.params.id,
-            user: req.user._id,
-        });
+        const moved = await moveItemToTrash(req.user, "routine", req.params.id);
 
-        if (!routine) {
+        if (!moved) {
             return res
                 .status(404)
                 .json({ message: "Routine not found or unauthorized" });
         }
 
-        // Soft delete: Set isActive to false instead of deleting the document
-        routine.isActive = false;
-        await routine.save();
-
         res.status(200).json({
-            message: "Routine successfully removed",
+            message: "Routine moved to Trash",
             id: req.params.id,
+            purgeAt: moved.item.purgeAt,
+            xpTaken: moved.xpTaken,
+            // What tonight still charges for it: it was due today and was not done
+            owed: moved.owed,
         });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Bring back a routine that is in Trash
+// @route   POST /api/routines/:id/restore
+export const restoreRoutine = async (req, res, next) => {
+    try {
+        const restored = await restoreItemFromTrash(req.user, "routine", req.params.id);
+
+        if (!restored) {
+            return res
+                .status(404)
+                .json({ message: "Routine not found or unauthorized" });
+        }
+
+        res.status(200).json(restored.item);
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    The days a routine was done, done late or missed, with its totals and runs
+// @route   GET /api/routines/:id/history
+export const getRoutineHistory = async (req, res, next) => {
+    try {
+        const routine = await Routine.findOne({
+            _id: req.params.id,
+            user: req.user._id,
+            isActive: true,
+        });
+        if (!routine)
+            return res.status(404).json({ message: "Routine not found" });
+
+        const [logs, missed] = await Promise.all([
+            RoutineLog.find({ routine: routine._id, user: req.user._id }).select(
+                "date wasOnTime xpEarned completedAt",
+            ),
+            missedDaysOf(req.user._id, "routine_missed", "routineId", routine._id),
+        ]);
+
+        const history = buildHistory({
+            user: req.user,
+            item: routine,
+            today: getUserToday(req.user),
+            recorded: logs.map((log) => ({
+                date: log.date,
+                status: log.wasOnTime === false ? "late" : "done",
+                completedAt: log.completedAt,
+                xpEarned: log.xpEarned,
+            })),
+            missed,
+            isDueOn: (date) => isRoutineScheduledOn(routine, date),
+        });
+
+        res.status(200).json(history);
     } catch (error) {
         next(error);
     }
@@ -282,7 +364,7 @@ export const completeRoutine = async (req, res, next) => {
             },
         );
         await addDailyXp(req.user._id, logDate, xpEarned);
-        const dailyStats = await updateDailyStreak(req.user._id, logDate);
+        await updateDailyStreak(req.user._id, logDate);
 
         res.status(200).json({ log, reward });
     } catch (error) {
@@ -299,8 +381,8 @@ export const uncompleteRoutine = async (req, res, next) => {
         const today = getUserToday(req.user);
         const logDate = date || today;
 
-        // Verify the routine belongs to this user
-        const routine = await Routine.findOne({ _id: id, user: req.user._id });
+        // Verify the routine belongs to this user. One in Trash has had its XP taken already, and stays as it is.
+        const routine = await Routine.findOne({ _id: id, user: req.user._id, isActive: true });
         if (!routine) {
             return res.status(404).json({ message: "Routine not found" });
         }

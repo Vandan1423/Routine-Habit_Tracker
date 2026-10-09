@@ -1,0 +1,83 @@
+/* button.user: the two-part selector outranks the base rules whichever file loads last */
+button.user {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+    width: 100%;
+    min-height: var(--control-md);
+    padding: 0 var(--s-2);
+    border-radius: var(--r-2);
+    color: var(--ink);
+    font-size: var(--fs-control);
+    font-weight: var(--fw-medium);
+    transition: background-color var(--t-fast) var(--ease);
+}
+
+/* The pointer target is never smaller than --hit */
+button.user::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    inset-block: min(0px, calc((100% - var(--hit)) / 2));
+}
+
+/* --side-hover and --side-chosen come from the sidebar this sits in */
+@media (hover: hover) {
+    button.user:hover {
+        background: var(--side-hover);
+    }
+}
+
+button.user:active,
+button.user[data-popup-open] {
+    background: var(--side-chosen);
+}
+
+.name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dots {
+    color: var(--ink-3);
+}
+
+button.compact {
+    justify-content: center;
+    width: var(--control-lg);
+    height: var(--control-lg);
+    padding: 0;
+}
+
+/* ── The menu ── */
+/* As wide as the row that opens it */
+.menu {
+    min-width: calc(var(--side-w) - var(--s-3) * 2);
+}
+
+.who {
+    display: grid;
+    padding: 6px var(--s-2) var(--s-2);
+}
+
+.whoName,
+.whoEmail {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.whoName {
+    font-size: var(--fs-control);
+    font-weight: var(--fw-medium);
+}
+
+.whoEmail {
+    color: var(--ink-3);
+    font-size: var(--fs-caption);
+    line-height: var(--lh-caption);
+}

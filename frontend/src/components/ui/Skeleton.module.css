@@ -1,0 +1,25 @@
+.skeleton {
+    display: block;
+    border-radius: var(--r-1);
+    background: var(--fill-strong);
+    opacity: 0.8;
+    animation: breathe calc(var(--t-slow) * 5) ease-in-out infinite;
+}
+
+/* As thick as lowercase letters, and exactly one line tall with its margins */
+.text {
+    height: 0.6em;
+    margin-block: calc((1lh - 0.6em) / 2);
+    border-radius: var(--r-mark);
+}
+
+.circle {
+    border-radius: 50%;
+}
+
+/* Slow and slight. Skeletons on one screen breathe together. */
+@keyframes breathe {
+    50% {
+        opacity: 0.45;
+    }
+}

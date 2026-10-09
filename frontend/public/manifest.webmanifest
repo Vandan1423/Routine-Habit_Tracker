@@ -1,0 +1,16 @@
+{
+    "name": "Nitya",
+    "short_name": "Nitya",
+    "description": "Nitya keeps your day: the routines and habits you set yourself, what is done, what is next, and what it adds up to.",
+    "id": "/",
+    "start_url": "/today",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#faf8f4",
+    "theme_color": "#faf8f4",
+    "icons": [
+        { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+        { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+        { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    ]
+}

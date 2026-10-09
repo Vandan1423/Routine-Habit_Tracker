@@ -1,0 +1,74 @@
+/* The closed field is drawn by Field.module.css (.control), so it lines up with every Input.
+   "button" in the selector makes these outrank that class wherever the two files land in the bundle. */
+button.trigger {
+    width: 100%;
+    text-align: start;
+    cursor: pointer;
+}
+
+.trigger[data-disabled] {
+    cursor: not-allowed;
+}
+
+.value {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.value[data-placeholder] {
+    color: var(--ink-3);
+}
+
+.chevron {
+    display: inline-flex;
+    flex: none;
+    margin-inline-end: -3px;
+    color: var(--ink-3);
+    transition: transform var(--t-fast) var(--ease);
+}
+
+.trigger[data-popup-open] .chevron {
+    transform: rotate(180deg);
+}
+
+.positioner {
+    composes: positioner from "./Floating.module.css";
+}
+
+/* As wide as its field, or wider if an option needs it */
+.popup {
+    composes: surface from "./Floating.module.css";
+    min-width: var(--anchor-width);
+    max-width: var(--available-width);
+}
+
+.list {
+    composes: list from "./Floating.module.css";
+    min-width: 0;
+}
+
+.row {
+    composes: row from "./Floating.module.css";
+}
+
+.rowText {
+    composes: rowText from "./Floating.module.css";
+}
+
+.rowEnd {
+    composes: rowEnd from "./Floating.module.css";
+}
+
+.tick {
+    color: var(--ink);
+}
+
+@media (pointer: coarse) {
+    /* The same size as text typed into an Input on a phone */
+    .trigger {
+        font-size: 1rem;
+    }
+}

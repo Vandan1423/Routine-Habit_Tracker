@@ -1,0 +1,61 @@
+/* The forms of the Expenses screen are laid out as the form for a routine or a habit is */
+.form {
+    composes: form from "../../components/plan/ItemEditor.module.css";
+}
+
+/* Two fields that belong together: the amount and the day, the name and the amount */
+.pair {
+    composes: pair from "../../components/plan/ItemEditor.module.css";
+}
+
+/* A label over a control that has none of its own */
+.labelled {
+    composes: labelled from "../../components/plan/ItemEditor.module.css";
+}
+
+.label {
+    composes: label from "../../components/plan/ItemEditor.module.css";
+}
+
+.choice {
+    composes: choice from "../../components/plan/ItemEditor.module.css";
+}
+
+.form .more {
+    align-self: flex-start;
+    /* The button's own padding, so its words line up with the labels above */
+    margin-inline-start: -9px;
+}
+
+/* A plain line about what saving will do */
+.note {
+    padding-top: var(--s-4);
+    border-top: 1px solid var(--line);
+    color: var(--ink-2);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-body);
+    text-wrap: pretty;
+}
+
+/* Always in the page, so it is announced when it gets its words */
+.failure {
+    composes: failure from "../../components/plan/ItemEditor.module.css";
+}
+
+.failed {
+    composes: failed from "../../components/plan/ItemEditor.module.css";
+}
+
+/* The one that removes keeps to the far side, away from the two that close the form */
+.dialog .remove {
+    margin-inline-end: auto;
+    color: var(--loss);
+}
+
+/* bp: phone. On a sheet the three actions share the width; the one that removes needs less of it. */
+@media (max-width: 699.98px) {
+    .dialog .remove {
+        flex: 0 1 auto;
+        margin-inline-end: 0;
+    }
+}

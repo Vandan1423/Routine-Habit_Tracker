@@ -1,0 +1,106 @@
+/* The row's place in the list. It is this that grows and shrinks as a row arrives or leaves. */
+.frame {
+    position: relative;
+}
+
+/* As wide as the row's hover tint, so clipping it on the way in or out does not cut the tint short */
+.clipped {
+    margin-inline: calc(var(--s-2) * -1);
+    padding-inline: var(--s-2);
+    overflow: hidden;
+}
+
+/* The same line as a row on Today, without the check: this is where things are set, not done */
+.row {
+    composes: row from "../../components/day/DayRow.module.css";
+    position: relative;
+}
+
+.main {
+    composes: main from "../../components/day/DayRow.module.css";
+}
+
+.title {
+    composes: title from "../../components/day/DayRow.module.css";
+    border-radius: var(--r-1);
+}
+
+/* The name is the link; the whole row takes the press */
+.title::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: var(--r-2);
+}
+
+.meta {
+    composes: meta from "../../components/day/DayRow.module.css";
+}
+
+.xp {
+    composes: xp from "../../components/day/DayRow.module.css";
+}
+
+/* Above the link that covers the row */
+.menu {
+    composes: menu from "../../components/day/DayRow.module.css";
+    position: relative;
+}
+
+/* ── Putting habits in order ── */
+
+/* Waits in the margin beside the row until the row is pointed at or its handle is reached by keyboard */
+.handle {
+    position: absolute;
+    inset-block: 0;
+    left: calc(var(--s-6) * -1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--s-6);
+    height: var(--control-sm);
+    margin-block: auto;
+    border-radius: var(--r-1);
+    color: var(--ink-3);
+    cursor: grab;
+    opacity: 0;
+    touch-action: none;
+    transition:
+        opacity var(--t-fast) var(--ease),
+        color var(--t-fast) var(--ease);
+}
+
+.handle:focus-visible,
+.dragging .handle {
+    opacity: 1;
+}
+
+@media (hover: hover) {
+    .row:hover .handle {
+        opacity: 1;
+    }
+
+    .handle:hover {
+        color: var(--ink);
+    }
+}
+
+/* Nothing to point with: the order is changed from the row's menu instead */
+@media (hover: none) {
+    .handle {
+        display: none;
+    }
+}
+
+/* Lifted off the page for as long as it is held */
+.dragging {
+    z-index: 1;
+    background: var(--raised);
+    box-shadow: var(--shadow-float);
+    cursor: grabbing;
+}
+
+.dragging .handle {
+    color: var(--ink);
+    cursor: grabbing;
+}

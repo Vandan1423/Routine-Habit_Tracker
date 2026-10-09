@@ -76,6 +76,7 @@ describe("access rules", { skip: skipWithoutDatabase }, () => {
             assert.ok(!bobsHabits.some((item) => item._id === habit._id));
             assert.equal((await bob.put(`/habits/${habit._id}`, { title: "Taken" })).status, 404);
             assert.equal((await bob.post(`/habits/${habit._id}/log`, { quantity: 1 })).status, 404);
+            assert.equal((await bob.put(`/habits/${habit._id}/log`, { quantity: 1 })).status, 404);
             assert.equal((await bob.delete(`/habits/${habit._id}`)).status, 404);
 
             const stillThere = (await alice.get("/habits")).body.habits.find((item) => item._id === habit._id);

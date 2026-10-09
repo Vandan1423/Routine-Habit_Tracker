@@ -1,0 +1,45 @@
+.positioner {
+    composes: positioner from "./Floating.module.css";
+}
+
+.popup {
+    composes: surface list from "./Floating.module.css";
+}
+
+.row {
+    composes: row from "./Floating.module.css";
+}
+
+.rowIcon {
+    composes: rowIcon from "./Floating.module.css";
+}
+
+.rowText {
+    composes: rowText from "./Floating.module.css";
+}
+
+.rowEnd {
+    composes: rowEnd from "./Floating.module.css";
+}
+
+.danger {
+    composes: danger from "./Floating.module.css";
+}
+
+.separator {
+    composes: separator from "./Floating.module.css";
+}
+
+.groupLabel {
+    composes: groupLabel from "./Floating.module.css";
+}
+
+/* The tick keeps its place on every row, so the text of a chosen row does not shift */
+.tick {
+    color: var(--ink);
+    transition: opacity var(--t-fast) var(--ease);
+}
+
+[data-unchecked] > .tick {
+    opacity: 0;
+}

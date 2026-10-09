@@ -1,0 +1,71 @@
+/* A line of the list that has not been written yet: a plus where the check will be, and room to type */
+.line {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    min-height: var(--row);
+    margin-inline: calc(var(--s-2) * -1);
+    padding-inline: var(--s-2);
+    border-radius: var(--r-2);
+    cursor: text;
+    transition: background-color var(--t-fast) var(--ease);
+}
+
+@media (hover: hover) {
+    .line:hover {
+        background: var(--hover);
+    }
+}
+
+.line:focus-within {
+    background: var(--hover);
+}
+
+/* As wide as a check, so what is typed starts where the words of the rows above do */
+.plus {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: var(--check);
+    height: var(--check);
+    color: var(--ink-3);
+}
+
+/* No box of its own: the line is the field */
+.input {
+    flex: 1;
+    min-width: 0;
+    height: var(--row);
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    appearance: none;
+    color: var(--ink);
+    font-size: var(--fs-row);
+    line-height: var(--lh-item);
+    font-weight: var(--fw-medium);
+}
+
+.input::placeholder {
+    color: var(--ink-3);
+    font-weight: var(--fw-regular);
+    opacity: 1;
+}
+
+/* The line itself shows where the cursor is, so the field needs no ring of its own */
+.input:focus-visible {
+    outline: none;
+}
+
+.line:has(.input:focus-visible) {
+    outline: 2px solid var(--focus);
+    outline-offset: -2px;
+}
+
+.error {
+    padding: var(--s-1) 0 0 calc(var(--check) + var(--s-3));
+    color: var(--loss);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+}

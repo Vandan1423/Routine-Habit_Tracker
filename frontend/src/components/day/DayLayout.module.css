@@ -1,0 +1,53 @@
+/* Measured, so the layout follows the room the screen really has, whatever the navigation takes */
+.frame {
+    container-type: inline-size;
+}
+
+.layout {
+    display: grid;
+    grid-template-columns: minmax(0, var(--reading));
+    justify-content: center;
+}
+
+.column {
+    min-width: 0;
+}
+
+/* Under the column: the week and the streak side by side */
+.aside {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s-8) var(--s-10);
+    align-items: start;
+    margin-top: var(--s-12);
+}
+
+/* Narrower than a phone held sideways: one under the other */
+@container (max-width: 479.98px) {
+    .aside {
+        grid-template-columns: minmax(0, 1fr);
+        margin-top: var(--s-8);
+    }
+}
+
+/* Room for both: the reading column, a wide gap, and the aside (640 + 64 + 248) */
+@container (min-width: 952px) {
+    .layout {
+        grid-template-columns: minmax(0, var(--reading)) var(--aside);
+        column-gap: var(--s-16);
+    }
+
+    .aside {
+        display: block;
+        margin-top: 0;
+        /* Starts level with the foot of the date, clear of the heading */
+        padding-top: calc(var(--lh-meta) + var(--s-1) + var(--fs-date) * var(--lh-date));
+    }
+}
+
+/* Beside the column the aside's sections stack, with air between them */
+@container (min-width: 952px) {
+    .aside > * + * {
+        margin-top: var(--s-8);
+    }
+}

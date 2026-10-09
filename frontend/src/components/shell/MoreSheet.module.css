@@ -1,0 +1,44 @@
+.sheet {
+    display: grid;
+    gap: var(--s-5);
+}
+
+.links {
+    border-block: 1px solid var(--line);
+}
+
+.links li + li {
+    border-top: 1px solid var(--line);
+}
+
+.link {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    /* A row is a link or a button; both run the full width */
+    width: calc(100% + var(--s-2) * 2);
+    min-height: var(--s-12);
+    margin-inline: calc(var(--s-2) * -1);
+    padding-inline: var(--s-2);
+    border-radius: var(--r-2);
+    font-size: var(--fs-item);
+    line-height: var(--lh-item);
+    font-weight: var(--fw-medium);
+    transition: background-color var(--t-fast) var(--ease);
+}
+
+.link:active {
+    background: var(--fill);
+}
+
+.linkIcon {
+    color: var(--ink-2);
+}
+
+.linkLabel {
+    flex: 1;
+}
+
+.chevron {
+    color: var(--ink-3);
+}

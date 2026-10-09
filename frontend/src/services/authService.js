@@ -1,15 +1,20 @@
 import api, { authApi, refreshSession } from "./api";
 
+// What a failed account request is turned into: the server's own words where it sent any, with its
+// `code` ("WRONG_PASSWORD") and the HTTP status alongside for a form that wants to place the message
+const failure = (error, fallback) =>
+    Object.assign(new Error(error.response?.data?.message || fallback, { cause: error }), {
+        code: error.response?.data?.code,
+        status: error.response?.status,
+    });
+
 const authService = {
     register: async (data) => {
         try {
             const response = await authApi.post("/auth/register", data);
             return response.data;
         } catch (error) {
-            const message =
-                error.response?.data?.message ||
-                "Registration failed. Please try again.";
-            throw new Error(message, { cause: error });
+            throw failure(error, "Your account wasn’t created. Please try again.");
         }
     },
     login: async (credentials) => {
@@ -17,10 +22,7 @@ const authService = {
             const response = await authApi.post("/auth/login", credentials);
             return response.data;
         } catch (error) {
-            const message =
-                error.response?.data?.message ||
-                "Login failed. Please check credentials.";
-            throw new Error(message, { cause: error });
+            throw failure(error, "You weren’t signed in. Please try again.");
         }
     },
     logout: async () => {
@@ -54,15 +56,44 @@ const authService = {
             });
         }
     },
+    getMe: async () => {
+        try {
+            const response = await api.get("/auth/me");
+            return response.data;
+        } catch (error) {
+            throw failure(error, "Your account didn’t load. Please try again.");
+        }
+    },
+    updateProfile: async (data) => {
+        try {
+            const response = await api.put("/auth/me", data);
+            return response.data;
+        } catch (error) {
+            throw failure(error, "That didn’t save. Please try again.");
+        }
+    },
+    changePassword: async (data) => {
+        try {
+            const response = await api.put("/auth/password", data);
+            return response.data;
+        } catch (error) {
+            throw failure(error, "Your password wasn’t changed. Please try again.");
+        }
+    },
+    deleteAccount: async (data) => {
+        try {
+            const response = await api.post("/auth/delete-account", data);
+            return response.data;
+        } catch (error) {
+            throw failure(error, "Your account wasn’t deleted. Please try again.");
+        }
+    },
     verifyEmail: async (token) => {
         try {
             const response = await authApi.post(`/auth/verify-email/${token}`);
             return response.data;
         } catch (error) {
-            const message =
-                error.response?.data?.message ||
-                "We couldn't confirm your email. Please try again.";
-            throw new Error(message, { cause: error });
+            throw failure(error, "Your email wasn’t confirmed. Please try again.");
         }
     },
     resendVerification: async (email) => {
@@ -72,10 +103,7 @@ const authService = {
             });
             return response.data;
         } catch (error) {
-            const message =
-                error.response?.data?.message ||
-                "Failed to send the confirmation email. Please try again.";
-            throw new Error(message, { cause: error });
+            throw failure(error, "The link wasn’t sent. Please try again.");
         }
     },
     forgotPassword: async (email) => {
@@ -85,10 +113,7 @@ const authService = {
             });
             return response.data;
         } catch (error) {
-            const message =
-                error.response?.data?.message ||
-                "Failed to send reset link. Please try again.";
-            throw new Error(message, { cause: error });
+            throw failure(error, "The link wasn’t sent. Please try again.");
         }
     },
     resetPassword: async (token, password) => {
@@ -101,10 +126,7 @@ const authService = {
             );
             return response.data;
         } catch (error) {
-            const message =
-                error.response?.data?.message ||
-                "Failed to reset password. Please try again.";
-            throw new Error(message, { cause: error });
+            throw failure(error, "Your password wasn’t changed. Please try again.");
         }
     },
 };

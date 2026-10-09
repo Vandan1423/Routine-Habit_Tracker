@@ -39,7 +39,7 @@ describe("emails", { skip: skipWithoutDatabase }, () => {
 
             const [sent] = emailsTo(email);
             assert.equal(emailsTo(email).length, 1);
-            assert.equal(sent.from, "Life Tracker <onboarding@resend.dev>");
+            assert.equal(sent.from, "Nitya <onboarding@resend.dev>");
             assert.match(sent.subject, /Confirm your email/);
             assert.match(sent.html, /Hi Asha,/);
             assert.match(sent.html, /href="http:\/\/localhost:5173\/verify-email\/[0-9a-f]{64}"/);
@@ -218,7 +218,7 @@ describe("emails", { skip: skipWithoutDatabase }, () => {
         const requestReset = (email) => createClient().post("/auth/forgot-password", { email });
         const resetEmailTo = async (email, count) => {
             const sent = await waitForEmailTo(email, count);
-            assert.match(sent.subject, /Reset your Life Tracker password/);
+            assert.match(sent.subject, /Reset your Nitya password/);
             return sent;
         };
 

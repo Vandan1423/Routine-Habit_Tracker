@@ -1,0 +1,62 @@
+/* The row's place in the list. It is this that grows and shrinks as a to-do arrives or leaves. */
+.frame {
+    position: relative;
+}
+
+/* As wide as the row's hover tint, so clipping it on the way in or out does not cut the tint short */
+.clipped {
+    margin-inline: calc(var(--s-2) * -1);
+    padding-inline: var(--s-2);
+    overflow: hidden;
+}
+
+/* The same line as a row on Today: a to-do is ticked the same way */
+.row {
+    composes: row from "../day/DayRow.module.css";
+}
+
+.main {
+    composes: main from "../day/DayRow.module.css";
+}
+
+/* The words are a button: pressing them is how they are changed */
+.title {
+    composes: title from "../day/DayRow.module.css";
+    border-radius: var(--r-1);
+    text-align: start;
+    cursor: text;
+}
+
+/* Done: the row settles to quieter ink, with a line through what is finished */
+.done .title {
+    color: var(--ink-3);
+    text-decoration: line-through;
+    text-decoration-color: var(--line-strong);
+}
+
+/* The same words, as a field: no box of its own, so nothing on the line moves when it appears */
+.field {
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    border-radius: var(--r-1);
+    background: none;
+    appearance: none;
+    color: var(--ink);
+    font-size: var(--fs-row);
+    line-height: var(--lh-item);
+    font-weight: var(--fw-medium);
+    outline-offset: 3px;
+}
+
+.menu {
+    composes: menu from "../day/DayRow.module.css";
+}
+
+/* bp: phone */
+@media (max-width: 699.98px) {
+    .field {
+        width: 100%;
+    }
+}

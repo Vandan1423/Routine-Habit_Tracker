@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
+import { DEFAULT_TRASH_DAYS, TRASH_DAYS } from "../utils/trash.js";
 
 const userSchema = new mongoose.Schema({
     name: {
@@ -55,6 +56,11 @@ const userSchema = new mongoose.Schema({
     penaltiesSettledThrough: {
         type: String,
         default: "", // "YYYY-MM-DD": the last of this user's days whose missed tasks have been charged
+    },
+    trashDays: {
+        type: Number,
+        enum: TRASH_DAYS,
+        default: DEFAULT_TRASH_DAYS, // How long Trash keeps what this user deletes
     },
     refreshTokens: [
         {

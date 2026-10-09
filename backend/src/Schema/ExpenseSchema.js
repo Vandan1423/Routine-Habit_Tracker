@@ -86,7 +86,8 @@ export const placesQuerySchema = Joi.object({
     search: Joi.string().max(100).allow(""),
 });
 
-export const exportQuerySchema = Joi.object({
+// One month, for the summary, the list of transactions and the export. Left out, it is the month today is in.
+export const monthQuerySchema = Joi.object({
     month: Joi.string()
         .pattern(/^\d{4}-(0[1-9]|1[0-2])$/)
         .messages({

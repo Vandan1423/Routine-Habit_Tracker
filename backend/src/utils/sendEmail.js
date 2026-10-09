@@ -3,7 +3,7 @@ import { Resend } from "resend";
 
 // Resend's shared test sender. It only delivers to the address the Resend account was opened with,
 // so to reach anyone else through Resend, EMAIL_FROM has to be an address on a domain verified there.
-const TEST_SENDER = "Life Tracker <onboarding@resend.dev>";
+const TEST_SENDER = "Nitya <onboarding@resend.dev>";
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GMAIL_SEND_URL =
@@ -77,7 +77,7 @@ const base64Lines = (content) =>
 // The whole email as one piece of text, the way mail servers pass it along:
 // the headers first, then the plain-text and HTML copies of the body
 const buildMimeMessage = ({ from, to, subject, html, text }) => {
-    const boundary = `life-tracker-${crypto.randomUUID()}`;
+    const boundary = `nitya-${crypto.randomUUID()}`;
     const bodies = [
         ["text/plain", text],
         ["text/html", html],
@@ -156,7 +156,7 @@ const sendEmail = async ({ to, subject, html, text }) => {
     const email = { from: process.env.EMAIL_FROM, to, subject, html, text };
 
     // Gmail always sends from the account's own address. There EMAIL_FROM only sets the name shown beside it,
-    // e.g. "Life Tracker <the.account@gmail.com>"; without it Gmail uses the account's own name.
+    // e.g. "Nitya <the.account@gmail.com>"; without it Gmail uses the account's own name.
     return usesGmail() ? sendWithGmail(email) : sendWithResend(email);
 };
 

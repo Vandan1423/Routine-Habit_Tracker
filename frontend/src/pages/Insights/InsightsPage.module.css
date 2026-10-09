@@ -1,0 +1,307 @@
+/* The head of the screen, set like the head of a day so that it starts where Today and Plan do */
+.header {
+    composes: header from "../../components/day/DayHeader.module.css";
+}
+
+.text {
+    composes: text from "../../components/day/DayHeader.module.css";
+}
+
+.eyebrow {
+    composes: eyebrow from "../../components/day/DayHeader.module.css";
+}
+
+/* The interface's own face. Only a date is set in the serif. */
+.title {
+    font-size: var(--fs-figure);
+    line-height: calc(var(--fs-date) * var(--lh-date));
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--track-title);
+}
+
+.state {
+    margin-top: var(--s-10);
+}
+
+/* The week in a sentence, before anything is drawn */
+.summary {
+    display: flow-root;
+    margin-top: var(--s-8);
+    color: var(--ink-2);
+    font-size: var(--fs-item);
+    line-height: var(--lh-item);
+    text-wrap: pretty;
+}
+
+.summary b {
+    color: var(--ink);
+    font-weight: var(--fw-medium);
+}
+
+/* ── A part of the screen: a small heading with a hairline, then its lines ── */
+
+.section {
+    composes: block from "../../components/day/DayBlock.module.css";
+    container-type: inline-size;
+}
+
+.head {
+    margin-bottom: var(--s-2);
+}
+
+.inner {
+    margin-top: var(--s-4);
+}
+
+.caption {
+    margin-top: var(--s-3);
+    color: var(--ink-3);
+    font-size: var(--fs-caption);
+    line-height: var(--lh-meta);
+}
+
+/* A name that leads somewhere: the week's month, the item's own page */
+.name {
+    min-width: 0;
+    border-radius: var(--r-1);
+    color: var(--ink);
+    overflow-wrap: anywhere;
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-underline-offset: 3px;
+    transition: text-decoration-color var(--t-fast) var(--ease);
+}
+
+@media (hover: hover) {
+    a.name:hover {
+        text-decoration-color: var(--line-strong);
+    }
+}
+
+.aside {
+    color: var(--ink-3);
+}
+
+/* A figure at the end of a line, set against the right edge */
+.figureCell {
+    color: var(--ink-2);
+    text-align: right;
+    white-space: nowrap;
+}
+
+.loss {
+    color: var(--loss);
+}
+
+/* ── Week by week: a name, seven day strips, what the week came to ── */
+
+.weekRow {
+    display: grid;
+    grid-template-columns: 9ch repeat(7, minmax(0, 1fr)) 6ch;
+    align-items: center;
+    gap: var(--s-3);
+    min-height: var(--control-md);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+}
+
+.weekRow .name,
+.monthRow .name {
+    display: flex;
+    align-items: center;
+    align-self: stretch;
+    gap: var(--s-1);
+}
+
+/* The days of the week, over the strips they name */
+.weekdays {
+    min-height: var(--lh-meta);
+    color: var(--ink-3);
+    font-size: var(--fs-caption);
+    line-height: var(--lh-caption);
+}
+
+/* A strip that is still on its way */
+.blank {
+    height: 4px;
+    border-radius: 1px;
+}
+
+/* ── Month by month: a name, one bar, its share, what it netted ── */
+
+.monthRow {
+    display: grid;
+    grid-template-columns: 13ch minmax(0, 1fr) 5ch 7ch;
+    align-items: center;
+    gap: var(--s-3);
+    min-height: var(--control-md);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+}
+
+.bar {
+    min-width: 0;
+}
+
+/* ── Kept most, left most often ── */
+
+.ranks {
+    display: grid;
+    gap: var(--s-6) var(--s-10);
+}
+
+@container (min-width: 560px) {
+    .ranks {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.subheading {
+    margin-bottom: var(--s-1);
+    color: var(--ink-3);
+    font-size: var(--fs-caption);
+    line-height: var(--lh-meta);
+    font-weight: var(--fw-regular);
+}
+
+.rankRow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: 2px var(--s-3);
+    padding-block: var(--s-2);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+}
+
+.rankRow + .rankRow {
+    border-top: 1px solid var(--line);
+}
+
+/* Taller than its words by the row's own padding, so it is easy to press */
+.rankRow .name {
+    margin-block: calc(var(--s-2) * -1);
+    padding-block: var(--s-2);
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    font-weight: var(--fw-medium);
+}
+
+.said {
+    color: var(--ink-2);
+    white-space: nowrap;
+}
+
+/* Its days as one short strip, under its name and as wide as the row */
+.days {
+    grid-column: 1 / -1;
+    margin-top: var(--s-1);
+}
+
+/* ── The XP ledger ── */
+
+.ledgerDay {
+    margin-top: var(--s-5);
+}
+
+.ledgerHead {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--s-3);
+    padding-bottom: var(--s-1);
+    color: var(--ink-2);
+    font-size: var(--fs-caption);
+    line-height: var(--lh-meta);
+    font-weight: var(--fw-regular);
+}
+
+.net {
+    color: var(--ink);
+    font-weight: var(--fw-medium);
+}
+
+.ledgerHead .loss {
+    color: var(--loss);
+}
+
+.entry {
+    display: flex;
+    align-items: baseline;
+    gap: var(--s-2);
+    min-height: var(--control-md);
+    padding-block: 6px;
+    border-top: 1px solid var(--line);
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+}
+
+.what {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.how {
+    flex: none;
+    color: var(--ink-3);
+    font-size: var(--fs-meta);
+}
+
+.amount {
+    flex: none;
+    margin-inline-start: auto;
+    padding-inline-start: var(--s-3);
+    color: var(--ink-2);
+}
+
+.entry .loss {
+    color: var(--loss);
+}
+
+.earlier {
+    margin-top: var(--s-4);
+}
+
+/* ── Beside the column ── */
+
+.heading {
+    composes: heading from "../../components/day/WeekAside.module.css";
+}
+
+.figure {
+    composes: figure from "../../components/day/WeekAside.module.css";
+}
+
+.note {
+    composes: note from "../../components/day/WeekAside.module.css";
+}
+
+.under {
+    margin-top: var(--s-3);
+}
+
+/* bp: phone */
+@media (max-width: 699.98px) {
+    .header {
+        align-items: center;
+    }
+
+    .summary {
+        margin-top: var(--s-6);
+    }
+
+    .state {
+        margin-top: var(--s-8);
+    }
+
+    .weekRow {
+        grid-template-columns: 8ch repeat(7, minmax(0, 1fr)) 5ch;
+        gap: var(--s-2);
+        min-height: var(--control-sm);
+    }
+
+    .monthRow {
+        grid-template-columns: 13ch minmax(0, 1fr) 4ch 6ch;
+        gap: var(--s-2);
+    }
+}

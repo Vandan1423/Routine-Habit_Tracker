@@ -1,4 +1,5 @@
 import axios from "axios";
+import { adoptStored } from "../lib/remembered";
 
 // Defaults to the same-origin /api path, which the Vite dev server proxies to the backend
 const API_BASE_URL = import.meta.env.VITE_API_URL || "/api";
@@ -18,7 +19,12 @@ export const authApi = axios.create({
     headers: DEFAULT_HEADERS,
 });
 
-const ACCESS_TOKEN_STORAGE_KEY = "life-management.accessToken";
+const ACCESS_TOKEN_STORAGE_KEY = "nitya.accessToken";
+
+// A session from before the app was called Nitya carries on under the new name
+if (typeof window !== "undefined") {
+    adoptStored(ACCESS_TOKEN_STORAGE_KEY, "life-management.accessToken");
+}
 
 const readStoredAccessToken = () => {
     if (typeof window === "undefined") {

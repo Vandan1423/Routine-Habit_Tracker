@@ -22,7 +22,7 @@ import { idParam } from "../Schema/CommonSchema.js";
 import {
     createSubscriptionSchema,
     createTransactionSchema,
-    exportQuerySchema,
+    monthQuerySchema,
     placesQuerySchema,
     updateAccountSchema,
     updateSubscriptionSchema,
@@ -34,10 +34,10 @@ const router = express.Router();
 
 router.use(protect);
 
-router.get("/summary", getSummary);
+router.get("/summary", validate({ query: monthQuerySchema }), getSummary);
 router.get("/accounts", getAccounts);
 router.put("/accounts/:id", validate({ params: idParam, body: updateAccountSchema }), updateAccount);
-router.get("/transactions", listTransactions);
+router.get("/transactions", validate({ query: monthQuerySchema }), listTransactions);
 router.post("/transactions", validate({ body: createTransactionSchema }), createTransaction);
 router.put("/transactions/:id", validate({ params: idParam, body: updateTransactionSchema }), updateTransaction);
 router.delete("/transactions/:id", validate({ params: idParam }), deleteTransaction);
@@ -48,6 +48,6 @@ router.delete("/subscriptions/:id", validate({ params: idParam }), deleteSubscri
 router.get("/places", validate({ query: placesQuerySchema }), listKnownPlaces);
 router.get("/budgets", listBudgets);
 router.post("/budgets", validate({ body: upsertBudgetSchema }), upsertBudget);
-router.get("/export", validate({ query: exportQuerySchema }), exportMonthlyCsv);
+router.get("/export", validate({ query: monthQuerySchema }), exportMonthlyCsv);
 
 export default router;

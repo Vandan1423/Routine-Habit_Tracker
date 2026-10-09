@@ -1,0 +1,24 @@
+/* A placeholder line keeps the whole height of the line of words it stands for: its margins stay inside */
+.line {
+    display: flow-root;
+}
+
+/* A placeholder line inside something that sizes itself to its words needs to be told to take the room */
+.grow {
+    flex: 1;
+}
+
+.check {
+    flex: none;
+    width: var(--check);
+    height: var(--check);
+}
+
+.end {
+    margin-inline-start: auto;
+}
+
+.mini {
+    height: 4px;
+    border-radius: 1px;
+}

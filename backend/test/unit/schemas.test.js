@@ -5,6 +5,7 @@ import { idParam } from "../../src/Schema/CommonSchema.js";
 import {
     createHabitSchema,
     logHabitSchema,
+    setHabitLogSchema,
     updateHabitSchema,
 } from "../../src/Schema/HabitSchema.js";
 import {
@@ -13,8 +14,13 @@ import {
     updateRoutineSchema,
 } from "../../src/Schema/RoutineSchema.js";
 import {
+    dayParam,
+    dayRangeQuerySchema,
+    ledgerQuerySchema,
+} from "../../src/Schema/HistorySchema.js";
+import {
     createTransactionSchema,
-    exportQuerySchema,
+    monthQuerySchema,
     updateSubscriptionSchema,
 } from "../../src/Schema/ExpenseSchema.js";
 
@@ -72,6 +78,22 @@ describe("request schemas", () => {
             rejected(logHabitSchema, { date: "08-10-2026" });
             rejected(logHabitSchema, { quantity: -5 });
             assert.equal(accepted(logHabitSchema, { quantity: "2.5" }).quantity, 2.5);
+        });
+
+        it("takes the part of the day a habit sits in, from the four there are", () => {
+            assert.equal(accepted(createHabitSchema, { title: "Read", timeOfDay: "evening" }).timeOfDay, "evening");
+            assert.deepEqual(accepted(updateHabitSchema, { timeOfDay: "anytime" }), { timeOfDay: "anytime" });
+            rejected(createHabitSchema, { title: "Read", timeOfDay: "night" });
+            rejected(updateHabitSchema, { timeOfDay: "" });
+        });
+
+        it("sets today's count to zero or more, and nothing else", () => {
+            assert.deepEqual(accepted(setHabitLogSchema, { quantity: 0 }), { quantity: 0 });
+            assert.deepEqual(accepted(setHabitLogSchema, { quantity: 7.5, xpEarned: 500, completed: true }), { quantity: 7.5 });
+            rejected(setHabitLogSchema, {});
+            rejected(setHabitLogSchema, { quantity: -1 });
+            rejected(setHabitLogSchema, { quantity: { $gt: 0 } });
+            rejected(setHabitLogSchema, { quantity: 1000001 });
         });
     });
 
@@ -146,9 +168,41 @@ describe("request schemas", () => {
             );
         });
 
-        it("refuses a malformed export month", () => {
-            accepted(exportQuerySchema, { month: "2026-08" });
-            rejected(exportQuerySchema, { month: "2026-13" });
+        it("refuses a malformed month", () => {
+            accepted(monthQuerySchema, { month: "2026-08" });
+            accepted(monthQuerySchema, {});
+            rejected(monthQuerySchema, { month: "2026-13" });
+            rejected(monthQuerySchema, { month: "2026-8" });
+            rejected(monthQuerySchema, { month: "last month" });
+        });
+    });
+
+    describe("history", () => {
+        it("takes a stretch of days of up to a year, in order", () => {
+            accepted(dayRangeQuerySchema, { from: "2026-03-01", to: "2026-03-01" });
+            accepted(dayRangeQuerySchema, { from: "2025-03-02", to: "2026-03-02" });
+
+            assert.match(rejected(dayRangeQuerySchema, { from: "2025-03-01", to: "2026-03-02" }), /At most 366 days/);
+            assert.match(rejected(dayRangeQuerySchema, { from: "2026-03-02", to: "2026-03-01" }), /must not be before/);
+            rejected(dayRangeQuerySchema, { from: "2026-03-01" });
+            rejected(dayRangeQuerySchema, { from: "2026-02-30", to: "2026-03-01" });
+            rejected(dayRangeQuerySchema, { from: { $gt: "" }, to: "2026-03-01" });
+        });
+
+        it("takes one real day in the URL", () => {
+            accepted(dayParam, { date: "2026-03-01" });
+            rejected(dayParam, { date: "2026-3-1" });
+            rejected(dayParam, { date: "2026-13-01" });
+        });
+
+        it("takes a page size and a place in the ledger, and nothing shaped otherwise", () => {
+            accepted(ledgerQuerySchema, {});
+            accepted(ledgerQuerySchema, { limit: "30", before: "1760000000000_0123456789abcdef01234567" });
+
+            rejected(ledgerQuerySchema, { limit: 0 });
+            rejected(ledgerQuerySchema, { limit: 101 });
+            rejected(ledgerQuerySchema, { before: "1760000000000" });
+            rejected(ledgerQuerySchema, { before: { $gt: "" } });
         });
     });
 

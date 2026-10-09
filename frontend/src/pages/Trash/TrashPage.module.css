@@ -1,0 +1,141 @@
+/* The head of the screen, set like the head of a day so that it starts where Today and Plan do */
+.header {
+    composes: header from "../../components/day/DayHeader.module.css";
+}
+
+.text {
+    composes: text from "../../components/day/DayHeader.module.css";
+}
+
+.eyebrow {
+    composes: eyebrow from "../../components/day/DayHeader.module.css";
+    /* Holds its line while Trash is on its way */
+    white-space: pre-wrap;
+}
+
+.title {
+    composes: title from "../Plan/PlanPage.module.css";
+}
+
+.state {
+    margin-top: var(--s-10);
+}
+
+/* ── How long things are kept: one setting, said where its effect is seen ── */
+
+.keep {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-3) var(--s-8);
+    margin-top: var(--s-8);
+    padding-block: var(--s-3);
+    border-block: 1px solid var(--line);
+}
+
+.keepName {
+    font-size: var(--fs-item);
+    line-height: var(--lh-item);
+    font-weight: var(--fw-medium);
+}
+
+.keepNote {
+    max-width: 44ch;
+    margin-top: 2px;
+    color: var(--ink-2);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+    text-wrap: pretty;
+}
+
+/* ── What is in Trash ── */
+
+.rows {
+    margin-top: var(--s-6);
+}
+
+/* The row's place in the list. It is this that shrinks away as a thing leaves Trash. */
+.frame {
+    position: relative;
+}
+
+/* As wide as the row's hover tint, so clipping it on the way out does not cut the tint short */
+.clipped {
+    margin-inline: calc(var(--s-2) * -1);
+    padding-inline: var(--s-2);
+    overflow: hidden;
+}
+
+/* Two lines to a row: what it is called, then what it is and how long it has left */
+.row {
+    composes: row from "../../components/day/DayRow.module.css";
+    min-height: var(--s-16);
+}
+
+.main {
+    flex: 1;
+    min-width: 0;
+    padding-block: var(--s-2);
+}
+
+.name {
+    composes: title from "../../components/day/DayRow.module.css";
+}
+
+.meta {
+    margin-top: 1px;
+    color: var(--ink-3);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+    overflow-wrap: anywhere;
+}
+
+/* The XP it took with it is the one fact about it in full ink */
+.meta b {
+    color: var(--ink-2);
+    font-weight: var(--fw-medium);
+}
+
+.when {
+    flex: none;
+    color: var(--ink-3);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+    white-space: nowrap;
+}
+
+.actions {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: var(--s-1);
+}
+
+/* A skeleton line keeps the whole height of the line of words it stands for: its margins stay inside */
+.line {
+    display: flow-root;
+}
+
+/* bp: phone */
+@media (max-width: 699.98px) {
+    .keep {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    /* When it goes is said under its name instead of beside it */
+    .when {
+        display: none;
+    }
+
+    .whenInline {
+        display: inline;
+    }
+}
+
+/* Where there is room, when it goes stands in a column of its own, so it is not said twice */
+@media (min-width: 700px) {
+    .whenInline {
+        display: none;
+    }
+}

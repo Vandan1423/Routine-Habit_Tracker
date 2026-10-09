@@ -1,0 +1,36 @@
+.loader {
+    display: inline-flex;
+    gap: 2px;
+    flex: none;
+}
+
+/* The opacities are what shows when motion is reduced: a strip caught mid-fill */
+.loader i {
+    width: 3px;
+    height: 10px;
+    border-radius: 1px;
+    background: currentColor;
+    opacity: 0.9;
+    animation: fill calc(var(--t-slow) * 3) var(--ease) infinite;
+}
+
+.loader i:nth-child(2) {
+    opacity: 0.5;
+    animation-delay: var(--t-fast);
+}
+
+.loader i:nth-child(3) {
+    opacity: 0.25;
+    animation-delay: calc(var(--t-fast) * 2);
+}
+
+@keyframes fill {
+    0%,
+    60%,
+    100% {
+        opacity: 0.25;
+    }
+    25% {
+        opacity: 1;
+    }
+}

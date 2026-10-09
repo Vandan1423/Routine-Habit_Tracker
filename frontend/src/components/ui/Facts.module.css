@@ -1,0 +1,28 @@
+.facts {
+    display: grid;
+    gap: var(--s-2);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+}
+
+.fact {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--s-3);
+}
+
+.fact dt {
+    flex: none;
+    color: var(--ink-3);
+}
+
+.fact dd {
+    min-width: 0;
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+
+.fact .loss {
+    color: var(--loss);
+}

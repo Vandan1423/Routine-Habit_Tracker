@@ -1,0 +1,29 @@
+/* The field itself is drawn by Field.module.css, exactly as an Input is */
+.positioner {
+    composes: positioner from "./Floating.module.css";
+}
+
+.popup {
+    composes: surface from "./Floating.module.css";
+    min-width: var(--anchor-width);
+}
+
+/* Nothing typed before fits what is being typed now: no list, rather than an empty one */
+.popup[data-empty] {
+    display: none;
+}
+
+/* A few at a time: this is a reminder of what was typed before, not a menu to read through */
+.list {
+    composes: list from "./Floating.module.css";
+    min-width: 0;
+    max-height: min(var(--available-height, 100vh), 13rem);
+}
+
+.row {
+    composes: row from "./Floating.module.css";
+}
+
+.rowText {
+    composes: rowText from "./Floating.module.css";
+}

@@ -1,0 +1,62 @@
+.stepper {
+    display: inline-flex;
+    flex: none;
+    overflow: hidden;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-2);
+}
+
+.button {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: var(--control-sm);
+    /* The border is the stepper's, so the pair stands exactly one small control tall */
+    height: calc(var(--control-sm) - 2px);
+    background: var(--raised);
+    color: var(--ink-2);
+    transition:
+        background-color var(--t-fast) var(--ease),
+        color var(--t-fast) var(--ease);
+}
+
+.button + .button {
+    border-left: 1px solid var(--line);
+}
+
+/* Taller than it looks for a pointer, and no wider: its neighbour starts where it ends */
+.button::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    inset-block: min(0px, calc((100% - var(--hit)) / 2));
+}
+
+@media (hover: hover) {
+    .button:hover {
+        background: var(--hover);
+        color: var(--ink);
+    }
+}
+
+.button:active {
+    background: var(--fill);
+    color: var(--ink);
+}
+
+/* The ring would be cut off by the stepper's rounded corners */
+.button:focus-visible {
+    outline-offset: -2px;
+}
+
+.button:disabled {
+    color: var(--line-strong);
+    pointer-events: none;
+}
+
+/* A finger needs each half wider */
+@media (pointer: coarse) {
+    .button {
+        width: 36px;
+    }
+}

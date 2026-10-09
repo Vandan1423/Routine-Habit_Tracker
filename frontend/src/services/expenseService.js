@@ -1,52 +1,46 @@
 import api from "./api";
 
+// Money: accounts, transactions, limits and subscriptions. Each call throws when it fails, with the
+// server's own words where it gave any, so the screen that asked can say so.
+const call = async (request, fallback) => {
+    try {
+        const response = await request();
+        return response.data;
+    } catch (error) {
+        throw new Error(error.response?.data?.message || fallback, { cause: error });
+    }
+};
+
+const NOT_SAVED = "It couldn’t be saved.";
+
 const expenseService = {
-    getSummary() {
-        return api.get("/expenses/summary").then((response) => response.data);
+    // One month ("YYYY-MM") as the Expenses screen shows it: its summary, and every transaction in it
+    getMonth: async (month) => {
+        const [summary, list] = await Promise.all([
+            call(() => api.get("/expenses/summary", { params: { month } }), "Failed to fetch the month."),
+            call(() => api.get("/expenses/transactions", { params: { month } }), "Failed to fetch the transactions."),
+        ]);
+
+        return { summary, transactions: list.transactions ?? [] };
     },
-    getAccounts() {
-        return api.get("/expenses/accounts").then((response) => response.data);
-    },
-    updateAccount(id, payload) {
-        return api.put(`/expenses/accounts/${id}`, payload).then((response) => response.data);
-    },
-    getTransactions() {
-        return api.get("/expenses/transactions").then((response) => response.data);
-    },
-    createTransaction(payload) {
-        return api.post("/expenses/transactions", payload).then((response) => response.data);
-    },
-    deleteTransaction(id) {
-        return api.delete(`/expenses/transactions/${id}`).then((response) => response.data);
-    },
-    updateTransaction(id, payload) {
-        return api.put(`/expenses/transactions/${id}`, payload).then((response) => response.data);
-    },
-    getSubscriptions() {
-        return api.get("/expenses/subscriptions").then((response) => response.data);
-    },
-    createSubscription(payload) {
-        return api.post("/expenses/subscriptions", payload).then((response) => response.data);
-    },
-    updateSubscription(id, payload) {
-        return api.put(`/expenses/subscriptions/${id}`, payload).then((response) => response.data);
-    },
-    deleteSubscription(id) {
-        return api.delete(`/expenses/subscriptions/${id}`).then((response) => response.data);
-    },
-    getBudgets() {
-        return api.get("/expenses/budgets").then((response) => response.data);
-    },
-    upsertBudget(payload) {
-        return api.post("/expenses/budgets", payload).then((response) => response.data);
-    },
-    exportMonthlyCsv(month) {
-        return api.get("/expenses/export", { params: { month }, responseType: "blob" });
-    },
-    getPlaces(search = "") {
-        const params = search ? { search } : {};
-        return api.get("/expenses/places", { params }).then((response) => response.data);
-    },
+
+    // name and openingBalance are what can be changed
+    updateAccount: (id, data) => call(() => api.put(`/expenses/accounts/${id}`, data), NOT_SAVED),
+
+    createTransaction: (data) => call(() => api.post("/expenses/transactions", data), NOT_SAVED),
+    updateTransaction: (id, data) => call(() => api.put(`/expenses/transactions/${id}`, data), NOT_SAVED),
+    deleteTransaction: (id) => call(() => api.delete(`/expenses/transactions/${id}`), "It couldn’t be deleted."),
+
+    createSubscription: (data) => call(() => api.post("/expenses/subscriptions", data), NOT_SAVED),
+    updateSubscription: (id, data) => call(() => api.put(`/expenses/subscriptions/${id}`, data), NOT_SAVED),
+    deleteSubscription: (id) => call(() => api.delete(`/expenses/subscriptions/${id}`), "It couldn’t be deleted."),
+
+    // Sets a category's monthly limit, or takes it away (isActive: false)
+    saveBudget: (data) => call(() => api.post("/expenses/budgets", data), NOT_SAVED),
+
+    // One month's transactions as a spreadsheet file
+    exportMonth: (month) =>
+        call(() => api.get("/expenses/export", { params: { month }, responseType: "blob" }), "The export failed."),
 };
 
 export default expenseService;

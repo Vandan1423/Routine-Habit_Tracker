@@ -1,0 +1,35 @@
+.page {
+    flex: 1;
+    padding: var(--s-10) var(--gutter) var(--s-16);
+}
+
+.standalone {
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+    min-height: 100dvh;
+    /* Above the middle, where the eye lands first */
+    padding: clamp(var(--s-12), 22vh, 12rem) var(--gutter) var(--s-12);
+    background: var(--paper);
+}
+
+.column {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--s-8);
+    width: 100%;
+    max-width: 44ch;
+}
+
+.home {
+    border-radius: var(--r-1);
+}
+
+/* bp: phone */
+@media (max-width: 699.98px) {
+    .page {
+        /* The end of a screen stops clear of where a toast sits, so the last line can always be read */
+        padding-block: var(--s-6) calc(var(--s-16) + var(--s-2));
+    }
+}

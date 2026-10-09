@@ -1,0 +1,87 @@
+/* The head of the screen, set like the head of a day so that the list starts where Today's does */
+.header {
+    composes: header from "../../components/day/DayHeader.module.css";
+}
+
+.text {
+    composes: text from "../../components/day/DayHeader.module.css";
+}
+
+.eyebrow {
+    composes: eyebrow from "../../components/day/DayHeader.module.css";
+}
+
+.title {
+    composes: title from "../Plan/PlanPage.module.css";
+    overflow-wrap: anywhere;
+}
+
+.actions {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: var(--s-1);
+}
+
+.state {
+    margin-top: var(--s-10);
+}
+
+/* A placeholder line keeps the whole height of the line of words it stands for: its margins stay inside */
+.line {
+    display: flow-root;
+}
+
+/* ── The lists: beside the open one where there is room, above it where there is not ── */
+
+.above {
+    margin-top: var(--s-6);
+}
+
+.beside {
+    display: none;
+}
+
+/* The same measure at which DayLayout brings its aside up beside the column */
+@container (min-width: 952px) {
+    .above {
+        display: none;
+    }
+
+    .beside {
+        display: block;
+    }
+}
+
+/* ── The list itself ── */
+
+.rows {
+    margin-top: var(--s-6);
+}
+
+.block {
+    composes: block from "../../components/day/DayBlock.module.css";
+}
+
+/* The heading's own rules there are written for a heading inside a block, which this is too */
+.head {
+    composes: head from "../../components/day/DayBlock.module.css";
+}
+
+.block .rows {
+    margin-top: 0;
+}
+
+.block .rows > :first-child {
+    margin-top: var(--s-1);
+}
+
+/* An empty list says so under the line it is written on, in the list's own measure */
+.empty {
+    margin-top: var(--s-4);
+    padding-left: calc(var(--check) + var(--s-3));
+    color: var(--ink-2);
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    text-wrap: pretty;
+}

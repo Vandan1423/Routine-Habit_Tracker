@@ -1,0 +1,180 @@
+/* A new account's first day, in the place the list will be */
+.first {
+    margin-top: var(--s-8);
+}
+
+.title {
+    font-size: var(--fs-heading);
+    line-height: var(--lh-heading);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--track-heading);
+}
+
+.lead {
+    max-width: 58ch;
+    margin-top: var(--s-1);
+    color: var(--ink-2);
+    text-wrap: pretty;
+}
+
+/* The day taking shape: a segment for each thing chosen */
+.strip {
+    margin-top: var(--s-6);
+}
+
+/* Nothing chosen yet: outlines where the segments will be, as tall as the strip with its labels */
+.blank {
+    display: flex;
+    gap: 3px;
+    padding-bottom: calc(var(--s-2) + var(--lh-caption));
+}
+
+.blank i {
+    flex: 1;
+    height: 6px;
+    border-radius: var(--r-mark);
+    box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+.block {
+    margin-top: var(--s-6);
+}
+
+/* The hairline runs as wide as the rows' hover tint does, as on the day itself */
+.block .head {
+    margin-inline: calc(var(--s-2) * -1);
+    padding-inline: var(--s-2);
+}
+
+/* .rows .row: outranks the base rule for buttons whichever file loads last */
+.rows .row {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    width: calc(100% + var(--s-2) * 2);
+    min-height: var(--row);
+    margin-inline: calc(var(--s-2) * -1);
+    padding-inline: var(--s-2);
+    border-radius: var(--r-2);
+    color: var(--ink-2);
+    text-align: start;
+    cursor: pointer;
+    transition:
+        background-color var(--t-fast) var(--ease),
+        color var(--t-base) var(--ease);
+}
+
+.rows .row[aria-disabled="true"] {
+    cursor: default;
+}
+
+@media (hover: hover) {
+    .rows .row:not([aria-disabled="true"]):hover {
+        background: var(--hover);
+    }
+}
+
+.rows .row:active:not([aria-disabled="true"]) {
+    background: var(--fill);
+}
+
+/* Where the day's check will stand: a plus to take it, a tick once it is taken */
+.mark {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: var(--check);
+    height: var(--check);
+    color: var(--ink-3);
+    transition: color var(--t-base) var(--ease);
+}
+
+.main {
+    display: flex;
+    flex: 1;
+    align-items: baseline;
+    gap: 10px;
+    min-width: 0;
+    padding-block: 6px;
+}
+
+.name {
+    font-size: var(--fs-row);
+    line-height: var(--lh-item);
+    font-weight: var(--fw-medium);
+    overflow-wrap: anywhere;
+}
+
+.meta {
+    flex: none;
+    color: var(--ink-3);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+}
+
+.xp {
+    flex: none;
+    min-width: 34px;
+    color: var(--ink-3);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+    text-align: right;
+    transition: color var(--t-base) var(--ease);
+}
+
+/* Taken: the line stands in full ink, as it will on the day */
+.rows .chosen,
+.chosen .mark,
+.chosen .xp {
+    color: var(--ink);
+}
+
+/* ── What choosing means, and the way on ── */
+
+.foot {
+    margin-top: var(--s-8);
+    padding-top: var(--s-4);
+    border-top: 1px solid var(--line);
+}
+
+.stakes {
+    max-width: 58ch;
+    color: var(--ink-2);
+    text-wrap: pretty;
+}
+
+.stakes b {
+    color: var(--ink);
+    font-weight: var(--fw-medium);
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2);
+    margin-top: var(--s-4);
+}
+
+.keys {
+    margin-top: var(--s-6);
+    color: var(--ink-3);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+}
+
+/* Nothing on this device can hover, so it has no keyboard to speak of */
+@media (any-hover: none) {
+    .keys {
+        display: none;
+    }
+}
+
+/* bp: phone */
+@media (max-width: 699.98px) {
+    .main {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0;
+        padding-block: var(--s-2);
+    }
+}

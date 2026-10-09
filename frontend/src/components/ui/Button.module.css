@@ -1,0 +1,150 @@
+.button {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    height: var(--control-md);
+    padding: 0 12px;
+    border: 1px solid transparent;
+    border-radius: var(--r-2);
+    color: var(--ink);
+    font-size: var(--fs-control);
+    font-weight: var(--fw-medium);
+    line-height: 1;
+    white-space: nowrap;
+    user-select: none;
+    transition:
+        background-color var(--t-fast) var(--ease),
+        border-color var(--t-fast) var(--ease),
+        color var(--t-fast) var(--ease);
+}
+
+/* Reaches the smallest comfortable pointer target even when the button is drawn shorter */
+.button::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    inset-block: min(0px, calc((100% - var(--hit)) / 2));
+}
+
+.button:active {
+    transform: translateY(0.5px);
+}
+
+/* ── Sizes ── */
+.sm {
+    height: var(--control-sm);
+    padding: 0 9px;
+    gap: 6px;
+    font-size: var(--fs-meta);
+}
+
+.lg {
+    height: var(--control-lg);
+    padding: 0 16px;
+    gap: 8px;
+    font-size: var(--fs-body);
+}
+
+.fullWidth {
+    display: flex;
+    width: 100%;
+}
+
+/* ── Variants ── */
+.primary {
+    background: var(--accent);
+    color: var(--on-accent);
+}
+
+.secondary {
+    background: var(--raised);
+    border-color: var(--line-strong);
+}
+
+.ghost {
+    color: var(--ink-2);
+}
+
+.danger {
+    background: var(--raised);
+    border-color: var(--line-strong);
+    color: var(--loss);
+}
+
+@media (hover: hover) {
+    .primary:hover {
+        background: color-mix(in srgb, var(--accent) 88%, var(--paper));
+    }
+
+    .secondary:hover {
+        background: var(--hover);
+    }
+
+    .ghost:hover {
+        background: var(--fill);
+        color: var(--ink);
+    }
+
+    .danger:hover {
+        background: color-mix(in srgb, var(--loss) 7%, var(--raised));
+        border-color: color-mix(in srgb, var(--loss) 45%, var(--line-strong));
+    }
+}
+
+.primary:active {
+    background: color-mix(in srgb, var(--accent) 80%, var(--paper));
+}
+
+.secondary:active,
+.ghost:active {
+    background: var(--fill);
+    color: var(--ink);
+}
+
+.danger:active {
+    background: color-mix(in srgb, var(--loss) 12%, var(--raised));
+}
+
+/* The menu, panel or dialog this button opens is showing */
+.secondary[data-popup-open],
+.ghost[data-popup-open] {
+    background: var(--fill);
+    color: var(--ink);
+}
+
+/* ── States ── */
+.button:disabled {
+    opacity: 0.45;
+    pointer-events: none;
+}
+
+/* Loading: the label stays in place, unseen, so the button keeps its width while the loader shows */
+.button[aria-busy="true"] {
+    cursor: default;
+}
+
+.button[aria-busy="true"] .part {
+    opacity: 0;
+}
+
+.button[aria-busy="true"]:active {
+    transform: none;
+}
+
+.loader {
+    position: absolute;
+    inset: 0;
+    align-items: center;
+    justify-content: center;
+}
+
+.part {
+    transition: opacity var(--t-fast) var(--ease);
+}
+
+.trailing {
+    display: inline-flex;
+    margin-inline-end: -4px;
+}

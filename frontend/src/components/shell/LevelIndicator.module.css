@@ -1,0 +1,46 @@
+.level {
+    display: grid;
+    gap: var(--s-2);
+    padding: var(--s-3) var(--s-2) var(--s-2);
+    border-top: 1px solid var(--line);
+}
+
+.row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--s-3);
+    font-size: var(--fs-label);
+    line-height: var(--lh-meta);
+    white-space: nowrap;
+}
+
+.name {
+    font-weight: var(--fw-semibold);
+}
+
+.xp {
+    color: var(--ink-3);
+}
+
+.flush {
+    padding: 0;
+    border-top: 0;
+}
+
+/* On the rail: the number, centred over a bar as wide as an icon button's hover area */
+.compact {
+    justify-items: center;
+    padding-inline: 0;
+    /* Its own bar is the only line it needs at this width */
+    border-top: 0;
+    cursor: default;
+}
+
+.compact .row {
+    justify-content: center;
+}
+
+.compact .bar {
+    width: var(--control-sm);
+}

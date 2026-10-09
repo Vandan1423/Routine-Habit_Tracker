@@ -1,0 +1,5 @@
+/* Global styles, in order: fonts, tokens, base rules */
+@import "@fontsource-variable/hanken-grotesk/index.css";
+@import "@fontsource-variable/newsreader/opsz.css";
+@import "./styles/tokens.css";
+@import "./styles/base.css";

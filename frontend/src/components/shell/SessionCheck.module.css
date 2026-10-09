@@ -1,0 +1,10 @@
+/* Most checks are over before this would be seen, so it waits a moment before appearing */
+.quiet {
+    animation: appear var(--t-base) var(--ease) var(--t-slow) both;
+}
+
+@keyframes appear {
+    from {
+        opacity: 0;
+    }
+}

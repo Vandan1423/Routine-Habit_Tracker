@@ -1,0 +1,30 @@
+/* One mark a day, in rows; each is drawn from its left end, a step after the one before it */
+.marks {
+    display: grid;
+    grid-template-columns: repeat(var(--per-row), minmax(0, 1fr));
+    gap: var(--s-2) var(--s-1);
+}
+
+.marks i {
+    height: 4px;
+    border-radius: 1px;
+    background: var(--accent);
+    transform-origin: 0 50%;
+    animation: mark var(--t-base) var(--ease-out) calc(var(--t-base) + var(--index) * var(--step)) backwards;
+}
+
+@keyframes mark {
+    from {
+        opacity: 0;
+        scale: 0 1;
+    }
+}
+
+.notes {
+    display: grid;
+    gap: var(--s-1);
+    margin-top: var(--s-5);
+    color: var(--ink-2);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+}

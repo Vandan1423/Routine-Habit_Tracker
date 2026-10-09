@@ -1,0 +1,78 @@
+/* An empty or failed day, in the place the list would start */
+.state {
+    margin-top: var(--s-10);
+}
+
+/* Something to press inside a sentence. .state .textButton: outranks the base rule for buttons whichever file loads last */
+.state .textButton {
+    border-radius: var(--r-1);
+    color: var(--ink);
+    font-weight: var(--fw-medium);
+    text-decoration: underline;
+    text-decoration-color: var(--line-strong);
+    text-underline-offset: 3px;
+    cursor: pointer;
+    transition: text-decoration-color var(--t-fast) var(--ease);
+}
+
+@media (hover: hover) {
+    .state .textButton:hover {
+        text-decoration-color: currentColor;
+    }
+}
+
+/* A link inside a sentence, drawn as the button above is. .textLink.textLink: outranks the base rule for links */
+.textLink.textLink {
+    border-radius: var(--r-1);
+    color: var(--ink);
+    font-weight: var(--fw-medium);
+    text-decoration: underline;
+    text-decoration-color: var(--line-strong);
+    text-underline-offset: 3px;
+    transition: text-decoration-color var(--t-fast) var(--ease);
+}
+
+@media (hover: hover) {
+    .textLink.textLink:hover {
+        text-decoration-color: currentColor;
+    }
+}
+
+/* What tonight still counts although it is no longer on the list: said once, plainly, above the day's total */
+.owed {
+    margin-top: var(--s-6);
+    color: var(--ink-2);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+    text-wrap: pretty;
+}
+
+/* ── The general to-do list, after the day: a part of the page like the parts of the day above it ── */
+
+.todos {
+    composes: block from "../../components/day/DayBlock.module.css";
+    margin-top: var(--s-10);
+}
+
+/* The heading's own rules there are written for a heading inside a block, which this is too */
+.todosHead {
+    composes: head from "../../components/day/DayBlock.module.css";
+}
+
+.todoRows > :first-child {
+    margin-top: var(--s-1);
+}
+
+.more {
+    margin-top: var(--s-2);
+    padding-left: calc(var(--check) + var(--s-3));
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+}
+
+/* bp: phone */
+@media (max-width: 699.98px) {
+    .state {
+        margin-top: var(--s-8);
+    }
+}

@@ -3,7 +3,8 @@ const router = express.Router();
 
 import {
     getStreakInfo,
-    getDailyLogs
+    getDailyLogs,
+    getRecap
 } from '../controllers/streakController.js';
 import { protect } from '../middlewares/authMiddleware.js';
 import { settleDays } from '../middlewares/dayRolloverMiddleware.js';
@@ -21,5 +22,8 @@ router.get('/info', getStreakInfo);
 
 // @route   GET /api/streaks/logs
 router.get('/logs', validate({ query: dailyLogsQuerySchema }), getDailyLogs);
+
+// @route   GET /api/streaks/recap
+router.get('/recap', getRecap);
 
 export default router;

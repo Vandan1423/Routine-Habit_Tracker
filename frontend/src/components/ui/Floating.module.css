@@ -1,0 +1,135 @@
+/*
+ * What everything that floats beside its trigger has in common: Menu, Select, Popover and the time list.
+ * Each of those composes from here, so a surface, a row and a separator look the same wherever they appear.
+ * The library sets the data attributes ([data-starting-style], [data-highlighted]…) and the --transform-origin,
+ * --available-* and --anchor-width variables.
+ */
+
+.positioner {
+    z-index: var(--z-popover);
+    outline: none;
+}
+
+/* Grows out of the corner nearest its trigger, and leaves the same way */
+.surface {
+    max-width: min(var(--menu-max), var(--available-width));
+    border: 1px solid var(--line);
+    border-radius: var(--r-3);
+    background: var(--raised);
+    /* Standing on something raised, a quiet fill has to show against it (in dark, --fill is all but --raised) */
+    --fill: var(--raised-fill);
+    --hover: var(--raised-fill);
+    box-shadow: var(--shadow-float);
+    color: var(--ink);
+    outline: none;
+    transform-origin: var(--transform-origin);
+    transition:
+        opacity var(--t-fast) var(--ease),
+        transform var(--t-fast) var(--ease);
+}
+
+.surface[data-starting-style],
+.surface[data-ending-style] {
+    opacity: 0;
+    transform: scale(0.97);
+}
+
+/* Set when the popup should not animate, such as moving between two triggers that share it */
+.surface[data-instant] {
+    transition: none;
+}
+
+/* A surface that holds rows: it scrolls when there are more than fit */
+.list {
+    min-width: var(--menu-min);
+    /* The fallback covers the first frame, before the library has measured the room there is */
+    max-height: min(var(--available-height, 100vh), 22rem);
+    padding: var(--s-1);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scroll-padding-block: var(--s-1);
+}
+
+.list:empty {
+    display: none;
+}
+
+/* One thing to choose. Highlighted by the pointer or the arrow keys, whichever moved last. */
+.row {
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+    min-height: var(--control-md);
+    padding: 0 var(--s-2);
+    border-radius: var(--r-1);
+    color: var(--ink);
+    font-size: var(--fs-control);
+    line-height: var(--lh-body);
+    outline: none;
+    cursor: default;
+    user-select: none;
+}
+
+.row[data-highlighted] {
+    background: var(--raised-fill);
+}
+
+.row[data-disabled] {
+    color: var(--ink-3);
+}
+
+.rowIcon {
+    color: var(--ink-2);
+}
+
+.row[data-disabled] .rowIcon {
+    color: inherit;
+}
+
+.rowText {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* What follows the text: a key hint, or the tick on the chosen row */
+.rowEnd {
+    display: inline-flex;
+    flex: none;
+    margin-inline-start: var(--s-4);
+    color: var(--ink-3);
+}
+
+.danger {
+    color: var(--loss);
+}
+
+.danger .rowIcon {
+    color: inherit;
+}
+
+.danger[data-highlighted] {
+    background: color-mix(in srgb, var(--loss) 9%, var(--raised));
+}
+
+.separator {
+    height: 1px;
+    margin: var(--s-1) calc(var(--s-1) * -1);
+    background: var(--line);
+}
+
+.groupLabel {
+    padding: 6px var(--s-2) var(--s-1);
+    color: var(--ink-3);
+    font-size: var(--fs-caption);
+    line-height: var(--lh-caption);
+}
+
+@media (pointer: coarse) {
+    .row {
+        font-size: var(--fs-item);
+    }
+}

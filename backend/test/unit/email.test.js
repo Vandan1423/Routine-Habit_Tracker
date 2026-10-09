@@ -34,11 +34,11 @@ describe("sending email", () => {
 
     it("uses Resend's test sender until EMAIL_FROM names a real one", async () => {
         await sendEmail(message);
-        assert.equal(outbox.at(-1).from, "Life Tracker <onboarding@resend.dev>");
+        assert.equal(outbox.at(-1).from, "Nitya <onboarding@resend.dev>");
 
-        process.env.EMAIL_FROM = "Life Tracker <hello@lifetracker.example>";
+        process.env.EMAIL_FROM = "Nitya <hello@nitya.example>";
         await sendEmail(message);
-        assert.equal(outbox.at(-1).from, "Life Tracker <hello@lifetracker.example>");
+        assert.equal(outbox.at(-1).from, "Nitya <hello@nitya.example>");
         assert.deepEqual(
             { to: outbox.at(-1).to, subject: outbox.at(-1).subject, html: outbox.at(-1).html, text: outbox.at(-1).text },
             message,
@@ -107,7 +107,7 @@ describe("sending email through a Gmail account", () => {
         process.env.GMAIL_CLIENT_ID = "client-id";
         process.env.GMAIL_CLIENT_SECRET = "client-secret";
         process.env.GMAIL_REFRESH_TOKEN = "refresh-token";
-        process.env.EMAIL_FROM = "Life Tracker <app@gmail.example>";
+        process.env.EMAIL_FROM = "Nitya <app@gmail.example>";
     });
     afterEach(() => {
         for (const name of ["GMAIL_CLIENT_ID", "GMAIL_CLIENT_SECRET", "GMAIL_REFRESH_TOKEN", "EMAIL_FROM"]) {
@@ -155,7 +155,7 @@ describe("sending email through a Gmail account", () => {
         assert.equal(sendRequests[0].authorization, "Bearer access-1");
 
         const { headers, bodies } = read(sendRequests[0].message);
-        assert.ok(headers.includes("From: Life Tracker <app@gmail.example>"));
+        assert.ok(headers.includes("From: Nitya <app@gmail.example>"));
         assert.ok(headers.includes("To: someone@example.com"));
         assert.ok(headers.includes("Subject: Confirm your email"));
         assert.deepEqual(bodies, { "text/plain": message.text, "text/html": message.html });

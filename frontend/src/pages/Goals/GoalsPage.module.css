@@ -1,0 +1,243 @@
+/* The head of the screen, set like the head of a day so that it starts where Today and Plan do */
+.header {
+    composes: header from "../../components/day/DayHeader.module.css";
+}
+
+.text {
+    composes: text from "../../components/day/DayHeader.module.css";
+}
+
+.eyebrow {
+    composes: eyebrow from "../../components/day/DayHeader.module.css";
+    /* Holds its line while the goals are on their way */
+    white-space: pre-wrap;
+}
+
+.title {
+    composes: title from "../Plan/PlanPage.module.css";
+}
+
+.state {
+    margin-top: var(--s-10);
+}
+
+/* A skeleton line keeps the whole height of the line of words it stands for: its margins stay inside */
+.line {
+    display: flow-root;
+}
+
+/* ── One goal: a stretch of the page under a hairline, not a card ── */
+
+.goal {
+    margin-top: var(--s-8);
+    padding-top: var(--s-6);
+    border-top: 1px solid var(--line);
+}
+
+.goalHead {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--s-3);
+}
+
+.goalText {
+    min-width: 0;
+}
+
+.goalTitle {
+    font-size: var(--fs-heading);
+    line-height: var(--lh-heading);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--track-heading);
+    overflow-wrap: anywhere;
+    text-wrap: balance;
+}
+
+.goalMeta {
+    margin-top: 2px;
+    color: var(--ink-3);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+}
+
+/* A date that has gone by takes the muted warning tone. Red is for XP lost, and a goal costs none. */
+.late {
+    color: var(--late);
+}
+
+.note {
+    max-width: 60ch;
+    margin-top: var(--s-2);
+    color: var(--ink-2);
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    text-wrap: pretty;
+}
+
+/* The milestones as the app draws any progress: a mark for each, filled as it is passed */
+.goal .strip {
+    display: flex;
+    max-width: 320px;
+    margin-top: var(--s-4);
+}
+
+.milestones {
+    margin-top: var(--s-2);
+}
+
+/* A line of the same height as a row on Today, wide enough for its hover tint */
+.milestone {
+    display: flex;
+    align-items: center;
+    min-height: var(--row);
+    margin-inline: calc(var(--s-2) * -1);
+    padding-inline: var(--s-2);
+    border-radius: var(--r-2);
+    transition: background-color var(--t-fast) var(--ease);
+}
+
+@media (hover: hover) {
+    .milestone:hover {
+        background: var(--hover);
+    }
+}
+
+/* .milestone .check: outranks Checkbox's own layout whichever file loads last */
+.milestone .check {
+    display: flex;
+    flex: 1;
+    gap: var(--s-3);
+    min-height: var(--row);
+    font-size: var(--fs-row);
+    line-height: var(--lh-item);
+    font-weight: var(--fw-medium);
+    overflow-wrap: anywhere;
+    transition: color var(--t-base) var(--ease);
+}
+
+/* The words beside the box are the box's own label, which sets its own colour: the last thing in it */
+.milestone .check > :last-child {
+    transition: color var(--t-base) var(--ease);
+}
+
+.done .check > :last-child {
+    color: var(--ink-3);
+}
+
+/* Every milestone ticked and the goal still open: said once, with the one thing left to do about it */
+.arrived {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--s-2) var(--s-3);
+    margin-top: var(--s-3);
+    color: var(--ink-2);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+}
+
+/* ── What carries it ── */
+
+.carried {
+    margin-top: var(--s-5);
+}
+
+.carriedHead {
+    margin-bottom: var(--s-1);
+    color: var(--ink-2);
+    font-size: var(--fs-label);
+    line-height: var(--lh-body);
+    font-weight: var(--fw-semibold);
+}
+
+/* Its name, how it has been kept in words, and the same as a short strip */
+.link {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto 72px;
+    align-items: center;
+    gap: var(--s-3);
+    min-height: var(--control-lg);
+    margin-inline: calc(var(--s-2) * -1);
+    padding-inline: var(--s-2);
+    border-radius: var(--r-2);
+    transition: background-color var(--t-fast) var(--ease);
+}
+
+@media (hover: hover) {
+    .link:has(a):hover {
+        background: var(--hover);
+    }
+}
+
+/* .link .linkName: outranks the base rule for links whichever file loads last */
+.link .linkName {
+    overflow: hidden;
+    border-radius: var(--r-1);
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    font-weight: var(--fw-medium);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* The name is the link; the whole line takes the press */
+.link a.linkName::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: var(--r-2);
+}
+
+.link .gone {
+    color: var(--ink-3);
+}
+
+.kept {
+    color: var(--ink-3);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+    white-space: nowrap;
+}
+
+.link .keptStrip {
+    display: flex;
+    grid-column: 3;
+}
+
+/* ── The ones reached: the same thing, at rest ── */
+
+.reachedHead {
+    margin-top: var(--s-12);
+    color: var(--ink-2);
+    font-size: var(--fs-label);
+    line-height: var(--lh-body);
+    font-weight: var(--fw-semibold);
+}
+
+.reachedHead + .goal {
+    margin-top: var(--s-3);
+}
+
+.reached .goalTitle {
+    color: var(--ink-2);
+}
+
+/* bp: phone */
+@media (max-width: 699.98px) {
+    /* How it has been kept goes under its name, and the strip is left to the words */
+    .link {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
+        padding-block: var(--s-2);
+    }
+
+    .link .keptStrip {
+        display: none;
+    }
+
+    .kept {
+        white-space: normal;
+    }
+}

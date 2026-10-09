@@ -1,0 +1,55 @@
+.number {
+    position: relative;
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.window {
+    position: relative;
+    display: inline-block;
+}
+
+.window[data-direction="up"] {
+    --from: 0.4em;
+    --to: -0.4em;
+}
+
+.window[data-direction="down"] {
+    --from: -0.4em;
+    --to: 0.4em;
+}
+
+/* Held to the right-hand edge, so the last digit stays where it was while the number changes length */
+.leaving {
+    position: absolute;
+    top: 0;
+    right: 0;
+    animation: leave var(--t-base) var(--ease) forwards;
+}
+
+/* Slides the last of the way in on the spring, and is fully there well before it has come to rest */
+.arriving {
+    display: inline-block;
+    animation:
+        arrive var(--t-spring) var(--spring),
+        appear var(--t-base) var(--ease);
+}
+
+@keyframes arrive {
+    from {
+        transform: translateY(var(--from));
+    }
+}
+
+@keyframes appear {
+    from {
+        opacity: 0;
+    }
+}
+
+@keyframes leave {
+    to {
+        opacity: 0;
+        transform: translateY(var(--to));
+    }
+}

@@ -1,0 +1,186 @@
+.calendar {
+    --cell: var(--control-md);
+    min-width: 0;
+}
+
+/* The month's name, with the two buttons that turn it at the far end */
+.head {
+    display: flex;
+    align-items: center;
+    gap: var(--s-1);
+    min-height: var(--control-sm);
+    margin-bottom: var(--s-2);
+}
+
+.month {
+    flex: 1;
+    font-size: var(--fs-meta);
+    line-height: var(--lh-body);
+    font-weight: var(--fw-semibold);
+}
+
+.head button:disabled {
+    opacity: 0.35;
+    pointer-events: none;
+}
+
+.grid {
+    display: grid;
+    gap: 2px;
+}
+
+.week {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 2px;
+}
+
+.weekday {
+    padding-bottom: var(--s-1);
+    color: var(--ink-3);
+    font-size: var(--fs-caption);
+    line-height: var(--lh-caption);
+    text-align: center;
+}
+
+.cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--cell);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Picking a day ── */
+
+.day {
+    width: 100%;
+    max-width: var(--control-lg);
+    height: var(--cell);
+    border-radius: var(--r-2);
+    color: var(--ink);
+    text-align: center;
+    transition:
+        background-color var(--t-fast) var(--ease),
+        color var(--t-fast) var(--ease);
+}
+
+@media (hover: hover) {
+    .day:hover {
+        background: var(--fill);
+    }
+}
+
+.day:active {
+    transform: translateY(0.5px);
+}
+
+.day:disabled {
+    color: var(--ink-3);
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.day.today {
+    color: var(--now);
+    font-weight: var(--fw-semibold);
+}
+
+/* The chosen day is filled with ink, like a weekday that is on */
+.day[aria-pressed="true"] {
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: var(--fw-medium);
+}
+
+/* ── Reading a month: the number, and under it whatever that day has to show ── */
+
+.shown {
+    flex-direction: column;
+    gap: 3px;
+    min-height: calc(var(--cell) + var(--s-2));
+    color: var(--ink-2);
+}
+
+.shown.today {
+    color: var(--now);
+    font-weight: var(--fw-semibold);
+}
+
+.shown.outside {
+    color: var(--ink-3);
+    opacity: 0.55;
+}
+
+/* Kept even when empty, so every number sits at the same height */
+.mark {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 10px;
+}
+
+/* ── A month that is the page itself: each day takes its whole cell, its number over its mark ── */
+
+.full {
+    --cell: 3.5rem;
+}
+
+.full .head {
+    margin-bottom: var(--s-3);
+}
+
+.full .month {
+    font-size: var(--fs-item);
+    line-height: var(--lh-item);
+}
+
+.full .weekday {
+    padding-inline: 6px;
+    text-align: start;
+}
+
+.full .cell {
+    align-items: stretch;
+}
+
+.full .day {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    max-width: none;
+    height: auto;
+    min-height: var(--cell);
+    padding: 7px 6px 9px;
+    color: var(--ink-2);
+    text-align: start;
+}
+
+.full .mark {
+    display: block;
+    height: auto;
+}
+
+/* Picked out: in History, a day with every routine done */
+.full .strong {
+    color: var(--ink);
+    font-weight: var(--fw-semibold);
+}
+
+.full .day.today {
+    color: var(--now);
+}
+
+/* bp: phone */
+@media (max-width: 699.98px) {
+    .full {
+        --cell: 3.25rem;
+    }
+
+    .full .weekday,
+    .full .day {
+        padding-inline: var(--s-1);
+    }
+}

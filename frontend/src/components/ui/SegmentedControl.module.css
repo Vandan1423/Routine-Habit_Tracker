@@ -1,0 +1,81 @@
+.group {
+    position: relative;
+    display: inline-grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    flex: none;
+    height: var(--control-md);
+    padding: 2px;
+    border-radius: var(--r-2);
+    background: var(--paper-side);
+    box-shadow: inset 0 0 0 1px var(--line);
+}
+
+/* Slides to the chosen option. Every option is the same width, so one step is the thumb's own width. */
+.thumb {
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    left: 2px;
+    width: calc((100% - 4px) / var(--count));
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-1);
+    background: var(--raised);
+    transform: translateX(calc(var(--chosen) * 100%));
+    transition: transform var(--t-base) var(--ease-out);
+}
+
+.segment {
+    position: relative;
+    cursor: pointer;
+}
+
+.input {
+    position: absolute;
+    inset-inline: 0;
+    inset-block: min(0px, calc((100% - var(--hit)) / 2));
+    appearance: none;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.text {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 100%;
+    padding: 0 10px;
+    border-radius: var(--r-1);
+    color: var(--ink-2);
+    font-size: var(--fs-meta);
+    font-weight: var(--fw-medium);
+    line-height: 1;
+    white-space: nowrap;
+    pointer-events: none;
+    transition: color var(--t-fast) var(--ease);
+}
+
+.input:checked + .text {
+    color: var(--ink);
+}
+
+@media (hover: hover) {
+    .input:hover + .text {
+        color: var(--ink);
+    }
+}
+
+.input:focus-visible + .text {
+    outline: 2px solid var(--focus);
+    outline-offset: 0;
+}
+
+.input:disabled {
+    cursor: default;
+}
+
+.input:disabled + .text {
+    color: var(--ink-3);
+}

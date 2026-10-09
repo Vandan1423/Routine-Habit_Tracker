@@ -1,0 +1,36 @@
+/* The field's own box, as a button. Stronger than Field's .control, which it shares an element with. */
+button.trigger {
+    width: 100%;
+    cursor: default;
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    text-align: start;
+}
+
+button.trigger[data-popup-open] {
+    border-color: var(--accent);
+}
+
+.value {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.placeholder {
+    color: var(--ink-3);
+}
+
+.icon {
+    flex: none;
+    color: var(--ink-2);
+}
+
+/* Seven cells and the air around them */
+.popup {
+    width: 17.5rem;
+    max-width: calc(100vw - var(--s-4));
+    padding: var(--s-3);
+}

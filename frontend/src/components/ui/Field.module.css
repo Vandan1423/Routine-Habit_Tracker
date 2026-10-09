@@ -1,0 +1,192 @@
+.field {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.label {
+    align-self: flex-start;
+    margin-bottom: 6px;
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+    font-weight: var(--fw-medium);
+    color: var(--ink);
+}
+
+.hint {
+    margin-top: 6px;
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+    color: var(--ink-2);
+}
+
+/* Grid rows can animate from nothing to the height of their content, which plain height cannot */
+.errorSlot {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows var(--t-base) var(--ease);
+}
+
+.errorSlot[data-open] {
+    grid-template-rows: 1fr;
+}
+
+.errorClip {
+    min-height: 0;
+    overflow: hidden;
+}
+
+.error {
+    padding-top: 6px;
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+    color: var(--loss);
+    opacity: 0;
+    transition: opacity var(--t-base) var(--ease);
+}
+
+.errorSlot[data-open] .error {
+    opacity: 1;
+}
+
+/*
+ * The box drawn around an input or a textarea. The control inside has no border of its own,
+ * so an icon or a unit can sit inside the same box.
+ */
+.control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: var(--field);
+    padding: 0 11px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-2);
+    background: var(--raised);
+    color: var(--ink);
+    cursor: text;
+    transition:
+        border-color var(--t-fast) var(--ease),
+        background-color var(--t-fast) var(--ease);
+}
+
+@media (hover: hover) {
+    .control:hover {
+        border-color: var(--ink-3);
+    }
+}
+
+.control:focus-within {
+    border-color: var(--accent);
+    outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+    outline-offset: 0;
+}
+
+.control[data-invalid] {
+    border-color: var(--loss);
+}
+
+.control[data-invalid]:focus-within {
+    outline-color: color-mix(in srgb, var(--loss) 35%, transparent);
+}
+
+.control[data-disabled] {
+    border-color: var(--line);
+    background: var(--fill);
+    color: var(--ink-3);
+    cursor: not-allowed;
+}
+
+.adornment {
+    display: inline-flex;
+    align-items: center;
+    flex: none;
+    color: var(--ink-3);
+    font-size: var(--fs-meta);
+}
+
+/* The button that shows what was typed into a password field: at the edge of the box, not a field's width in */
+.reveal {
+    margin-inline-end: -6px;
+}
+
+.input,
+.textarea {
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    appearance: none;
+}
+
+.input {
+    height: calc(var(--field) - 2px);
+}
+
+.input:focus-visible,
+.textarea:focus-visible {
+    outline: none;
+}
+
+.input::placeholder,
+.textarea::placeholder {
+    color: var(--ink-3);
+    opacity: 1;
+}
+
+.input:disabled,
+.textarea:disabled {
+    cursor: not-allowed;
+}
+
+/* The browser's own decorations stay out of it */
+.input::-webkit-outer-spin-button,
+.input::-webkit-inner-spin-button,
+.input::-webkit-search-decoration,
+.input::-webkit-search-cancel-button {
+    appearance: none;
+}
+
+.input[type="number"] {
+    appearance: textfield;
+}
+
+/* Chrome paints saved logins on a colour of its own. Keep the field's. */
+.input:-webkit-autofill,
+.input:-webkit-autofill:hover,
+.input:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--ink);
+    box-shadow: 0 0 0 100px var(--raised) inset;
+    caret-color: var(--ink);
+}
+
+.textareaControl {
+    align-items: stretch;
+    padding: 8px 11px;
+}
+
+/* Grows with what is typed, between its smallest and largest number of lines */
+.textarea {
+    display: block;
+    min-height: calc(var(--rows) * var(--lh-body));
+    max-height: calc(var(--max-rows) * var(--lh-body));
+    line-height: var(--lh-body);
+    resize: none;
+    field-sizing: content;
+    scrollbar-width: thin;
+}
+
+@media (pointer: coarse) {
+    /* 16px: anything smaller makes iOS zoom the page when the field is focused */
+    .input,
+    .textarea {
+        font-size: 1rem;
+    }
+
+    .textarea {
+        line-height: var(--lh-heading);
+        min-height: calc(var(--rows) * var(--lh-heading));
+        max-height: calc(var(--max-rows) * var(--lh-heading));
+    }
+}

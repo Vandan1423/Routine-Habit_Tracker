@@ -1,0 +1,80 @@
+/* The head of the screen, set like the head of a day so that the list starts where Today's does */
+.header {
+    composes: header from "../../components/day/DayHeader.module.css";
+}
+
+.text {
+    composes: text from "../../components/day/DayHeader.module.css";
+}
+
+.eyebrow {
+    composes: eyebrow from "../../components/day/DayHeader.module.css";
+    /* Holds its line while the plan is on its way */
+    white-space: pre-wrap;
+}
+
+/* The interface's own face. Only a date is set in the serif. */
+.title {
+    font-size: var(--fs-figure);
+    /* As tall as the date on Today, so what follows starts at the same height */
+    line-height: calc(var(--fs-date) * var(--lh-date));
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--track-title);
+}
+
+.state {
+    margin-top: var(--s-10);
+}
+
+/* ── The week: beside the list where there is room, above it where there is not ── */
+
+.above {
+    margin-top: var(--s-6);
+}
+
+.beside {
+    display: none;
+}
+
+/* The same measure at which DayLayout brings its aside up beside the column */
+@container (min-width: 952px) {
+    .above {
+        display: none;
+    }
+
+    .beside {
+        display: block;
+    }
+}
+
+/* ── A part of the day ── */
+
+.block {
+    composes: block from "../../components/day/DayBlock.module.css";
+}
+
+/* The heading's own rules there are written for a heading inside a block, which this is too */
+.head {
+    composes: head from "../../components/day/DayBlock.module.css";
+}
+
+.rows > :first-child {
+    margin-top: var(--s-1);
+}
+
+/* While a row is held, the rows it passes step aside. Once it is let go, they are simply there. */
+.held > li > div {
+    transition: transform var(--t-base) var(--ease);
+}
+
+.held > li > div[data-dragging],
+.settling > li > div {
+    transition: none;
+}
+
+/* bp: phone */
+@media (max-width: 699.98px) {
+    .header {
+        align-items: center;
+    }
+}
