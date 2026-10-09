@@ -9,6 +9,7 @@ import {
     stopApp,
     todayIn,
 } from "../helpers/app.js";
+import DailyLog from "../../src/models/DailyLog.js";
 import User from "../../src/models/User.js";
 import XPLog from "../../src/models/XPLog.js";
 import { applyPenalty } from "../../src/utils/penaltyEngine.js";
@@ -192,6 +193,33 @@ describe("reward rules", { skip: skipWithoutDatabase }, () => {
 
             assert.ok(responses.every((response) => response.status === 200));
             assert.equal((await stats()).totalXp, 60);
+        });
+
+        it("pays the perfect-day bonus once when the day's last items are ticked together", async () => {
+            const { client, complete, undo, routine, stats, today } = await setup();
+            const user = (await client.get("/auth/me")).body.user._id;
+            const items = [];
+            for (let i = 0; i < 6; i++) {
+                items.push(await routine({ title: `Routine ${i}` }));
+            }
+            const entries = (reason) => XPLog.countDocuments({ user, reason });
+            const isPerfect = async () => (await DailyLog.findOne({ user, date: today })).isPerfectDay;
+
+            // Everything due today, done in the same instant: 6 x 10 XP and one bonus of 20
+            const done = await Promise.all(items.map((item) => complete(item)));
+
+            assert.ok(done.every((response) => response.status === 200));
+            assert.equal(await entries("perfect_day_bonus"), 1);
+            assert.equal((await stats()).totalXp, 80);
+            assert.equal(await isPerfect(), true);
+
+            // And un-ticked in the same instant: the bonus goes back once, and the day is no longer perfect
+            const undone = await Promise.all(items.map((item) => undo(item)));
+
+            assert.ok(undone.every((response) => response.status === 200));
+            assert.equal(await entries("perfect_day_bonus_revoked"), 1);
+            assert.equal((await stats()).totalXp, 0);
+            assert.equal(await isPerfect(), false);
         });
 
         it("loses no award, and pays the coins of a level reached once", async () => {
