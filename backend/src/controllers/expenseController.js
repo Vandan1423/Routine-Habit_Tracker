@@ -74,197 +74,239 @@ const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const ownsAccount = (userId, accountId) => ExpenseAccount.exists({ _id: accountId, user: userId });
 const ownsSubscription = (userId, subscriptionId) => ExpenseSubscription.exists({ _id: subscriptionId, user: userId, ...KEPT });
 
-const getRefId = (value) => {
-    if (!value) {
-        return null;
+// How many transactions the list hands over at a time, unless fewer are asked for
+const PAGE_SIZE = 100;
+
+// Every figure below is added up by the database. However long an account's ledger grows, a request
+// brings back a handful of totals and at most one page of transactions, never the ledger itself.
+
+const sumAmount = { $sum: "$amount" };
+
+// A place or a category left empty counts as "Other"
+const named = (value) => value || "Other";
+
+/**
+ * What each account holds: its opening balance, with everything that went in or out since.
+ * @returns {Map} - account id (as text) => balance
+ */
+const readBalances = async (userId, accounts) => {
+    const moved = await ExpenseTransaction.aggregate([
+        { $match: { user: userId, ...KEPT } },
+        {
+            $group: {
+                _id: { account: "$account", to: "$transferToAccount", type: "$type" },
+                total: sumAmount,
+            },
+        },
+    ]);
+
+    const balances = new Map(
+        accounts.map((account) => [account._id.toString(), Number(account.openingBalance || 0)]),
+    );
+    const add = (accountId, amount) => {
+        if (!accountId) return;
+        const key = accountId.toString();
+        balances.set(key, (balances.get(key) || 0) + amount);
+    };
+
+    for (const { _id: movement, total } of moved) {
+        if (movement.type === "expense") add(movement.account, -total);
+        if (movement.type === "income") add(movement.account, total);
+        if (movement.type === "transfer") {
+            add(movement.account, -total);
+            add(movement.to, total);
+        }
     }
-
-    if (typeof value === "string") {
-        return value;
-    }
-
-    if (typeof value === "object" && value._id) {
-        return value._id.toString();
-    }
-
-    return value.toString();
-};
-
-const buildAccountBalanceMap = (accounts = [], transactions = []) => {
-    const balances = new Map();
-
-    accounts.forEach((account) => {
-        balances.set(account._id.toString(), Number(account.openingBalance || 0));
-    });
-
-    transactions
-        .slice()
-        .sort((a, b) => new Date(a.transactionDate) - new Date(b.transactionDate))
-        .forEach((transaction) => {
-            const amount = Number(transaction.amount || 0);
-            const accountId = getRefId(transaction.account);
-            const transferToId = getRefId(transaction.transferToAccount);
-
-            if (transaction.type === "expense") {
-                balances.set(accountId, (balances.get(accountId) || 0) - amount);
-            }
-
-            if (transaction.type === "income") {
-                balances.set(accountId, (balances.get(accountId) || 0) + amount);
-            }
-
-            if (transaction.type === "transfer") {
-                balances.set(accountId, (balances.get(accountId) || 0) - amount);
-                if (transferToId) {
-                    balances.set(transferToId, (balances.get(transferToId) || 0) + amount);
-                }
-            }
-        });
 
     return balances;
 };
 
-// A transaction's date is a calendar day kept at UTC midnight
-const dayOf = (transaction) => new Date(transaction.transactionDate).toISOString().slice(0, 10);
+const withBalances = (accounts, balances) =>
+    accounts.map((account) => ({
+        ...account.toObject(),
+        currentBalance: balances.get(account._id.toString()) || 0,
+    }));
 
-const sumOf = (transactions) =>
-    transactions.reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0);
+// Rows of { _id: name, total, count } as a list by name, largest first. Names that count as one are added together.
+const totalsByName = (rows) => {
+    const totals = new Map();
 
-// What was spent, by the place it was spent at, largest first
-const totalsByPlace = (expenses) =>
-    Object.values(
-        expenses.reduce((acc, transaction) => {
-            const key = transaction.placeName || "Other";
-            if (!acc[key]) {
-                acc[key] = {
-                    name: key,
-                    total: 0,
-                    count: 0,
-                };
-            }
-            acc[key].total += Number(transaction.amount || 0);
-            acc[key].count += 1;
-            return acc;
-        }, {}),
-    ).sort((a, b) => b.total - a.total);
+    for (const { _id, total, count } of rows) {
+        const name = named(_id);
+        const held = totals.get(name) ?? { name, total: 0, count: 0 };
+        held.total += total;
+        held.count += count;
+        totals.set(name, held);
+    }
+
+    return [...totals.values()].sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+};
 
 /**
- * Everything the Expenses screen shows for one month.
+ * Everything the Expenses screen shows for one month, apart from the accounts and the list of transactions.
  * @param {String} today - the user's own today, "YYYY-MM-DD"
  * @param {String} month - the month on show, "YYYY-MM". The month today is in unless another was asked for.
  */
-const aggregateSummary = (accounts, transactions, subscriptions, places, today, month) => {
+const readSummary = async (userId, today, month) => {
     const currentMonthKey = today.slice(0, 7);
     const previousMonthKey = shiftMonth(currentMonthKey, -1);
-    const expenses = transactions.filter((transaction) => transaction.type === "expense");
-    const expensesIn = (monthKey) => expenses.filter((transaction) => transaction.monthKey === monthKey);
+    const seriesMonths = Array.from({ length: 6 }, (_, index) => shiftMonth(month, index - 5));
+    const months = [...new Set([currentMonthKey, previousMonthKey, ...seriesMonths])];
+    const expensesOfMonth = { type: "expense", monthKey: month };
 
-    const currentMonthExpenses = expensesIn(currentMonthKey);
-    const lastMonthExpenses = expensesIn(previousMonthKey);
-    const monthExpenses = expensesIn(month);
-    const monthBefore = expensesIn(shiftMonth(month, -1));
+    const [[ledger], [figures]] = await Promise.all([
+        // One pass over the whole ledger: how far it reaches, and where it was spent
+        ExpenseTransaction.aggregate([
+            { $match: { user: userId, ...KEPT } },
+            {
+                $facet: {
+                    // Months are written "YYYY-MM", so they sort as text
+                    span: [
+                        { $match: { monthKey: { $gt: "" } } },
+                        { $group: { _id: null, first: { $min: "$monthKey" }, last: { $max: "$monthKey" } } },
+                    ],
+                    places: [
+                        { $match: { type: "expense" } },
+                        { $group: { _id: "$placeName", total: sumAmount, count: { $sum: 1 } } },
+                    ],
+                },
+            },
+        ]),
+        // The months the screen has figures for: the one on show with the five before it, this one and the last
+        ExpenseTransaction.aggregate([
+            { $match: { user: userId, ...KEPT, monthKey: { $in: months } } },
+            {
+                $facet: {
+                    categories: [
+                        { $match: { type: "expense" } },
+                        {
+                            $group: {
+                                _id: { month: "$monthKey", category: "$category" },
+                                total: sumAmount,
+                                count: { $sum: 1 },
+                            },
+                        },
+                    ],
+                    places: [
+                        { $match: expensesOfMonth },
+                        { $group: { _id: "$placeName", total: sumAmount, count: { $sum: 1 } } },
+                    ],
+                    // A transaction's date is a calendar day kept at UTC midnight
+                    days: [
+                        { $match: expensesOfMonth },
+                        {
+                            $group: {
+                                _id: { $dateToString: { format: "%Y-%m-%d", date: "$transactionDate" } },
+                                spent: sumAmount,
+                            },
+                        },
+                        { $sort: { _id: -1 } },
+                    ],
+                    income: [
+                        { $match: { type: "income", monthKey: month } },
+                        { $group: { _id: null, total: sumAmount } },
+                    ],
+                    // The same stretch of the month before: on the 9th, what had been spent by the 9th of last month
+                    toDate: [
+                        {
+                            $match: {
+                                type: "expense",
+                                monthKey: previousMonthKey,
+                                $expr: { $lte: [{ $dayOfMonth: "$transactionDate" }, Number(today.slice(8))] },
+                            },
+                        },
+                        { $group: { _id: null, total: sumAmount } },
+                    ],
+                },
+            },
+        ]),
+    ]);
 
-    const monthSeries = Array.from({ length: 6 }, (_, index) => {
-        const monthKey = shiftMonth(month, index - 5);
-        const monthTransactions = expensesIn(monthKey);
-        const total = sumOf(monthTransactions);
-        const byCategory = monthTransactions.reduce((acc, transaction) => {
-            const key = transaction.category || "Other";
-            acc[key] = (acc[key] || 0) + Number(transaction.amount || 0);
-            return acc;
-        }, {});
+    // monthKey => { total, count, categories: Map(category => total) }
+    const byMonth = new Map();
+    for (const { _id, total, count } of figures.categories) {
+        const held = byMonth.get(_id.month) ?? { total: 0, count: 0, categories: new Map() };
+        const category = named(_id.category);
 
-        const topCategory = Object.entries(byCategory).sort((a, b) => b[1] - a[1])[0] || ["Other", 0];
+        held.total += total;
+        held.count += count;
+        held.categories.set(category, (held.categories.get(category) || 0) + total);
+        byMonth.set(_id.month, held);
+    }
 
-        return {
-            monthKey,
-            label: getReadableMonth(monthKey),
-            total,
-            topCategory: topCategory[0],
-            topCategoryTotal: topCategory[1],
-        };
-    });
-
-    const categoryTotals = monthExpenses.reduce((acc, transaction) => {
-        const key = transaction.category || "Other";
-        acc[key] = (acc[key] || 0) + Number(transaction.amount || 0);
-        return acc;
-    }, {});
-
-    const categoryBudgets = {};
-
-    // Months are written "YYYY-MM", so they sort as text
-    const monthKeys = transactions.map((transaction) => transaction.monthKey).filter(Boolean).sort();
-
-    // The same stretch of the month before: on the 9th, what had been spent by the 9th of last month.
-    // Only said of the month that is still running.
-    const dayOfMonth = today.slice(8);
-    const previousMonthToDate =
-        month === currentMonthKey
-            ? sumOf(lastMonthExpenses.filter((transaction) => dayOf(transaction).slice(8) <= dayOfMonth))
-            : null;
-
-    const recentTransactions = transactions.slice().sort((a, b) => new Date(b.transactionDate) - new Date(a.transactionDate)).slice(0, 16);
-    const balances = buildAccountBalanceMap(accounts, transactions);
+    const totalOf = (monthKey) => byMonth.get(monthKey)?.total ?? 0;
+    const countOf = (monthKey) => byMonth.get(monthKey)?.count ?? 0;
+    // A month's categories, largest first
+    const categoriesOf = (monthKey) =>
+        [...(byMonth.get(monthKey)?.categories ?? [])]
+            .map(([category, total]) => ({ category, total }))
+            .sort((a, b) => b.total - a.total || a.category.localeCompare(b.category));
 
     return {
-        accounts: accounts.map((account) => ({
-            ...account.toObject(),
-            currentBalance: balances.get(account._id.toString()) || 0,
-        })),
         today,
         currentMonthKey,
-        currentMonthExpensesTotal: sumOf(currentMonthExpenses),
-        lastMonthExpensesTotal: sumOf(lastMonthExpenses),
-        currentMonthExpenseCount: currentMonthExpenses.length,
+        currentMonthExpensesTotal: totalOf(currentMonthKey),
+        lastMonthExpensesTotal: totalOf(previousMonthKey),
+        currentMonthExpenseCount: countOf(currentMonthKey),
         // The month on show, and how far the months with anything in them reach
         month,
-        firstMonth: monthKeys[0] ?? null,
-        lastMonth: monthKeys.at(-1) ?? null,
-        monthExpensesTotal: sumOf(monthExpenses),
-        monthExpenseCount: monthExpenses.length,
-        monthIncomeTotal: sumOf(
-            transactions.filter((transaction) => transaction.type === "income" && transaction.monthKey === month),
-        ),
-        previousMonthExpensesTotal: sumOf(monthBefore),
-        previousMonthToDate,
-        monthSeries,
-        categoryTotals: Object.entries(categoryTotals)
-            .map(([category, total]) => ({ category, total }))
-            .sort((a, b) => b.total - a.total),
-        placeTotals: totalsByPlace(expenses),
-        monthPlaceTotals: totalsByPlace(monthExpenses),
-        recentTransactions,
-        subscriptions,
-        suggestedPlaces: places.map((place) => place.name).sort((a, b) => a.localeCompare(b)),
-        categoryBudgets,
+        firstMonth: ledger.span[0]?.first ?? null,
+        lastMonth: ledger.span[0]?.last ?? null,
+        monthExpensesTotal: totalOf(month),
+        monthExpenseCount: countOf(month),
+        monthIncomeTotal: figures.income[0]?.total ?? 0,
+        previousMonthExpensesTotal: totalOf(shiftMonth(month, -1)),
+        // Only said of the month that is still running
+        previousMonthToDate: month === currentMonthKey ? (figures.toDate[0]?.total ?? 0) : null,
+        monthSeries: seriesMonths.map((monthKey) => {
+            const top = categoriesOf(monthKey)[0] ?? { category: "Other", total: 0 };
+
+            return {
+                monthKey,
+                label: getReadableMonth(monthKey),
+                total: totalOf(monthKey),
+                topCategory: top.category,
+                topCategoryTotal: top.total,
+            };
+        }),
+        categoryTotals: categoriesOf(month),
+        placeTotals: totalsByName(ledger.places),
+        monthPlaceTotals: totalsByName(figures.places),
+        // What each day of the month on show spent, newest first. The list of transactions comes a page at a
+        // time, so a day's lines may not all be there to be added up.
+        monthDays: figures.days.map(({ _id, spent }) => ({ date: _id, spent })),
+        categoryBudgets: {},
     };
 };
 
+const populated = (query) => query.populate("account", "name type").populate("transferToAccount", "name type");
+
+// The newest day first, and within a day the one logged last
+const NEWEST_FIRST = { transactionDate: -1, createdAt: -1, _id: -1 };
+
 export const getSummary = async (req, res, next) => {
     try {
-        const accounts = await ensureDefaultAccounts(req.user._id);
-        const [transactions, subscriptions, places] = await Promise.all([
-            ExpenseTransaction.find({ user: req.user._id, ...KEPT })
-                .populate("account", "name type")
-                .populate("transferToAccount", "name type")
-                .sort({ transactionDate: -1 }),
-            ExpenseSubscription.find({ user: req.user._id, ...KEPT }).sort({ isActive: -1, nextDueDate: 1 }),
-            KnownSpendPlace.find({ user: req.user._id }).sort({ transactionCount: -1, lastVisitedAt: -1 }),
-        ]);
-        const budgets = await ExpenseBudget.find({ user: req.user._id, isActive: true });
-
+        const userId = req.user._id;
+        const accounts = await ensureDefaultAccounts(userId);
         const today = getUserToday(req.user);
-        const summary = aggregateSummary(
-            accounts,
-            transactions,
+
+        const [summary, balances, recentTransactions, subscriptions, places, budgets] = await Promise.all([
+            readSummary(userId, today, req.query.month || today.slice(0, 7)),
+            readBalances(userId, accounts),
+            populated(ExpenseTransaction.find({ user: userId, ...KEPT })).sort(NEWEST_FIRST).limit(16),
+            ExpenseSubscription.find({ user: userId, ...KEPT }).sort({ isActive: -1, nextDueDate: 1 }),
+            KnownSpendPlace.find({ user: userId }).sort({ transactionCount: -1, lastVisitedAt: -1 }),
+            ExpenseBudget.find({ user: userId, isActive: true }),
+        ]);
+
+        res.status(200).json({
+            accounts: withBalances(accounts, balances),
+            ...summary,
+            recentTransactions,
             subscriptions,
-            places,
-            today,
-            req.query.month || today.slice(0, 7),
-        );
-        summary.budgets = budgets;
-        res.status(200).json(summary);
+            suggestedPlaces: places.map((place) => place.name).sort((a, b) => a.localeCompare(b)),
+            budgets,
+        });
     } catch (error) {
         next(error);
     }
@@ -273,15 +315,9 @@ export const getSummary = async (req, res, next) => {
 export const getAccounts = async (req, res, next) => {
     try {
         const accounts = await ensureDefaultAccounts(req.user._id);
-        const transactions = await ExpenseTransaction.find({ user: req.user._id, ...KEPT }).sort({ transactionDate: 1 });
-        const balances = buildAccountBalanceMap(accounts, transactions);
+        const balances = await readBalances(req.user._id, accounts);
 
-        res.status(200).json({
-            accounts: accounts.map((account) => ({
-                ...account.toObject(),
-                currentBalance: balances.get(account._id.toString()) || 0,
-            })),
-        });
+        res.status(200).json({ accounts: withBalances(accounts, balances) });
     } catch (error) {
         next(error);
     }
@@ -305,8 +341,7 @@ export const updateAccount = async (req, res, next) => {
             return res.status(404).json({ message: "Account not found" });
         }
 
-        const transactions = await ExpenseTransaction.find({ user: req.user._id, ...KEPT }).sort({ transactionDate: 1 });
-        const balances = buildAccountBalanceMap([account], transactions);
+        const balances = await readBalances(req.user._id, [account]);
 
         res.status(200).json({
             account: {
@@ -328,13 +363,16 @@ export const listTransactions = async (req, res, next) => {
             query.monthKey = req.query.month;
         }
 
-        const transactions = await ExpenseTransaction.find(query)
-            .populate("account", "name type")
-            .populate("transferToAccount", "name type")
-            // The newest day first, and within a day the one logged last
-            .sort({ transactionDate: -1, createdAt: -1 });
+        // A page at a time: `limit` of them, after the `offset` newest. `total` is how many there are in all.
+        const limit = Number(req.query.limit) || PAGE_SIZE;
+        const offset = Number(req.query.offset) || 0;
 
-        res.status(200).json({ transactions });
+        const [transactions, total] = await Promise.all([
+            populated(ExpenseTransaction.find(query)).sort(NEWEST_FIRST).skip(offset).limit(limit),
+            ExpenseTransaction.countDocuments(query),
+        ]);
+
+        res.status(200).json({ transactions, total });
     } catch (error) {
         next(error);
     }
@@ -379,9 +417,7 @@ export const updateTransaction = async (req, res, next) => {
         existing.set(payload);
         await existing.save();
 
-        const updated = await ExpenseTransaction.findById(existing._id)
-            .populate("account", "name type")
-            .populate("transferToAccount", "name type");
+        const updated = await populated(ExpenseTransaction.findById(existing._id));
 
         res.status(200).json({ transaction: updated });
     } catch (error) {
@@ -487,20 +523,14 @@ export const createTransaction = async (req, res, next) => {
             );
         }
 
-        const populated = await ExpenseTransaction.findById(transaction._id)
-            .populate("account", "name type")
-            .populate("transferToAccount", "name type");
+        const saved = await populated(ExpenseTransaction.findById(transaction._id));
 
         const refreshedAccounts = await ExpenseAccount.find({ user: req.user._id }).sort({ sortOrder: 1, createdAt: 1 });
-        const allTransactions = await ExpenseTransaction.find({ user: req.user._id, ...KEPT }).sort({ transactionDate: 1 });
-        const balances = buildAccountBalanceMap(refreshedAccounts, allTransactions);
+        const balances = await readBalances(req.user._id, refreshedAccounts);
 
         res.status(201).json({
-            transaction: populated,
-            accountBalances: refreshedAccounts.map((account) => ({
-                ...account.toObject(),
-                currentBalance: balances.get(account._id.toString()) || 0,
-            })),
+            transaction: saved,
+            accountBalances: withBalances(refreshedAccounts, balances),
         });
     } catch (error) {
         next(error);
@@ -672,10 +702,10 @@ const escapeCsv = (value) => {
 export const exportMonthlyCsv = async (req, res, next) => {
     try {
         const month = String(req.query.month || getUserMonthKey(req.user));
-        const transactions = await ExpenseTransaction.find({ user: req.user._id, monthKey: month, ...KEPT })
-            .populate("account", "name type")
-            .populate("transferToAccount", "name type")
-            .sort({ transactionDate: -1 });
+        // The whole month on purpose: a file of it is no use in pieces
+        const transactions = await populated(
+            ExpenseTransaction.find({ user: req.user._id, monthKey: month, ...KEPT }),
+        ).sort(NEWEST_FIRST);
 
         const rows = [
             ["date", "type", "category", "place", "description", "amount", "paymentMethod", "account", "destinationAccount", "notes"],

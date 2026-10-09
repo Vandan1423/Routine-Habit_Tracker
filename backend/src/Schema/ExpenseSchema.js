@@ -94,3 +94,9 @@ export const monthQuerySchema = Joi.object({
             "string.pattern.base": "{{#label}} must be a month in YYYY-MM format.",
         }),
 });
+
+// The list of transactions comes a page at a time: `limit` of them (100 unless said), after the `offset` newest
+export const transactionListQuerySchema = monthQuerySchema.keys({
+    limit: Joi.number().integer().min(1).max(200),
+    offset: Joi.number().integer().min(0),
+});

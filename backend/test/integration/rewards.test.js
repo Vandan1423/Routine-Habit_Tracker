@@ -9,6 +9,10 @@ import {
     stopApp,
     todayIn,
 } from "../helpers/app.js";
+import User from "../../src/models/User.js";
+import XPLog from "../../src/models/XPLog.js";
+import { applyPenalty } from "../../src/utils/penaltyEngine.js";
+import { awardXP, revokeXP } from "../../src/utils/rewardEngine.js";
 
 // A timezone where it is currently the middle of the day, so "long before" and "long after" both exist today
 const middayZone = () =>
@@ -166,6 +170,59 @@ describe("reward rules", { skip: skipWithoutDatabase }, () => {
             await complete(item);
             const again = await stats();
             assert.deepEqual([again.level, again.totalXp, again.coins], [2, 105, 100]);
+        });
+    });
+
+    describe("several changes at the same instant", () => {
+        const together = (count, change) => Promise.all(Array.from({ length: count }, change));
+        const balanceOf = async (id) => {
+            const { xp, coins } = await User.findById(id);
+            return { xp, coins };
+        };
+
+        it("pays every one of several routines ticked together", async () => {
+            const { complete, routine, stats } = await setup();
+            await routine({ title: "Keeps the day from being perfect" });
+            const items = [];
+            for (let i = 0; i < 6; i++) {
+                items.push(await routine({ title: `Routine ${i}` }));
+            }
+
+            const responses = await Promise.all(items.map((item) => complete(item)));
+
+            assert.ok(responses.every((response) => response.status === 200));
+            assert.equal((await stats()).totalXp, 60);
+        });
+
+        it("loses no award, and pays the coins of a level reached once", async () => {
+            const client = createClient();
+            const { user } = await client.register();
+
+            // 6 x 20 XP: level 2 starts at 100, and reaching it pays 100 coins
+            const awards = await together(6, () => awardXP(user._id, 20, "test_award"));
+
+            assert.deepEqual(await balanceOf(user._id), { xp: 120, coins: 100 });
+            assert.equal(awards.filter((award) => award.leveledUp).length, 1);
+            assert.equal(awards.reduce((sum, award) => sum + award.coinsAwarded, 0), 100);
+            assert.equal(await XPLog.countDocuments({ user: user._id, reason: "test_award" }), 6);
+
+            // And back again: what is taken adds up to what there was
+            const reversals = await together(6, () => revokeXP(user._id, 20, "test_reversal"));
+
+            assert.deepEqual(await balanceOf(user._id), { xp: 0, coins: 0 });
+            assert.equal(reversals.reduce((sum, reversal) => sum + reversal.xpRevoked, 0), 120);
+            assert.equal(reversals.reduce((sum, reversal) => sum + reversal.coinsRevoked, 0), 100);
+        });
+
+        it("never charges more than the account holds", async () => {
+            const client = createClient();
+            const { user } = await client.register();
+            await awardXP(user._id, 50, "test_award");
+
+            const penalties = await together(6, () => applyPenalty(user._id, 20, "test_penalty"));
+
+            assert.equal((await balanceOf(user._id)).xp, 0);
+            assert.equal(penalties.reduce((sum, penalty) => sum + penalty.xpLost, 0), 50);
         });
     });
 

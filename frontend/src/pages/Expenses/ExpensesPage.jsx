@@ -343,7 +343,8 @@ const ExpensesPage = () => {
     const words = monthWords(model);
     const whole = unfolded === month;
     const shownDays = whole ? model.days : model.days.slice(0, LATEST_DAYS);
-    const hiddenLines = model.entries.length - shownDays.reduce((sum, day) => sum + day.entries.length, 0);
+    // Lines of the month not on show: folded away, or not read yet (they come a page at a time)
+    const hiddenLines = model.count - shownDays.reduce((sum, day) => sum + day.entries.length, 0);
     const hasSeries = model.series.some((point) => point.total > 0);
 
     return (
@@ -378,7 +379,7 @@ const ExpensesPage = () => {
                     <SectionHeader
                         className={styles.head}
                         title="Transactions"
-                        meta={model.entries.length > 0 ? String(model.entries.length) : undefined}
+                        meta={model.count > 0 ? String(model.count) : undefined}
                         actions={
                             model.entries.length > 0 && (
                                 <Button variant="ghost" size="sm" onClick={expenses.exportMonth}>
@@ -409,9 +410,20 @@ const ExpensesPage = () => {
                             </AnimatePresence>
                             {hiddenLines > 0 && (
                                 <div className={styles.more}>
-                                    <Button size="sm" onClick={() => setUnfolded(month)}>
-                                        Show the whole month
-                                    </Button>
+                                    {whole ? (
+                                        // Everything read is on show: the rest of a long month is read on request
+                                        <Button
+                                            size="sm"
+                                            loading={expenses.readingEarlier}
+                                            onClick={expenses.showEarlier}
+                                        >
+                                            Show earlier
+                                        </Button>
+                                    ) : (
+                                        <Button size="sm" onClick={() => setUnfolded(month)}>
+                                            Show the whole month
+                                        </Button>
+                                    )}
                                 </div>
                             )}
                         </div>

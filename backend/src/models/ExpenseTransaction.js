@@ -89,6 +89,11 @@ expenseTransactionSchema.pre("save", function () {
     this.monthKey = `${year}-${month}`;
 });
 
+// The list is read a page at a time, newest first: one month of it, or all of it. The first of these also
+// serves the month-by-month totals.
+expenseTransactionSchema.index({ user: 1, monthKey: 1, transactionDate: -1, createdAt: -1, _id: -1 });
+expenseTransactionSchema.index({ user: 1, transactionDate: -1, createdAt: -1, _id: -1 });
+
 const ExpenseTransaction = mongoose.model(
     "ExpenseTransaction",
     expenseTransactionSchema,

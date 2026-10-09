@@ -51,6 +51,7 @@ const brand = `
 // Every part is given as plain text and escaped here, so something a user typed (their name) can't add markup.
 // The layout is tables with inline styles, which is what mail apps agree on. It is set for light only:
 // a mail app's own dark mode may still recolour it, and the ink-on-paper pairs survive that.
+// validFor is left out for a link that doesn't run out.
 const build = ({ subject, heading, intro, buttonLabel, url, validFor, ignoreNote }) => ({
     subject,
     html: `<!doctype html>
@@ -89,7 +90,7 @@ const build = ({ subject, heading, intro, buttonLabel, url, validFor, ignoreNote
                         </td>
                     </tr>
                     <tr>
-                        <td style="padding-bottom: 6px; ${text(INK_2, 13, 20)}">The link is valid for ${escapeHtml(validFor)}. If the button does nothing, copy this address into your browser:</td>
+                        <td style="padding-bottom: 6px; ${text(INK_2, 13, 20)}">${validFor ? `The link is valid for ${escapeHtml(validFor)}. ` : ""}If the button does nothing, copy this address into your browser:</td>
                     </tr>
                     <tr>
                         <td style="padding-bottom: 32px; ${text(INK_2, 13, 20, "word-break: break-all;")}">${escapeHtml(url)}</td>
@@ -111,7 +112,7 @@ const build = ({ subject, heading, intro, buttonLabel, url, validFor, ignoreNote
         "",
         `${buttonLabel}: ${url}`,
         "",
-        `The link is valid for ${validFor}.`,
+        ...(validFor ? [`The link is valid for ${validFor}.`] : []),
         ignoreNote,
     ].join("\n"),
 });
@@ -136,4 +137,17 @@ export const passwordResetEmail = ({ url }) =>
         url,
         validFor: "15 minutes",
         ignoreNote: "If you didn’t ask for this, ignore this email and your password stays the same.",
+    });
+
+// Sent instead of a confirmation link when someone signs up with an address that already has an account.
+// The page they signed up on can't say so (it would tell anyone who asked which addresses have accounts),
+// so the address's owner is told here.
+export const accountExistsEmail = ({ name, url }) =>
+    build({
+        subject: `You already have a ${APP_NAME} account`,
+        heading: "You already have an account",
+        intro: `Hi ${name}, someone just tried to sign up for ${APP_NAME} with this address. It already has an account, so nothing was created and nothing was changed. If that was you, sign in instead; if the password has slipped your mind, “Forgot password” on that page sets a new one.`,
+        buttonLabel: "Sign in",
+        url,
+        ignoreNote: "If that wasn’t you, there is nothing to do. Your account is as you left it and nobody got in.",
     });

@@ -1,6 +1,15 @@
-import User from "../models/User.js";
 import XPLog from "../models/XPLog.js"; // 1. Import the new model
+import { changeBalance } from "./xpBalance.js";
 import { calculateLevel } from "./xpCalculator.js";
+
+// What reaching each level from `from` up to `to` pays (or, on the way down, takes back)
+const coinsBetween = (from, to) => {
+    let coins = 0;
+    for (let level = from + 1; level <= to; level++) {
+        coins += level * 50;
+    }
+    return coins;
+};
 
 /**
  * Awards XP to a user, handles level-up logic, grants coin rewards, and logs the transaction.
@@ -17,36 +26,25 @@ export const awardXP = async (
     metadata = {},
 ) => {
     try {
-        const user = await User.findById(userId);
-        if (!user) {
+        // The XP and any level-up coins go on in one step (see changeBalance)
+        const changed = await changeBalance(userId, ({ xp, coins }) => {
+            const newXp = xp + xpAmount;
+
+            return {
+                xp: newXp,
+                // Every level passed pays, in case a massive XP boost skipped several at once
+                coins: coins + coinsBetween(calculateLevel(xp).level, calculateLevel(newXp).level),
+            };
+        });
+        if (!changed) {
             throw new Error("User not found for XP reward");
         }
 
-        // Calculate old level BEFORE adding new XP
-        const oldLevelInfo = calculateLevel(user.xp || 0);
-
-        // Add xpAmount to user.xp
-        user.xp = (user.xp || 0) + xpAmount;
-
-        // Calculate new level
-        const newLevelInfo = calculateLevel(user.xp);
-
-        // Check if level increased
+        const { before, after } = changed;
+        const oldLevelInfo = calculateLevel(before.xp);
+        const newLevelInfo = calculateLevel(after.xp);
         const leveledUp = newLevelInfo.level > oldLevelInfo.level;
-        let coinsAwarded = 0;
-
-        if (leveledUp) {
-            // Loop in case they earned a massive XP boost and skipped multiple levels at once
-            for (let i = oldLevelInfo.level + 1; i <= newLevelInfo.level; i++) {
-                coinsAwarded += i * 50;
-            }
-
-            // Add coins to user wallet
-            user.coins = (user.coins || 0) + coinsAwarded;
-        }
-
-        // Save user
-        await user.save();
+        const coinsAwarded = after.coins - before.coins;
 
         // 2. CREATE THE XP LOG ENTRY
         await XPLog.create({
@@ -58,7 +56,7 @@ export const awardXP = async (
 
         // Return the updated gamification state
         return {
-            newXp: user.xp,
+            newXp: after.xp,
             newLevel: newLevelInfo.level,
             leveledUp,
             coinsAwarded,
@@ -86,28 +84,23 @@ export const revokeXP = async (
     metadata = {},
 ) => {
     try {
-        const user = await User.findById(userId);
-        if (!user) {
+        const changed = await changeBalance(userId, ({ xp, coins }) => {
+            // XP never drops below 0
+            const newXp = xp - Math.min(xp, Math.abs(xpAmount));
+
+            // Mirror of the level-up reward in awardXP: give back the coins of every level lost
+            const coinsLost = coinsBetween(calculateLevel(newXp).level, calculateLevel(xp).level);
+
+            return { xp: newXp, coins: coins - Math.min(coins, coinsLost) };
+        });
+        if (!changed) {
             throw new Error("User not found for XP reversal");
         }
 
-        const oldLevelInfo = calculateLevel(user.xp || 0);
-
-        // XP never drops below 0
-        const xpRevoked = Math.min(user.xp || 0, Math.abs(xpAmount));
-        user.xp = (user.xp || 0) - xpRevoked;
-
-        const newLevelInfo = calculateLevel(user.xp);
-
-        // Mirror of the level-up reward in awardXP: give back the coins of every level lost
-        let coinsRevoked = 0;
-        for (let i = newLevelInfo.level + 1; i <= oldLevelInfo.level; i++) {
-            coinsRevoked += i * 50;
-        }
-        coinsRevoked = Math.min(user.coins || 0, coinsRevoked);
-        user.coins = (user.coins || 0) - coinsRevoked;
-
-        await user.save();
+        const { before, after } = changed;
+        const xpRevoked = before.xp - after.xp;
+        const coinsRevoked = before.coins - after.coins;
+        const newLevelInfo = calculateLevel(after.xp);
 
         if (xpRevoked > 0) {
             await XPLog.create({
@@ -119,7 +112,7 @@ export const revokeXP = async (
         }
 
         return {
-            newXp: user.xp,
+            newXp: after.xp,
             newLevel: newLevelInfo.level,
             xpRevoked,
             coinsRevoked,

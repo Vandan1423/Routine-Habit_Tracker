@@ -1,4 +1,5 @@
 import api from "./api";
+import { joinPages, PAGE_SIZE } from "../lib/expenses";
 
 // Money: accounts, transactions, limits and subscriptions. Each call throws when it fails, with the
 // server's own words where it gave any, so the screen that asked can say so.
@@ -13,16 +14,34 @@ const call = async (request, fallback) => {
 
 const NOT_SAVED = "It couldn’t be saved.";
 
+// One page of a month's transactions, newest first. Page 0 is the latest of them.
+const readPage = (month, page) =>
+    call(
+        () => api.get("/expenses/transactions", { params: { month, limit: PAGE_SIZE, offset: page * PAGE_SIZE } }),
+        "Failed to fetch the transactions.",
+    );
+
 const expenseService = {
-    // One month ("YYYY-MM") as the Expenses screen shows it: its summary, and every transaction in it
-    getMonth: async (month) => {
-        const [summary, list] = await Promise.all([
+    /**
+     * One month ("YYYY-MM") as the Expenses screen shows it: its summary, and the latest of its transactions.
+     * @param {Number} pages - how many pages of the transactions to read
+     * @returns {Object} - summary; transactions: the ones read; total: how many the month has in all
+     */
+    getMonth: async (month, pages = 1) => {
+        const [summary, ...lists] = await Promise.all([
             call(() => api.get("/expenses/summary", { params: { month } }), "Failed to fetch the month."),
-            call(() => api.get("/expenses/transactions", { params: { month } }), "Failed to fetch the transactions."),
+            ...Array.from({ length: pages }, (_, page) => readPage(month, page)),
         ]);
 
-        return { summary, transactions: list.transactions ?? [] };
+        return {
+            summary,
+            transactions: joinPages(...lists.map((list) => list.transactions ?? [])),
+            total: lists[0].total ?? 0,
+        };
     },
+
+    // The page after the ones already read: { transactions, total }
+    getTransactions: readPage,
 
     // name and openingBalance are what can be changed
     updateAccount: (id, data) => call(() => api.put(`/expenses/accounts/${id}`, data), NOT_SAVED),

@@ -173,12 +173,43 @@ describe("emails", { skip: skipWithoutDatabase }, () => {
             assert.equal(await User.countDocuments({ email: first.email }), 1);
         });
 
-        it("refuses once the account is confirmed", async () => {
-            const { email } = await createClient().register();
-            const second = await createClient().signUp({ email });
+        it("answers the same once the account is confirmed, and changes nothing", async () => {
+            const owner = await createClient().register({ name: "Owner" });
+            const fresh = await createClient().signUp();
+            const second = await createClient().signUp({ email: owner.email, name: "Someone Else" });
 
-            assert.equal(second.response.status, 400);
-            assert.equal(emailsTo(email).length, 1);
+            // Nothing in the answer says the address already has an account
+            assert.equal(second.response.status, fresh.response.status);
+            assert.deepEqual(
+                { ...second.response.body, email: null },
+                { ...fresh.response.body, email: null },
+            );
+            assert.equal(second.response.body.email, owner.email);
+            assert.equal(second.response.setCookie, undefined);
+
+            // Its owner is told by email, which carries no link that confirms or changes anything
+            const notice = emailsTo(owner.email).at(-1);
+            assert.equal(emailsTo(owner.email).length, 2);
+            assert.match(notice.subject, /already have a Nitya account/);
+            assert.match(notice.html, /Hi Owner,/);
+            assert.match(notice.html, /href="http:\/\/localhost:5173\/login"/);
+            assert.match(notice.text, /http:\/\/localhost:5173\/login/);
+            assert.doesNotMatch(notice.html, /verify-email|reset-password|Someone Else|valid for/);
+
+            // The account is as it was: its own password opens it, the one just typed doesn't
+            const login = await createClient().login(owner);
+            assert.equal(login.status, 200);
+            assert.equal(login.body.user.name, "Owner");
+            assert.equal((await createClient().login(second)).status, 400);
+        });
+
+        it("counts towards the same 3 emails an hour, so it can't be used to fill an inbox", async () => {
+            const { email } = await createClient().register();
+
+            assert.equal((await createClient().signUp({ email })).response.status, 201);
+            assert.equal((await createClient().signUp({ email })).response.status, 201);
+            assert.equal((await createClient().signUp({ email })).response.status, 429);
+            assert.equal(emailsTo(email).length, 3);
         });
     });
 
@@ -198,6 +229,18 @@ describe("emails", { skip: skipWithoutDatabase }, () => {
             assert.equal(retried.response.status, 201);
             assert.equal((await confirm(linkTokenFor(email))).status, 200);
             assert.equal((await client.login(retried)).status, 200);
+        });
+
+        it("says the same at sign-up for an address that has an account", async () => {
+            const { email } = await createClient().register();
+            const unknown = uniqueEmail();
+
+            refuseEmails();
+            const taken = await createClient().signUp({ email });
+            const fresh = await createClient().signUp({ email: unknown });
+
+            assert.equal(taken.response.status, 503);
+            assert.deepEqual(taken.response.body, fresh.response.body);
         });
 
         it("still answers a reset request the usual way", async () => {
@@ -290,6 +333,15 @@ describe("emails", { skip: skipWithoutDatabase }, () => {
             assert.equal((await client.get("/auth/me")).status, 200);
         });
 
+        it("has to say so when the address already has an account: there is no email to say it in", async () => {
+            const { email } = await createClient().signUp();
+            const second = await createClient().signUp({ email });
+
+            assert.equal(second.response.status, 400);
+            assert.match(second.response.body.message, /already exists/);
+            assert.equal(emailsTo(email).length, 0);
+        });
+
         it("lets in an account that was still waiting to be confirmed", async () => {
             process.env.EMAIL_VERIFICATION_REQUIRED = "";
             const account = await createClient().signUp();
@@ -313,7 +365,13 @@ describe("emails", { skip: skipWithoutDatabase }, () => {
             const login = await createClient().login(account);
             assert.equal(login.status, 200);
             assert.equal(login.body.user.emailVerified, true);
-            assert.equal((await createClient().signUp({ email: account.email })).response.status, 400);
+
+            // Signing up for its address again doesn't start it over, as it would an account still waiting
+            const again = await createClient().signUp({ email: account.email });
+            assert.equal(again.response.status, 201);
+            assert.match(emailsTo(account.email).at(-1).subject, /already have a Nitya account/);
+            assert.equal((await createClient().login(again)).status, 400);
+            assert.equal((await createClient().login(account)).status, 200);
         });
     });
 });

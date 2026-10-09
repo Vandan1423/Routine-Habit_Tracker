@@ -55,8 +55,21 @@ const entryOf = (transaction) => ({
     source: transaction,
 });
 
-// The month's transactions under the day each belongs to, newest day first, with what each day spent
-const groupByDay = (entries) => {
+// The list of transactions is read this many at a time
+export const PAGE_SIZE = 100;
+
+// Pages of the list as one list, each transaction once, in the order first met. (Something logged between
+// two reads moves every line after it along by one, and a line can then turn up on two pages.)
+export const joinPages = (...pages) => {
+    const seen = new Set();
+
+    return pages.flat().filter((transaction) => !seen.has(transaction._id) && seen.add(transaction._id));
+};
+
+// The transactions under the day each belongs to, newest day first, with what each day spent.
+// The server says what a day spent (`spentByDay`, a Map by date): with the list read a page at a time, the
+// lines of the last day here may not all have come yet. Added up from the lines only where it has not said.
+const groupByDay = (entries, spentByDay = new Map()) => {
     const days = [];
 
     for (const entry of entries) {
@@ -69,7 +82,7 @@ const groupByDay = (entries) => {
         if (entry.type === "expense") day.spent += entry.amount;
     }
 
-    return days;
+    return days.map((day) => ({ ...day, spent: spentByDay.get(day.date) ?? day.spent }));
 };
 
 // "ok", "near" (past the share the limit warns at) or "over"
@@ -136,10 +149,11 @@ const subscriptionOf = (subscription, today) => {
 /**
  * One month of money, laid out for the screen.
  * @param {Object} summary - GET /expenses/summary for the month
- * @param {Object[]} transactions - GET /expenses/transactions for the month, newest first
+ * @param {Object[]} transactions - GET /expenses/transactions for the month, newest first: the pages read so far
+ * @param {Number} [total] - how many transactions the month has in all; the ones given, unless said
  * @param {Set} [hidden] - ids of transactions and subscriptions on their way out, already gone from the page
  */
-export const buildExpenseMonth = ({ summary, transactions = [], hidden = new Set() }) => {
+export const buildExpenseMonth = ({ summary, transactions = [], total, hidden = new Set() }) => {
     const today = summary.today ?? "";
     const month = summary.month ?? monthOf(today);
     const accounts = (summary.accounts ?? []).map((account) => ({
@@ -153,6 +167,8 @@ export const buildExpenseMonth = ({ summary, transactions = [], hidden = new Set
     const currency = summary.accounts?.[0]?.currency || DEFAULT_CURRENCY;
 
     const entries = transactions.filter((transaction) => !hidden.has(transaction._id)).map(entryOf);
+    const count = Math.max(total ?? 0, entries.length);
+    const spentByDay = new Map((summary.monthDays ?? []).map((day) => [day.date, Number(day.spent) || 0]));
     const spent = Number(summary.monthExpensesTotal) || 0;
 
     const categories = (summary.categoryTotals ?? []).map(({ category, total }) => ({
@@ -223,8 +239,10 @@ export const buildExpenseMonth = ({ summary, transactions = [], hidden = new Set
         accounts,
         balance: accounts.reduce((sum, account) => sum + account.balance, 0),
 
+        // The lines read so far, and how many the month has in all
         entries,
-        days: groupByDay(entries),
+        count,
+        days: groupByDay(entries, spentByDay),
         categories,
         limits,
         // The categories a limit can still be set for

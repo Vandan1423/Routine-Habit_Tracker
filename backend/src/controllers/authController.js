@@ -5,6 +5,7 @@ import ExpressError from "../utils/ExpressError.js";
 import sendEmail from "../utils/sendEmail.js";
 import eraseAccount from "../utils/eraseAccount.js";
 import {
+    accountExistsEmail,
     passwordResetEmail,
     verificationEmail,
 } from "../utils/emailTemplates.js";
@@ -62,18 +63,52 @@ const getCookieOptions = () => {
     };
 };
 
-// Removes sessions whose refresh token has already expired, so the list can't grow forever
+/**
+ * A new session for a device that has just signed in.
+ * @returns {Object} - refreshToken: for the cookie, and nowhere else. session: what the account keeps of it,
+ *   which is its hash. A copy of the database can't be turned into working sessions.
+ */
+const openSession = (user) => {
+    const tokenId = crypto.randomUUID();
+    const createdAt = new Date();
+    const refreshToken = user.generateRefreshToken({ tokenId, issuedAt: createdAt });
+
+    return {
+        refreshToken,
+        session: { token: hashToken(refreshToken), tokenId, createdAt },
+    };
+};
+
+// Removes sessions whose refresh token has already expired, so the list can't grow forever.
+// Those from before tokens were hashed (they have no tokenId) go too: they can no longer be used.
 const pruneExpiredSessions = (userId) =>
     User.updateOne(
         { _id: userId },
         {
             $pull: {
                 refreshTokens: {
-                    createdAt: { $lt: new Date(Date.now() - REFRESH_TOKEN_TTL_MS) },
+                    $or: [
+                        { createdAt: { $lt: new Date(Date.now() - REFRESH_TOKEN_TTL_MS) } },
+                        { tokenId: { $exists: false } },
+                    ],
                 },
             },
         },
     );
+
+// What a sign-up is told when confirmation is on. An address that already has an account gets the very same
+// answer as a new one, word for word, so neither says which of the two it was.
+const signUpAnswer = (email) => ({
+    success: true,
+    message: "Account created. Check your email for a link to confirm your address.",
+    verificationRequired: true,
+    email,
+});
+
+const EMAIL_NOT_SENT = {
+    success: false,
+    message: "We couldn't send the confirmation email. Please try again in a few minutes.",
+};
 
 export const registerUser = async (req, res, next) => {
     try {
@@ -87,7 +122,31 @@ export const registerUser = async (req, res, next) => {
 
         const existingUser = await User.findOne({ email });
         if (existingUser?.emailVerified) {
-            return res.status(400).json({ message: "User already exists" });
+            // With confirmation switched off, a sign-up is answered with a session, and there is none to give
+            // for somebody else's account: here the answer can't help saying that the address is taken.
+            if (!isEmailVerificationRequired()) {
+                return res.status(400).json({ message: "User already exists" });
+            }
+
+            // Otherwise the answer is the one a new address gets, so signing up can't be used to find out
+            // who has an account. The account is left exactly as it was, and its owner is told by email.
+            // Checking the password costs what hashing a new one does, so the two answers take as long.
+            await existingUser.matchPassword(password);
+
+            try {
+                await sendEmail({
+                    to: existingUser.email,
+                    ...accountExistsEmail({
+                        name: existingUser.name,
+                        url: `${process.env.CLIENT_URL}/login`,
+                    }),
+                });
+            } catch (error) {
+                console.error("Account notice email failed:", error.message);
+                return res.status(503).json(EMAIL_NOT_SENT);
+            }
+
+            return res.status(201).json(signUpAnswer(existingUser.email));
         }
 
         // A new account starts in the timezone its client reports
@@ -118,32 +177,19 @@ export const registerUser = async (req, res, next) => {
             } catch (error) {
                 // The account stays unconfirmed, so signing up again later simply tries once more
                 console.error("Confirmation email failed:", error.message);
-                return res.status(503).json({
-                    success: false,
-                    message:
-                        "We couldn't send the confirmation email. Please try again in a few minutes.",
-                });
+                return res.status(503).json(EMAIL_NOT_SENT);
             }
 
             // No tokens: the account can't be used until the emailed link has been clicked
-            return res.status(201).json({
-                success: true,
-                message:
-                    "Account created. Check your email for a link to confirm your address.",
-                verificationRequired: true,
-                email: newUser.email,
-            });
+            return res.status(201).json(signUpAnswer(newUser.email));
         }
 
         newUser.emailVerified = true;
 
         const accessToken = newUser.generateAccessToken();
-        const refreshToken = newUser.generateRefreshToken(); // Changed to singular variable name
+        const { refreshToken, session } = openSession(newUser);
 
-        newUser.refreshTokens.push({
-            token: refreshToken,
-            createdAt: new Date(),
-        });
+        newUser.refreshTokens.push(session);
 
         await newUser.save({ validateBeforeSave: false });
 
@@ -187,14 +233,11 @@ export const loginUser = async (req, res, next) => {
             }
 
             const accessToken = user.generateAccessToken();
-            const refreshToken = user.generateRefreshToken(); // Changed to singular variable name
+            const { refreshToken, session } = openSession(user);
 
             await pruneExpiredSessions(user._id);
 
-            user.refreshTokens.push({
-                token: refreshToken,
-                createdAt: new Date(),
-            });
+            user.refreshTokens.push(session);
 
             await user.save({ validateBeforeSave: false });
 
@@ -233,15 +276,13 @@ export const logoutUser = async (req, res) => {
         // Using req.user._id assuming this route uses the 'protect' middleware!
         // $pull only touches this session, so a refresh happening on another device isn't overwritten.
         // previousToken is matched too, in case the client never received its latest rotation.
+        const held = hashToken(refreshToken);
         const result = await User.updateOne(
             { _id: req.user._id },
             {
                 $pull: {
                     refreshTokens: {
-                        $or: [
-                            { token: refreshToken },
-                            { previousToken: refreshToken },
-                        ],
+                        $or: [{ token: held }, { previousToken: held }],
                     },
                 },
             },
@@ -327,17 +368,20 @@ export const refreshAccessToken = async (req, res) => {
 
         // FIXED: Using your User instance methods instead of jwtConfig
         const newAccessToken = user.generateAccessToken();
-        let newRefreshToken = user.generateRefreshToken();
+        const held = hashToken(oldRefreshToken);
+        const next = openSession(user);
+        let newRefreshToken = next.refreshToken;
 
         // Swap the token in place, atomically, and only if it is still this session's current one.
         // Two requests carrying the same token can't both win, and other sessions are left untouched.
         const rotation = await User.updateOne(
-            { _id: user._id, "refreshTokens.token": oldRefreshToken },
+            { _id: user._id, "refreshTokens.token": held },
             {
                 $set: {
-                    "refreshTokens.$.token": newRefreshToken,
-                    "refreshTokens.$.previousToken": oldRefreshToken,
-                    "refreshTokens.$.createdAt": new Date(),
+                    "refreshTokens.$.token": next.session.token,
+                    "refreshTokens.$.tokenId": next.session.tokenId,
+                    "refreshTokens.$.previousToken": held,
+                    "refreshTokens.$.createdAt": next.session.createdAt,
                 },
             },
         );
@@ -346,19 +390,26 @@ export const refreshAccessToken = async (req, res) => {
             // Not the current token. If it is the one that was just replaced, then either a parallel
             // request rotated it first or the earlier response never reached the client (page reload,
             // dropped connection). Hand back the session's current token instead of ending the session.
+            // Only its hash is kept, so it is signed again from its id and the moment it was issued.
             const latest = await User.findById(user._id).select("refreshTokens");
             const session = latest?.refreshTokens.find(
-                (tokenObj) => tokenObj.previousToken === oldRefreshToken,
+                (tokenObj) => tokenObj.previousToken === held,
             );
+            const current =
+                session?.tokenId &&
+                user.generateRefreshToken({
+                    tokenId: session.tokenId,
+                    issuedAt: session.createdAt,
+                });
 
-            if (!session) {
+            if (!current || hashToken(current) !== session.token) {
                 return res.status(401).json({
                     success: false,
                     message: "Refresh token not valid. Please login again.",
                 });
             }
 
-            newRefreshToken = session.token;
+            newRefreshToken = current;
         }
 
         res.cookie("refreshToken", newRefreshToken, getCookieOptions()); // FIXED: Using standard cookieOptions
@@ -449,7 +500,7 @@ export const changePassword = async (req, res, next) => {
 
         // Sessions are removed in one operation of their own, so a refresh happening meanwhile isn't overwritten.
         // previousToken is matched too, in case this client never received its latest rotation.
-        const here = req.cookies?.refreshToken;
+        const here = req.cookies?.refreshToken && hashToken(req.cookies.refreshToken);
         await User.updateOne(
             { _id: user._id },
             here

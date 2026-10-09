@@ -1,10 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import useAuth from "../../hooks/useAuth";
 import useFetched from "../../hooks/useFetched";
 import { monthOf } from "../../lib/dates";
 import {
     buildExpenseMonth,
     dayOfDate,
+    joinPages,
     limitPayload,
     openingFor,
     paymentOf,
@@ -33,24 +34,33 @@ const changed = (list, id, fields) => list.map((member) => (member._id === id ? 
 /**
  * One month of the account's money, and every way the Expenses screen changes it.
  * The month is read from the API and kept for the session, so turning back to it shows it at once.
+ * Its figures are whole; its transactions come a page at a time, the latest first (showEarlier reads on).
  * A change that takes something away (a delete, a pause) is shown first and sent after; one that adds or
  * rewrites waits for the server. What is deleted goes to Trash, and Undo brings the same record back. Either way the month is read again afterwards, so every figure on the
  * screen is the server's own.
  *
  * month: "YYYY-MM". onShowMonth(month): the reader asked to be taken to another month (from a toast).
- * Returns { model, status, retry } and the changes. The ones a form calls reject when they fail, so the
+ * Returns { model, status, retry }, showEarlier with readingEarlier (it is under way), and the changes. The ones a form calls reject when they fail, so the
  * form can say why; the ones behind a single press say so themselves, in a toast.
  */
 const useExpenses = (month, { onShowMonth } = {}) => {
     const { user } = useAuth();
     const account = user?._id ?? user?.id ?? user?.email ?? "account";
 
+    // How many pages of this month's transactions have been asked for. Reading the month again reads as many.
+    const [asked, setAsked] = useState({ month, pages: 1 });
+    const pages = asked.month === month ? asked.pages : 1;
+    const [readingEarlier, setReadingEarlier] = useState(false);
+
     const { data, status, retry, update } = useFetched(`expenses:${account}:${month}`, () =>
-        expenseService.getMonth(month),
+        expenseService.getMonth(month, pages),
     );
 
     const model = useMemo(
-        () => (data ? buildExpenseMonth({ summary: data.summary, transactions: data.transactions }) : null),
+        () =>
+            data
+                ? buildExpenseMonth({ summary: data.summary, transactions: data.transactions, total: data.total })
+                : null,
         [data],
     );
 
@@ -85,9 +95,32 @@ const useExpenses = (month, { onShowMonth } = {}) => {
         }
     };
 
+    // The next page of the month's transactions, added under the ones on show
+    const showEarlier = async () => {
+        setReadingEarlier(true);
+
+        try {
+            const page = await expenseService.getTransactions(month, pages);
+            update((held) => ({
+                ...held,
+                transactions: joinPages(held.transactions, page.transactions ?? []),
+                total: page.total ?? held.total,
+            }));
+            setAsked({ month, pages: pages + 1 });
+        } catch (error) {
+            toast.error(failureWords(error, "The earlier ones didn’t load. Check your connection and try again."));
+        } finally {
+            setReadingEarlier(false);
+        }
+    };
+
     // Gone from the page at once, with a moment to take it back
     const removeTransaction = async (transaction) => {
-        update((held) => ({ ...held, transactions: without(held.transactions, transaction._id) }));
+        update((held) => ({
+            ...held,
+            transactions: without(held.transactions, transaction._id),
+            total: Math.max(0, (held.total ?? 0) - 1),
+        }));
 
         try {
             await expenseService.deleteTransaction(transaction._id);
@@ -277,6 +310,8 @@ const useExpenses = (month, { onShowMonth } = {}) => {
         model,
         status,
         retry,
+        showEarlier,
+        readingEarlier,
         saveTransaction,
         removeTransaction,
         saveSubscription,

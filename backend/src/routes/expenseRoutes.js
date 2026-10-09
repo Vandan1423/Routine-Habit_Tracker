@@ -24,6 +24,7 @@ import {
     createTransactionSchema,
     monthQuerySchema,
     placesQuerySchema,
+    transactionListQuerySchema,
     updateAccountSchema,
     updateSubscriptionSchema,
     updateTransactionSchema,
@@ -37,7 +38,7 @@ router.use(protect);
 router.get("/summary", validate({ query: monthQuerySchema }), getSummary);
 router.get("/accounts", getAccounts);
 router.put("/accounts/:id", validate({ params: idParam, body: updateAccountSchema }), updateAccount);
-router.get("/transactions", validate({ query: monthQuerySchema }), listTransactions);
+router.get("/transactions", validate({ query: transactionListQuerySchema }), listTransactions);
 router.post("/transactions", validate({ body: createTransactionSchema }), createTransaction);
 router.put("/transactions/:id", validate({ params: idParam, body: updateTransactionSchema }), updateTransaction);
 router.delete("/transactions/:id", validate({ params: idParam }), deleteTransaction);

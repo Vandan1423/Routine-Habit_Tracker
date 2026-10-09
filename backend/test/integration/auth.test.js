@@ -8,6 +8,7 @@ import {
     stopApp,
     uniqueEmail,
 } from "../helpers/app.js";
+import User from "../../src/models/User.js";
 
 describe("sessions", { skip: skipWithoutDatabase }, () => {
     before(startApp);
@@ -50,11 +51,55 @@ describe("sessions", { skip: skipWithoutDatabase }, () => {
         assert.equal(wrong.status, 400);
     });
 
-    it("refuses a second account with the same email", async () => {
+    it("never opens a second account for the same email", async () => {
         const email = uniqueEmail();
-        await createClient().register({ email });
-        const second = await createClient().register({ email });
-        assert.equal(second.response.status, 400);
+        const first = await createClient().register({ email });
+        const second = await createClient().signUp({ email });
+
+        // Answered like any other sign-up (see the emails tests), and with no session
+        assert.equal(second.response.status, 201);
+        assert.equal(second.response.body.accessToken, undefined);
+        assert.equal(second.response.setCookie, undefined);
+
+        assert.equal(await User.countDocuments({ email }), 1);
+        assert.equal((await createClient().login(second)).status, 400);
+        assert.equal((await createClient().login(first)).status, 200);
+    });
+
+    it("never stores a refresh token itself", async () => {
+        const client = createClient();
+        const { email, login } = await client.register();
+        const rotated = await refresh(client, login.cookie);
+
+        const { refreshTokens } = await User.findOne({ email });
+        const stored = JSON.stringify(refreshTokens);
+
+        assert.equal(refreshTokens.length, 1);
+        assert.match(refreshTokens[0].token, /^[0-9a-f]{64}$/);
+        assert.match(refreshTokens[0].previousToken, /^[0-9a-f]{64}$/);
+        // Neither the token in use nor the one it replaced, nor the signature that makes either one valid
+        for (const token of [login.cookie, rotated.cookie]) {
+            assert.ok(!stored.includes(token));
+            assert.ok(!stored.includes(token.split(".")[2]));
+        }
+    });
+
+    it("ends a session that was stored before tokens were hashed", async () => {
+        const client = createClient();
+        const account = await client.register();
+        const user = await User.findOne({ email: account.email });
+
+        // As sessions used to be kept: the token itself, and nothing else
+        const old = user.generateRefreshToken();
+        await User.updateOne({ _id: user._id }, { $push: { refreshTokens: { token: old } } });
+
+        assert.equal((await refresh(createClient(), old)).status, 401);
+
+        // Signing in clears it away
+        await createClient().login(account);
+        const { refreshTokens } = await User.findById(user._id);
+        assert.ok(refreshTokens.length >= 1);
+        assert.ok(refreshTokens.every((session) => session.token !== old && session.tokenId));
     });
 
     it("rotates the refresh token and keeps the session going", async () => {

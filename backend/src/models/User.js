@@ -62,19 +62,27 @@ const userSchema = new mongoose.Schema({
         enum: TRASH_DAYS,
         default: DEFAULT_TRASH_DAYS, // How long Trash keeps what this user deletes
     },
+    // One entry per device that is signed in. The refresh token itself is never kept, only its hash,
+    // so a copy of the database can't be turned into working sessions (see authController.js).
     refreshTokens: [
         {
+            // SHA-256 of the session's current refresh token
             token: {
                 type: String,
                 required: true,
             },
-            // The token this one replaced. It stays usable until the new one is used,
+            // The current token's id (its "jti"). With createdAt it is enough to sign that same token again
+            // for a client that never received it; without REFRESH_TOKEN_SECRET it opens nothing.
+            tokenId: {
+                type: String,
+            },
+            // SHA-256 of the token this one replaced. It stays usable until the new one is used,
             // so a refresh whose response never reached the client doesn't end the session.
             previousToken: {
                 type: String,
             },
-            // No TTL index here: on an array field it would delete the whole user document.
-            // Expired sessions are pruned at login instead.
+            // When the current token was issued. No TTL index here: on an array field it would delete
+            // the whole user document. Expired sessions are pruned at login instead.
             createdAt: {
                 type: Date,
                 default: Date.now,
@@ -122,16 +130,30 @@ userSchema.methods.generateAccessToken = function () {
     );
 };
 
-// Generate Refresh Token (Long-lived, e.g., 7 days)
-userSchema.methods.generateRefreshToken = function () {
+const REFRESH_TOKEN_TTL_SECONDS = 15 * 24 * 60 * 60; // 15 days
+
+/**
+ * Signs a refresh token (long-lived, 15 days).
+ * The same tokenId and issuedAt always give the same token, which is how a session's current token can be
+ * handed out a second time without ever having been stored.
+ * @param {String} tokenId - unique per token, even for two issued within the same second
+ * @param {Date} issuedAt
+ */
+userSchema.methods.generateRefreshToken = function ({
+    tokenId = crypto.randomUUID(),
+    issuedAt = new Date(),
+} = {}) {
+    const iat = Math.floor(issuedAt.getTime() / 1000);
+
     return jwt.sign(
         {
             _id: this._id,
             email: this.email,
+            iat,
+            exp: iat + REFRESH_TOKEN_TTL_SECONDS,
+            jti: tokenId,
         },
         process.env.REFRESH_TOKEN_SECRET,
-        // jwtid keeps every token unique, even two issued within the same second
-        { expiresIn: "15d", jwtid: crypto.randomUUID() },
     );
 };
 

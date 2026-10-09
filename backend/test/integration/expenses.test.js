@@ -142,6 +142,43 @@ describe("expenses, month by month", { skip: skipWithoutDatabase }, () => {
             assert.equal(summary.accounts.length, 2);
         });
 
+        it("says what each day of the month spent, newest first", async () => {
+            const { log, get } = await setup();
+            await log({ amount: 40, transactionDate: `${earlier}-05` });
+            await log({ amount: 25, transactionDate: `${earlier}-19` });
+            await log({ amount: 35, transactionDate: `${earlier}-19` });
+            await log({ type: "income", amount: 900, transactionDate: `${earlier}-19` });
+            await log({ amount: 500, transactionDate: `${thisMonth}-01` });
+
+            const summary = await get(`/expenses/summary?month=${earlier}`);
+            assert.deepEqual(summary.monthDays, [
+                { date: `${earlier}-19`, spent: 60 },
+                { date: `${earlier}-05`, spent: 40 },
+            ]);
+        });
+
+        it("works out what each account holds, a transfer and a deleted line included", async () => {
+            const { client, accounts, log, get } = await setup();
+            const [bank, cash] = accounts;
+            await client.put(`/expenses/accounts/${bank._id}`, { openingBalance: 1000 });
+
+            await log({ type: "income", amount: 500, transactionDate: `${lastMonth}-03` });
+            await log({ amount: 120, transactionDate: `${thisMonth}-01` });
+            await log({ type: "transfer", amount: 300, transferToAccountId: cash._id, transactionDate: `${thisMonth}-01` });
+            await log({ amount: 45, accountId: cash._id, transactionDate: `${thisMonth}-01` });
+            const mistake = await log({ amount: 999, transactionDate: `${thisMonth}-01` });
+            await client.delete(`/expenses/transactions/${mistake._id}`);
+
+            const expected = [1000 + 500 - 120 - 300, 300 - 45];
+            const summary = await get("/expenses/summary");
+            assert.deepEqual(summary.accounts.map((account) => account.currentBalance), expected);
+            assert.deepEqual(
+                (await get("/expenses/accounts")).accounts.map((account) => account.currentBalance),
+                expected,
+            );
+            assert.equal(summary.monthExpensesTotal, 165);
+        });
+
         it("never counts another account's money", async () => {
             const mine = await setup();
             const theirs = await setup();
@@ -171,6 +208,70 @@ describe("expenses, month by month", { skip: skipWithoutDatabase }, () => {
 
             assert.equal((await get("/expenses/transactions")).transactions.length, 4);
             assert.deepEqual((await get(`/expenses/transactions?month=${shiftMonth(earlier, 1)}`)).transactions, []);
+        });
+    });
+
+    describe("the list, a page at a time", () => {
+        it("hands over as many as asked for, after as many as asked, and says how many there are", async () => {
+            const { log, get } = await setup();
+            const ids = [];
+            for (let day = 1; day <= 5; day++) {
+                ids.push((await log({ amount: day, transactionDate: `${earlier}-0${day}` }))._id);
+            }
+            await log({ amount: 40, transactionDate: `${thisMonth}-01` });
+            const newestFirst = ids.toReversed();
+
+            const page = async (query) => {
+                const { transactions, total } = await get(`/expenses/transactions?month=${earlier}&${query}`);
+                return { ids: transactions.map((transaction) => transaction._id), total };
+            };
+
+            assert.deepEqual(await page("limit=2"), { ids: newestFirst.slice(0, 2), total: 5 });
+            assert.deepEqual(await page("limit=2&offset=2"), { ids: newestFirst.slice(2, 4), total: 5 });
+            assert.deepEqual(await page("limit=2&offset=4"), { ids: newestFirst.slice(4), total: 5 });
+            assert.deepEqual(await page("limit=2&offset=6"), { ids: [], total: 5 });
+
+            // Every month together counts the other one too
+            assert.equal((await get("/expenses/transactions?limit=1")).total, 6);
+        });
+
+        it("stops at 100 when no number is given", async () => {
+            const { client, accounts, get } = await setup();
+            await Promise.all(
+                Array.from({ length: 103 }, (_, index) =>
+                    client.post("/expenses/transactions", {
+                        type: "expense",
+                        accountId: accounts[0]._id,
+                        amount: index + 1,
+                        transactionDate: `${earlier}-10`,
+                    }),
+                ),
+            );
+
+            const first = await get(`/expenses/transactions?month=${earlier}`);
+            const rest = await get(`/expenses/transactions?month=${earlier}&offset=100`);
+
+            assert.equal(first.transactions.length, 100);
+            assert.equal(first.total, 103);
+            assert.equal(rest.transactions.length, 3);
+            assert.equal(
+                new Set([...first.transactions, ...rest.transactions].map((transaction) => transaction._id)).size,
+                103,
+            );
+
+            // The month's figures are of the whole month, not of a page
+            const summary = await get(`/expenses/summary?month=${earlier}`);
+            assert.equal(summary.monthExpenseCount, 103);
+            assert.equal(summary.monthExpensesTotal, (103 * 104) / 2);
+        });
+
+        it("refuses a page that makes no sense", async () => {
+            const { client } = await setup();
+
+            for (const query of ["limit=0", "limit=201", "limit=ten", "offset=-1"]) {
+                const response = await client.get(`/expenses/transactions?${query}`);
+                assert.equal(response.status, 400, query);
+            }
         });
     });
 
