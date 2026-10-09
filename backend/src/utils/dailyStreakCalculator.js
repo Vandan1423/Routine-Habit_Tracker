@@ -1,4 +1,3 @@
-import DailyLog from "../models/DailyLog.js";
 import User from "../models/User.js";
 import XPLog from "../models/XPLog.js";
 import { awardXP, revokeXP } from "./rewardEngine.js";
@@ -57,8 +56,14 @@ export const updateDailyStreak = async (userId, dateString) => {
             totals.completedRoutines === totals.totalRoutines &&
             totals.completedHabits === totals.totalHabits;
 
-        // Check previous state to prevent double-awarding XP if they uncheck and re-check a task
-        const existingDailyLog = await DailyLog.findOne({ user: userId, date: dateString });
+        // Swap in the day's new standing and read the old one in a single step. Two updates running at the same
+        // instant can't both see the day change, so the bonus is paid (or taken back) by exactly one of them.
+        const existingDailyLog = await upsertDailyLog(
+            userId,
+            dateString,
+            { $set: { isPerfectDay } },
+            "before",
+        );
         const wasAlreadyPerfect = existingDailyLog?.isPerfectDay || false;
 
         // 2. The run, with this day as it stands now

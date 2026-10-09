@@ -51,8 +51,9 @@ describe("emails", { skip: skipWithoutDatabase }, () => {
             const account = await client.signUp();
 
             const early = await client.login(account);
-            assert.equal(early.status, 403);
-            assert.equal(early.body.code, "EMAIL_NOT_VERIFIED");
+            assert.equal(early.status, 400);
+            assert.equal(early.body.message, "Invalid credentials");
+            assert.equal(emailsTo(account.email).length, 2); // a fresh link went to the address's owner
             assert.equal(early.body.accessToken, undefined);
             assert.equal(early.setCookie, undefined);
 

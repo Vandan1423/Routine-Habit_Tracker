@@ -7,11 +7,11 @@ import DailyLog from "../models/DailyLog.js";
  * Creates or updates a day's summary row.
  * Two requests creating the same row at once collide on its unique index; the loser simply retries as an update.
  */
-export const upsertDailyLog = async (userId, date, update) => {
+export const upsertDailyLog = async (userId, date, update, returnDocument = "after") => {
     const run = () =>
         DailyLog.findOneAndUpdate({ user: userId, date }, update, {
             upsert: true,
-            returnDocument: "after",
+            returnDocument,
         });
 
     try {

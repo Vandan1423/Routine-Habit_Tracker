@@ -222,14 +222,18 @@ export const loginUser = async (req, res, next) => {
         const user = await User.findOne({ email });
 
         if (user && (await user.matchPassword(password))) {
-            // Checked only after the password, so this answer never tells a stranger anything about the account
+            // Answered exactly like a wrong password, so signing up and then signing in can't be used to tell
+            // that an address has an account. The owner is told by email instead: a fresh confirmation link.
             if (isEmailVerificationRequired() && !user.emailVerified) {
-                return res.status(403).json({
-                    success: false,
-                    code: "EMAIL_NOT_VERIFIED",
-                    message:
-                        "Please confirm your email address before signing in. Check your inbox for the link.",
-                });
+                const confirmation = startEmailVerification(user);
+                await user.save({ validateBeforeSave: false });
+
+                // Not awaited, so this answer arrives as fast as a wrong password does
+                sendEmail(confirmation).catch((error) =>
+                    console.error("Confirmation email failed:", error.message),
+                );
+
+                return res.status(400).json({ message: "Invalid credentials" });
             }
 
             const accessToken = user.generateAccessToken();
