@@ -12,7 +12,8 @@
     "test": "node --test --test-concurrency=1 \"test/**/*.test.js\"",
     "gmail:token": "node scripts/gmailToken.js",
     "sandbox": "node scripts/sandbox.js",
-    "seed:demo": "node scripts/seedDemo.js"
+    "seed:demo": "node scripts/seedDemo.js",
+    "db:clear": "node scripts/clearDB.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

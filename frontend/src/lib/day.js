@@ -3,6 +3,7 @@
 // so the same lists and the same clock always give the same day.
 
 import { LATE_GRACE_MINUTES, lateWorth } from "./stakes";
+import { isDraftId, rowKeyOf } from "./drafts";
 import { parseTime, toMinutes } from "./time";
 
 // The parts of a day, in order. A routine falls into one by its start time; a habit is given one
@@ -69,6 +70,10 @@ const routineItem = (routine, nowMinutes) => {
 
     return {
         key: `routine:${routine._id}`,
+        // What its row is told apart by, and whether it is still on its way to the server (see lib/drafts.js):
+        // until the server has it, nothing on its row can be pressed
+        row: `routine:${rowKeyOf(routine._id)}`,
+        saving: isDraftId(routine._id),
         kind: "routine",
         id: routine._id,
         title: routine.title,
@@ -97,6 +102,10 @@ const habitItem = (habit) => {
 
     return {
         key: `habit:${habit._id}`,
+        // What its row is told apart by, and whether it is still on its way to the server (see lib/drafts.js):
+        // until the server has it, nothing on its row can be pressed
+        row: `habit:${rowKeyOf(habit._id)}`,
+        saving: isDraftId(habit._id),
         kind: "habit",
         id: habit._id,
         title: habit.title,

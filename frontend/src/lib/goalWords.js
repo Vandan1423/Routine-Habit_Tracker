@@ -61,5 +61,10 @@ export const KIND_LABEL = { routine: "Routine", habit: "Habit" };
 export const goalGoneWords = (goal) => `${named(goal.title)} moved to Trash`;
 export const reachedWords = (goal) => `${named(goal.title)} reached`;
 export const NOT_SAVED_WORDS = "That didn’t save. Check your connection and try again.";
+// A goal that was on the page for a moment as the form gave it, and that the server would not take
+export const goalRefusedWords = (title, changed, failure) => ({
+    message: `${named(title)} wasn’t ${changed ? "changed" : "added"}`,
+    detail: failure?.cause?.response ? failure.message : "Check your connection and try again.",
+});
 export const NOT_DELETED_WORDS = "That wasn’t deleted. Check your connection and try again.";
 export const NOT_RESTORED_WORDS = "That didn’t come back. It is still in Trash.";

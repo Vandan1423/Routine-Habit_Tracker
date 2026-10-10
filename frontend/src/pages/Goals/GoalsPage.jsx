@@ -11,9 +11,11 @@ import usePlan from "../../hooks/usePlan";
 import useToday from "../../hooks/useToday";
 import { cx } from "../../lib/cx";
 import { addDays, localDay } from "../../lib/dates";
-import { KEPT_DAYS, layoutGoals, talliesOf, withGoal, withMilestone } from "../../lib/goals";
+import { newDraftId } from "../../lib/drafts";
+import { draftGoal, KEPT_DAYS, layoutGoals, talliesOf, withGoal, withGoalPlaced, withMilestone } from "../../lib/goals";
 import {
     goalGoneWords,
+    goalRefusedWords,
     goalsWords,
     NOT_DELETED_WORDS,
     NOT_RESTORED_WORDS,
@@ -22,6 +24,7 @@ import {
 } from "../../lib/goalWords";
 import { toast } from "../../lib/toast";
 import goalService from "../../services/goalService";
+import { newKey } from "../../services/outbox";
 import historyService from "../../services/historyService";
 import trashService from "../../services/trashService";
 import styles from "./GoalsPage.module.css";
@@ -92,14 +95,39 @@ const GoalsPage = () => {
 
     const show = (goal) => update((held) => ({ ...held, goals: withGoal(held.goals, goal) }));
 
-    const save = async (payload, existing) => {
-        if (existing) {
-            show(await goalService.updateGoal(existing._id, payload));
-        } else {
-            await goalService.createGoal(payload);
-        }
-        // Read again: a new goal, or a new date, has a place of its own in the order
-        retry();
+    /**
+     * Sets a goal, or rewrites one. It is on the page at once, as the form gave it, and the form does not
+     * wait; if the server refuses, it is taken back and a toast says so.
+     * @param {String} [sentAs] - the key a new one was sent under before, when this is a second try
+     */
+    const save = (payload, existing, sentAs = newKey()) => {
+        const draft = draftGoal(payload, {
+            id: newDraftId("goal"),
+            existing,
+            items: [...plan.routines, ...day.habits],
+        });
+        const put = (goal) => update((held) => ({ ...held, goals: withGoalPlaced(held.goals, goal, draft._id) }));
+
+        put(draft);
+
+        (existing ? goalService.updateGoal(existing._id, payload) : goalService.createGoal(payload, sentAs)).then(
+            (goal) => {
+                put(goal);
+                retry();
+            },
+            (failure) => {
+                const words = goalRefusedWords(payload.title, Boolean(existing), failure);
+
+                if (existing) put(existing);
+                else update((held) => ({ ...held, goals: held.goals.filter((entry) => entry._id !== draft._id) }));
+                // No answer at all is not a refusal: read again, in case the server has it
+                if (!failure?.cause?.response) retry();
+                toast.error(words.message, {
+                    detail: words.detail,
+                    action: { label: "Try again", onClick: () => save(payload, existing, sentAs) },
+                });
+            },
+        );
     };
 
     // Shown at once, then replaced by the goal as the server holds it
@@ -115,11 +143,18 @@ const GoalsPage = () => {
         }
     };
 
+    // Reached, or open again: it moves at once, and goes back if the server refuses
     const reach = async (goal, reached) => {
+        const before = data.goals.find((entry) => entry._id === goal.id);
+        const place = (entry) => update((held) => ({ ...held, goals: withGoalPlaced(held.goals, entry) }));
+
+        place({ ...before, reachedAt: reached ? new Date().toISOString() : null });
+
         try {
             await goalService.updateGoal(goal.id, { reached });
             if (reached) toast(reachedWords(goal));
         } catch {
+            place(before);
             toast.error(NOT_SAVED_WORDS);
         } finally {
             retry();

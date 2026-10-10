@@ -128,7 +128,8 @@ const ExpensesPage = () => {
     });
 
     // The ledger from the keyboard: Enter on a line opens it as any button does; these are the rest
-    const entryOf = (id) => model?.entries.find((entry) => entry.id === id);
+    // One still on its way to the server is not there to be opened or deleted yet
+    const entryOf = (id) => model?.entries.find((entry) => entry.id === id && !entry.pending);
     useListKeys(
         {
             [KEYS.edit]: (id) => {
@@ -554,7 +555,7 @@ const TransactionDay = ({ day, today, currency, onEdit, onDelete }) => {
                 <AnimatePresence initial={false}>
                     {day.entries.map((entry) => (
                         <TransactionRow
-                            key={entry.id}
+                            key={entry.key}
                             entry={entry}
                             currency={currency}
                             onEdit={onEdit}

@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { madeOnce } from "../utils/saveOnce.js";
 
 const expenseTransactionSchema = new mongoose.Schema(
     {
@@ -93,6 +94,8 @@ expenseTransactionSchema.pre("save", function () {
 // serves the month-by-month totals.
 expenseTransactionSchema.index({ user: 1, monthKey: 1, transactionDate: -1, createdAt: -1, _id: -1 });
 expenseTransactionSchema.index({ user: 1, transactionDate: -1, createdAt: -1, _id: -1 });
+
+expenseTransactionSchema.plugin(madeOnce);
 
 const ExpenseTransaction = mongoose.model(
     "ExpenseTransaction",

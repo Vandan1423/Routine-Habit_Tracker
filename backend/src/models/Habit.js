@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { madeOnce } from "../utils/saveOnce.js";
 
 const habitSchema = new mongoose.Schema({
     user: {
@@ -114,6 +115,8 @@ habitSchema.pre("save", function () {
         }
     }
 });
+
+habitSchema.plugin(madeOnce);
 
 const Habit = mongoose.model("Habit", habitSchema);
 export default Habit;

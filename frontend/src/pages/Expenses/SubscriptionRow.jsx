@@ -12,21 +12,26 @@ import styles from "./ExpensesPage.module.css";
  * onEdit, onDelete, onRun(source, running): called with it as the API sent it
  */
 const SubscriptionRow = ({ subscription, currency, onPay, onEdit, onRun, onDelete }) => {
-    const { name, state, active, source } = subscription;
-    const wanted = state === "late" || state === "today";
+    const { name, state, active, source, pending } = subscription;
+    // One still on its way to the server is shown as it will be, with nothing on it to press yet
+    const wanted = !pending && (state === "late" || state === "today");
 
     return (
         <li className={styles.frame}>
             <div className={cx(styles.row, !active && styles.paused)}>
                 <div className={styles.main}>
-                    <button
-                        type="button"
-                        className={styles.name}
-                        aria-label={`${name}, ${perWords(subscription.amount, subscription.frequency, currency)}, ${dueWords(subscription)}. Edit.`}
-                        onClick={() => onEdit(source)}
-                    >
-                        {name}
-                    </button>
+                    {pending ? (
+                        <span className={styles.name}>{name}</span>
+                    ) : (
+                        <button
+                            type="button"
+                            className={styles.name}
+                            aria-label={`${name}, ${perWords(subscription.amount, subscription.frequency, currency)}, ${dueWords(subscription)}. Edit.`}
+                            onClick={() => onEdit(source)}
+                        >
+                            {name}
+                        </button>
+                    )}
                     <span className={cx(styles.meta, state === "late" && styles.late)}>{dueWords(subscription)}</span>
                 </div>
                 {wanted && (
@@ -34,25 +39,27 @@ const SubscriptionRow = ({ subscription, currency, onPay, onEdit, onRun, onDelet
                         Mark as paid
                     </Button>
                 )}
-                <span className={styles.menu}>
-                    <Menu align="end" trigger={<IconButton icon="more" size="sm" label={`Options for ${name}`} />}>
-                        {active && (
-                            <Menu.Item icon="check" onSelect={() => onPay(subscription)}>
-                                Mark as paid
+                {!pending && (
+                    <span className={styles.menu}>
+                        <Menu align="end" trigger={<IconButton icon="more" size="sm" label={`Options for ${name}`} />}>
+                            {active && (
+                                <Menu.Item icon="check" onSelect={() => onPay(subscription)}>
+                                    Mark as paid
+                                </Menu.Item>
+                            )}
+                            <Menu.Item icon="edit" onSelect={() => onEdit(source)}>
+                                Edit
                             </Menu.Item>
-                        )}
-                        <Menu.Item icon="edit" onSelect={() => onEdit(source)}>
-                            Edit
-                        </Menu.Item>
-                        <Menu.Item icon={active ? "minus" : "repeat"} onSelect={() => onRun(source, !active)}>
-                            {active ? "Pause" : "Resume"}
-                        </Menu.Item>
-                        <Menu.Separator />
-                        <Menu.Item icon="trash" tone="danger" onSelect={() => onDelete(source)}>
-                            Delete
-                        </Menu.Item>
-                    </Menu>
-                </span>
+                            <Menu.Item icon={active ? "minus" : "repeat"} onSelect={() => onRun(source, !active)}>
+                                {active ? "Pause" : "Resume"}
+                            </Menu.Item>
+                            <Menu.Separator />
+                            <Menu.Item icon="trash" tone="danger" onSelect={() => onDelete(source)}>
+                                Delete
+                            </Menu.Item>
+                        </Menu>
+                    </span>
+                )}
                 <span className={styles.amount} aria-hidden="true">
                     {perWords(subscription.amount, subscription.frequency, currency)}
                 </span>

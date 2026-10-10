@@ -2,6 +2,7 @@ import { NavLink } from "react-router-dom";
 import { listPath } from "./todoPaths";
 import { Icon } from "../../components/ui";
 import { cx } from "../../lib/cx";
+import { rowKeyOf } from "../../lib/drafts";
 import { listLabel } from "../../lib/todos";
 import styles from "./TodoLists.module.css";
 
@@ -19,7 +20,7 @@ const TodoLists = ({ lists, onNew, layout = "column" }) => (
                 const open = list.todos.filter((todo) => !todo.done).length;
 
                 return (
-                    <li key={list._id}>
+                    <li key={rowKeyOf(list._id)}>
                         {/* `end`: the general list lives at /todo, which every other list's address starts with */}
                         <NavLink to={listPath(list)} end className={styles.item}>
                             <span className={styles.name}>{listLabel(list)}</span>

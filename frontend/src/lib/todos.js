@@ -86,10 +86,14 @@ export const withoutTodos = (lists, ids) => {
     return lists.map((list) => ({ ...list, todos: list.todos.filter((todo) => !gone.has(todo._id)) }));
 };
 
-// A to-do changed in place, or carried to another list when the change names one
-export const withTodoChanged = (lists, todo, fields) => {
-    const next = { ...todo, ...fields };
-    return next.list === todo.list ? withTodo(lists, next) : withTodo(withoutTodos(lists, [todo._id]), next);
+// Some of a to-do's fields changed, wherever it is now; it is carried to another list when the change
+// names one. A to-do that is no longer on any list is left alone.
+export const withTodoFields = (lists, id, fields) => {
+    const found = lists.flatMap((list) => list.todos).find((todo) => todo._id === id);
+    if (!found) return lists;
+
+    const next = { ...found, ...fields };
+    return next.list === found.list ? withTodo(lists, next) : withTodo(withoutTodos(lists, [id]), next);
 };
 
 export const withList = (lists, list) =>
@@ -98,3 +102,77 @@ export const withList = (lists, list) =>
         : [...lists, { todos: [], ...list }];
 
 export const withoutList = (lists, id) => lists.filter((list) => list._id !== id);
+
+// A list written here takes the id the server saved it under, and so does everything written on it since
+export const withListSaved = (lists, draftId, saved) =>
+    lists.map((list) =>
+        list._id === draftId
+            ? { ...saved, ...list, _id: saved._id, todos: list.todos.map((todo) => ({ ...todo, list: saved._id })) }
+            : list,
+    );
+
+// A list as it is shown the moment it is named, before the server has it
+export const draftList = (id, name, now = new Date()) => ({
+    _id: id,
+    name,
+    isDefault: false,
+    createdAt: now.toISOString(),
+    todos: [],
+});
+
+// A list put back in the place it was taken from
+export const withListAt = (lists, list, index) =>
+    lists.some((entry) => entry._id === list._id)
+        ? lists
+        : index < 0
+          ? [...lists, list]
+          : [...lists.slice(0, index), list, ...lists.slice(index)];
+
+// ── A to-do that has been written here and that the server has not answered for yet ──
+
+/**
+ * A to-do as it is shown the moment it is written. Until the server has saved it, its id is one of ours.
+ * It is dated after everything already on its list, whatever this device's clock says, so it lands last.
+ * @param {String} id - told apart from a saved one's by whoever makes it
+ * @param {Object} list - the list it is written on, with its to-dos
+ */
+export const draftTodo = (id, title, list, now = new Date()) => {
+    const last = list.todos.reduce((latest, todo) => Math.max(latest, Date.parse(todo.createdAt) || 0), 0);
+
+    return {
+        _id: id,
+        list: list._id,
+        title,
+        done: false,
+        doneAt: null,
+        createdAt: new Date(Math.max(now.getTime(), last + 1)).toISOString(),
+    };
+};
+
+// A draft takes the id the server saved it under. Whatever was changed on it while it waited stays as it
+// is here (that is sent next), and so does its place on the list.
+export const withDraftSaved = (lists, draftId, saved) =>
+    lists.map((list) => ({
+        ...list,
+        todos: list.todos.map((todo) =>
+            todo._id === draftId ? { ...saved, ...todo, _id: saved._id, key: draftId } : todo,
+        ),
+    }));
+
+// What a to-do's row is told apart by. One that began here as a draft keeps the key it was first drawn
+// under, so its row stays where it is when the server's id arrives.
+export const rowKey = (todo) => todo.key ?? todo._id;
+
+/**
+ * Lists fresh from the server, with those rows' keys put back on them.
+ * @param {Map} keys - saved id => the key its row was first drawn under
+ */
+export const withKeys = (lists, keys) =>
+    keys.size === 0
+        ? lists
+        : lists.map((list) => ({
+              ...list,
+              todos: list.todos.map((todo) => (keys.has(todo._id) ? { ...todo, key: keys.get(todo._id) } : todo)),
+          }));
+
+export const holdsTodo = (lists, id) => lists.some((list) => list.todos.some((todo) => todo._id === id));

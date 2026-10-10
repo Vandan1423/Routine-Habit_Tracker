@@ -12,6 +12,7 @@ import {
 } from "../utils/dateRules.js";
 import { buildHistory, missedDaysOf } from "../utils/itemHistory.js";
 import { moveItemToTrash, restoreItemFromTrash } from "../utils/itemTrash.js";
+import { keyOf, saveOnce } from "../utils/saveOnce.js";
 
 // @desc    Create a new routine
 // @route   POST /api/routines
@@ -36,18 +37,21 @@ export const createRoutine = async (req, res, next) => {
                 .json({ message: "Title and Start Time are required" });
         }
 
-        const routine = await Routine.create({
-            user: req.user._id,
-            title,
-            description,
-            startTime,
-            endTime,
-            category,
-            isRecurring,
-            recurringDays,
-            order,
-            date, // 2. SAVE THE DATE
-        });
+        const { doc: routine } = await saveOnce(
+            new Routine({
+                user: req.user._id,
+                title,
+                description,
+                startTime,
+                endTime,
+                category,
+                isRecurring,
+                recurringDays,
+                order,
+                date, // 2. SAVE THE DATE
+            }),
+            keyOf(req),
+        );
 
         res.status(201).json(routine);
     } catch (error) {

@@ -11,6 +11,7 @@ import { addDailyXp } from "../utils/dailySummary.js";
 import { updateDailyStreak } from "../utils/dailyStreakCalculator.js";
 import { buildHistory, missedDaysOf } from "../utils/itemHistory.js";
 import { moveItemToTrash, restoreItemFromTrash } from "../utils/itemTrash.js";
+import { keyOf, saveOnce } from "../utils/saveOnce.js";
 
 // --- HELPERS ---
 
@@ -156,11 +157,14 @@ const writeTodaysLog = async (habit, userId, date, quantity, attempt = 1) => {
 export const createHabit = async (req, res, next) => {
     try {
         // xpReward is automatically calculated by the Habit model's pre('save') hook based on difficulty!
-        const habit = await Habit.create({
-            ...req.body,
-            order: req.body.order ?? (await nextOrder(req.user._id)),
-            user: req.user._id,
-        });
+        const { doc: habit } = await saveOnce(
+            new Habit({
+                ...req.body,
+                order: req.body.order ?? (await nextOrder(req.user._id)),
+                user: req.user._id,
+            }),
+            keyOf(req),
+        );
 
         res.status(201).json({ habit });
     } catch (error) {

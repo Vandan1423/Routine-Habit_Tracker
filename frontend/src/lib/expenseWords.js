@@ -183,6 +183,13 @@ export const SAVED_WORDS = {
     transfer: { made: "Transfer added", moved: "Transfer moved", gone: "Transfer moved to Trash" },
 };
 
+// A transaction that was on the page for a moment and that the server then would not take
+export const REFUSED_WORDS = {
+    expense: { made: "The expense wasn’t added", changed: "The expense wasn’t changed" },
+    income: { made: "The income wasn’t added", changed: "The income wasn’t changed" },
+    transfer: { made: "The transfer wasn’t added", changed: "The transfer wasn’t changed" },
+};
+
 export const paidWords = (subscription, nextDue) => ({
     message: `${subscription.name} paid`,
     detail: `Next due ${formatDayShort(nextDue)}`,

@@ -1,4 +1,5 @@
 import api from "./api";
+import { write } from "./outbox";
 
 const routineService = {
     getRoutines: async (date = null) => {
@@ -42,9 +43,10 @@ const routineService = {
         }
     },
 
-    createRoutine: async (data) => {
+    // Shown before it is sent (see services/outbox.js). `key` is the new routine's own, so sending it twice makes one.
+    createRoutine: async (data, key) => {
         try {
-            const response = await api.post("/routines", data);
+            const response = await write("post", "/routines", data, { key });
             return response.data;
         } catch (error) {
             const message =
@@ -56,7 +58,7 @@ const routineService = {
 
     updateRoutine: async (id, data) => {
         try {
-            const response = await api.put(`/routines/${id}`, data);
+            const response = await write("put", `/routines/${id}`, data);
             return response.data;
         } catch (error) {
             const message =

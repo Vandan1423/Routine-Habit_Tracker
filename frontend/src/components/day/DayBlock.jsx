@@ -88,7 +88,7 @@ const DayBlock = ({
             <div className={styles.fold} inert={folded}>
                 <ul id={rowsId} className={styles.rows}>
                     {block.items.map((item, index) => (
-                        <Fragment key={item.key}>
+                        <Fragment key={item.row ?? item.key}>
                             {block.nowIndex === index && <NowLine now={now} />}
                             {past ? (
                                 <PastDayRow item={item} to={linkTo?.(item)} />

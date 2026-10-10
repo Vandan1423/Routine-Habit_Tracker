@@ -47,11 +47,10 @@
     text-wrap: pretty;
 }
 
-/* ── The general to-do list, after the day: a part of the page like the parts of the day above it ── */
+/* ── The general to-do list, before the day's own parts: a part of the page like each of them ── */
 
 .todos {
     composes: block from "../../components/day/DayBlock.module.css";
-    margin-top: var(--s-10);
 }
 
 /* The heading's own rules there are written for a heading inside a block, which this is too */

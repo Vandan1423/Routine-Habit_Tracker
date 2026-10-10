@@ -1,4 +1,5 @@
-import api from "./api"; 
+import api from "./api";
+import { write } from "./outbox"; 
 
 const habitService = {
     getHabits: async () => {
@@ -13,9 +14,10 @@ const habitService = {
         }
     },
 
-    createHabit: async (data) => {
+    // Shown before it is sent (see services/outbox.js). `key` is the new habit's own, so sending it twice makes one.
+    createHabit: async (data, key) => {
         try {
-            const response = await api.post("/habits", data);
+            const response = await write("post", "/habits", data, { key });
             return response.data;
         } catch (error) {
             const message =
@@ -27,7 +29,7 @@ const habitService = {
 
     updateHabit: async (id, data) => {
         try {
-            const response = await api.put(`/habits/${id}`, data);
+            const response = await write("put", `/habits/${id}`, data);
             return response.data;
         } catch (error) {
             const message =

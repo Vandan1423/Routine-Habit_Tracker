@@ -45,12 +45,13 @@ const WHAT_FOR = {
 
 /**
  * The form money is logged in: something spent, something that came in, or a move between two accounts.
- * A dialog, or a sheet on a phone. It waits for the server before closing, and says why if the server refuses.
+ * A dialog, or a sheet on a phone. It closes once onSave has taken what it holds (at once, where the
+ * transaction is shown before the server has answered), and says why if onSave refuses it.
  *
  * request: what to open with, or null while closed: { type?, transaction? }
  *   transaction: the one to change, as the API sent it. Without one, a new one is made, of `type`.
  * accounts, today, currency, places: from buildExpenseMonth (places are the ones typed before)
- * onSave(payload, transaction): saves it; rejects if it could not be saved
+ * onSave(payload, transaction): saves it; may return a promise, which rejects if it could not be saved
  * onDelete(transaction): "Delete" was chosen. onClose(): it wants to close.
  */
 const TransactionEditor = ({ request, accounts, today, currency, places, onSave, onDelete, onClose }) => {

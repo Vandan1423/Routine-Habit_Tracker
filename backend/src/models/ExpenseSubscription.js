@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { madeOnce } from "../utils/saveOnce.js";
 
 const expenseSubscriptionSchema = new mongoose.Schema(
     {
@@ -63,6 +64,8 @@ const expenseSubscriptionSchema = new mongoose.Schema(
         timestamps: true,
     },
 );
+
+expenseSubscriptionSchema.plugin(madeOnce);
 
 const ExpenseSubscription = mongoose.model(
     "ExpenseSubscription",

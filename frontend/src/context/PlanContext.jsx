@@ -1,6 +1,8 @@
 import { createContext, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useAuth from "../hooks/useAuth";
 import useToday from "../hooks/useToday";
+import { adoptDraft, newDraftId } from "../lib/drafts";
+import { draftItem } from "../lib/itemForm";
 import {
     deletedWords,
     notDeletedWords,
@@ -10,6 +12,7 @@ import {
 } from "../lib/itemWords";
 import { toast } from "../lib/toast";
 import habitService from "../services/habitService";
+import { newKey } from "../services/outbox";
 import routineService from "../services/routineService";
 
 /*
@@ -20,9 +23,12 @@ import routineService from "../services/routineService";
  * due or not), so there is one copy of them, in TodayContext, and this context tells it what changed.
  * Routines are different: Today holds only the ones that fall on today, so the whole list lives here.
  *
- * Making and changing wait for the server: the form shows that it is working, and what comes back is
- * what is shown. Deleting does not wait. The item leaves for Trash at once, and a toast offers to bring
- * it back. The XP it earned goes with it and comes back with it, so the level is read again both times.
+ * Nothing here waits for the server. A new item is in the plan (and on today, if it falls on today) the
+ * moment its form is sent, as the form gave it; it takes the server's id when that arrives, and until
+ * then nothing on its row can be pressed. A changed one is shown as changed at once. If the server
+ * refuses, the item is taken out, or put back as it was, and whoever asked is told why. A deleted item
+ * leaves for Trash at once, and a toast offers to bring it back. The XP it earned goes with it and comes
+ * back with it, so the level is read again both times.
  */
 
 const EMPTY = {
@@ -35,13 +41,13 @@ const PlanContext = createContext(null);
 
 const services = {
     routine: {
-        create: async (data) => routineService.createRoutine(data),
+        create: async (data, key) => routineService.createRoutine(data, key),
         update: async (id, data) => routineService.updateRoutine(id, data),
         remove: (id) => routineService.deleteRoutine(id),
         restore: async (id) => routineService.restoreRoutine(id),
     },
     habit: {
-        create: async (data) => (await habitService.createHabit(data)).habit,
+        create: async (data, key) => (await habitService.createHabit(data, key)).habit,
         update: async (id, data) => (await habitService.updateHabit(id, data)).habit,
         remove: (id) => habitService.deleteHabit(id),
         restore: async (id) => (await habitService.restoreHabit(id)).habit,
@@ -135,28 +141,58 @@ export const PlanProvider = ({ children }) => {
     }, []);
 
     /**
-     * Makes a routine or a habit. Resolves with it as saved; rejects with the server's reason.
+     * Makes a routine or a habit. It is shown at once. Resolves with it as saved; rejects with the
+     * server's reason once it has been taken out again.
      * @param {String} kind - "routine" or "habit"
      * @param {Object} data - from payloadOf (lib/itemForm.js)
+     * @param {String} [key] - the key it was sent under before, when this is a second try
      */
     const createItem = useCallback(
-        async (kind, data) => {
-            const item = await services[kind].create(data);
+        (kind, data, key = newKey()) => {
+            const draft = draftItem(kind, data, { id: newDraftId(kind), habits: latest.current.today.habits });
 
-            show(kind, item);
-            setArrived({ key: `${kind}:${item._id}`, at: Date.now() });
-            return item;
+            show(kind, draft);
+            setArrived({ key: `${kind}:${draft._id}`, at: Date.now() });
+
+            return services[kind].create(data, key).then(
+                (item) => {
+                    // The row it was drawn in stays where it is: only what it stands for changes
+                    adoptDraft(draft._id, item._id);
+                    hide(kind, draft._id);
+                    show(kind, item);
+                    return item;
+                },
+                (error) => {
+                    hide(kind, draft._id);
+                    throw error;
+                },
+            );
         },
-        [show],
+        [show, hide],
     );
 
-    // Changes one. Resolves with it as saved; rejects with the server's reason.
+    // Changes one. It is shown as changed at once. Resolves with it as saved; rejects with the server's
+    // reason once it has been put back as it was.
     const updateItem = useCallback(
-        async (kind, id, data) => {
-            const item = await services[kind].update(id, data);
+        (kind, id, data) => {
+            const { state: plan, today: day } = latest.current;
+            // As Today shows it, where it is on today: that carries what it has logged
+            const before =
+                (kind === "routine" ? day.routines : day.habits).find((entry) => entry._id === id) ??
+                (kind === "routine" ? plan.routines.find((entry) => entry._id === id) : null);
 
-            show(kind, item);
-            return item;
+            if (before) show(kind, draftItem(kind, data, { existing: before }));
+
+            return services[kind].update(id, data).then(
+                (item) => {
+                    show(kind, item);
+                    return item;
+                },
+                (error) => {
+                    if (before) show(kind, before);
+                    throw error;
+                },
+            );
         },
         [show],
     );

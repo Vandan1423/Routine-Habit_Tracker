@@ -82,7 +82,8 @@ export const PastDayRow = ({ item, to }) => {
  * Completing it is one gesture: the check is drawn, the name settles to quieter ink, and what it was worth
  * lands as what it paid.
  *
- * item: from buildDay (lib/day.js)
+ * item: from buildDay (lib/day.js). One that is `saving` is on its way to the server: it is shown as it
+ *       will be, and its check and stepper wait until the server has it.
  * next: set on the one item to turn to ({ state, inMinutes }); it gets the saffron ring and word
  * onCheck(item, checked): the check was ticked or un-ticked
  * onStep(item, direction): a counted habit's stepper was pressed, -1 or 1
@@ -104,8 +105,11 @@ const DayRow = ({ item, next, onCheck, onStep, menu }) => {
                 checked={item.done}
                 progress={item.counted ? item.progress : 0}
                 tone={next && !item.done ? "next" : undefined}
-                onChange={(event) => onCheck(item, event.target.checked)}
+                onChange={(event) => {
+                    if (!item.saving) onCheck(item, event.target.checked);
+                }}
                 aria-label={item.title}
+                aria-disabled={item.saving || undefined}
                 aria-describedby={detailed ? metaId : undefined}
             />
             <div className={styles.main}>
@@ -120,7 +124,7 @@ const DayRow = ({ item, next, onCheck, onStep, menu }) => {
             </div>
             {menu && <span className={styles.menu}>{menu}</span>}
             {/* Once the target is reached the stepper has nothing left to do; un-ticking brings it back */}
-            {item.counted && !item.done && (
+            {item.counted && !item.done && !item.saving && (
                 <Stepper
                     label={item.title}
                     canDecrease={item.quantity > 0}

@@ -2,6 +2,7 @@
 // and what is sent to the API. No React here, so the rules can be read (and checked) on their own.
 
 import { daysOf } from "./plan";
+import { HABIT_XP, ROUTINE_XP } from "./stakes";
 import { parseTime, toMinutes } from "./time";
 
 const EVERY_DAY = [0, 1, 2, 3, 4, 5, 6];
@@ -154,6 +155,24 @@ export const payloadOf = (kind, form) => {
         difficulty: form.difficulty,
     };
 };
+
+/**
+ * A routine or a habit as the API would send it, made from what its form sends: what is shown while the
+ * real one is on its way. What it is worth and where a new habit stands are the server's to say; these
+ * are the same answers, worked out here (see lib/stakes.js).
+ * @param {Object} data - from payloadOf
+ * @param {Object} from - id: what a new one goes by meanwhile; existing: the item it rewrites, if any;
+ *   habits: the habits there are, a new one coming after the last of them
+ */
+export const draftItem = (kind, data, { id, existing = null, habits = [], now = new Date() } = {}) => ({
+    ...existing,
+    ...data,
+    _id: existing?._id ?? id,
+    isActive: true,
+    xpReward: kind === "routine" ? (existing?.xpReward ?? ROUTINE_XP) : (HABIT_XP[data.difficulty] ?? HABIT_XP.medium),
+    order: existing?.order ?? (kind === "habit" ? Math.max(-1, ...habits.map((habit) => habit.order ?? 0)) + 1 : 0),
+    createdAt: existing?.createdAt ?? now.toISOString(),
+});
 
 // True when two forms hold the same answers (so closing one loses nothing)
 export const sameForm = (a, b) =>

@@ -12,7 +12,8 @@ import { Button, ErrorState, IconButton, Menu, SectionHeader } from "../../compo
 import useListKeys, { focusRow } from "../../hooks/useListKeys";
 import useTodos from "../../hooks/useTodos";
 import { KEYS } from "../../lib/shortcuts";
-import { layoutList, pickList } from "../../lib/todos";
+import { rowKeyOf } from "../../lib/drafts";
+import { layoutList, pickList, rowKey } from "../../lib/todos";
 import { listWords } from "../../lib/todoWords";
 import styles from "./TodoPage.module.css";
 
@@ -22,11 +23,13 @@ import styles from "./TodoPage.module.css";
  * The lists come from TodoContext, which Today's own section reads as well; lib/todos.js lays them out.
  */
 const TodoPage = () => {
-    const { listId } = useParams();
+    const { listId: asked } = useParams();
     const navigate = useNavigate();
     const todos = useTodos();
-    const { status, lists, ensure, retry } = todos;
+    const { status, lists, ensure, retry, listIdNow } = todos;
     const { addTodo, setDone, renameTodo, moveTodo, deleteTodo, clearDone, addList, renameList, deleteList } = todos;
+    // A list made a moment ago is at the address of the id it had then, until the server's id is known
+    const listId = asked && listIdNow(asked);
 
     // The form a list is named in
     const [naming, setNaming] = useState(null);
@@ -34,6 +37,11 @@ const TodoPage = () => {
     useEffect(() => {
         ensure();
     }, [ensure]);
+
+    // The server has given the list its id: the address follows, and the page stays as it is
+    useEffect(() => {
+        if (asked && asked !== listId) navigate(`${TODO_PATH}/${listId}`, { replace: true });
+    }, [asked, listId, navigate]);
 
     const list = useMemo(() => pickList(lists, listId), [lists, listId]);
     const layout = useMemo(() => layoutList(list), [list]);
@@ -93,12 +101,12 @@ const TodoPage = () => {
     if (listId && list._id !== listId) {
         return <Navigate to={TODO_PATH} replace />;
     }
-
-    const saveList = async (name, existing) => {
+    // Neither waits for the server: the form closes on a list that is already there
+    const saveList = (name, existing) => {
         if (existing) {
-            await renameList(existing, name);
+            renameList(existing, name);
         } else {
-            navigate(listPath(await addList(name)));
+            navigate(listPath(addList(name)));
         }
     };
 
@@ -137,13 +145,13 @@ const TodoPage = () => {
                 <div className={styles.above}>{picker("row")}</div>
 
                 {/* Keyed by the list: another list is another set of rows, not rows coming and going */}
-                <div key={list._id}>
+                <div key={rowKeyOf(list._id)}>
                     {/* The line to write on comes last, where the next to-do will land */}
                     <div className={styles.rows}>
                         <ul>
                             <AnimatePresence initial={false}>
                                 {layout.open.map((todo) => (
-                                    <TodoRow key={todo._id} todo={todo} {...rowProps} />
+                                    <TodoRow key={rowKey(todo)} todo={todo} {...rowProps} />
                                 ))}
                             </AnimatePresence>
                         </ul>
@@ -152,8 +160,8 @@ const TodoPage = () => {
 
                     {layout.total === 0 && (
                         <p className={styles.empty}>
-                            Write down the first thing and press Enter. A to-do has no time and no
-                            XP. It waits here until it is done.
+                            Write down the first thing, then press Enter or Add. A to-do has no time
+                            and no XP. It waits here until it is done.
                         </p>
                     )}
 
@@ -172,7 +180,7 @@ const TodoPage = () => {
                             <ul className={styles.rows}>
                                 <AnimatePresence initial={false}>
                                     {layout.done.map((todo) => (
-                                        <TodoRow key={todo._id} todo={todo} {...rowProps} />
+                                        <TodoRow key={rowKey(todo)} todo={todo} {...rowProps} />
                                     ))}
                                 </AnimatePresence>
                             </ul>

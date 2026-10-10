@@ -3,6 +3,7 @@ import Routine from "../models/Routine.js";
 import Habit from "../models/Habit.js";
 import { getUserToday } from "../utils/dateRules.js";
 import { KEPT, trashStamp } from "../utils/trash.js";
+import { keyOf, saveOnce } from "../utils/saveOnce.js";
 
 // Goals: something to reach, with milestones to tick off and the routines and habits that carry it.
 // A goal earns no XP and costs none. How its routines and habits are being kept is read by the client
@@ -137,9 +138,9 @@ export const createGoal = async (req, res, next) => {
             return res.status(404).json({ message: "A linked routine or habit was not found." });
         }
 
-        const goal = new Goal({ user: req.user._id, title, note, targetDate, links: owned });
-        goal.milestones = mergeMilestones(goal.milestones, milestones);
-        await goal.save();
+        const made = new Goal({ user: req.user._id, title, note, targetDate, links: owned });
+        made.milestones = mergeMilestones(made.milestones, milestones);
+        const { doc: goal } = await saveOnce(made, keyOf(req));
 
         res.status(201).json({ goal: await presentOne(req.user._id, goal) });
     } catch (error) {

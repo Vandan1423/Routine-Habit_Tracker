@@ -197,5 +197,7 @@ export const trashedDetail = ({ xpTaken = 0, owed = 0 } = {}) => {
     return parts.length > 0 ? parts.join(" ") : undefined;
 };
 export const notDeletedWords = (title) => `“${title}” wasn’t deleted.`;
+// One that was on the page for a moment as its form gave it, and that the server would not take
+export const notSavedWords = (title, changed) => `“${title}” wasn’t ${changed ? "changed" : "added"}`;
 export const notRestoredWords = (title) => `“${title}” didn’t come back.`;
 export const notReorderedWords = "The new order didn’t save.";

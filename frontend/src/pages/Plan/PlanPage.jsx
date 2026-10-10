@@ -30,7 +30,8 @@ import styles from "./PlanPage.module.css";
  * the rest is passed to each row and its menu
  */
 const PlanBlock = ({ block, reorderable, today, firstDay, onReorder, onEdit, onDelete, onShowUnder }) => {
-    const habitIds = block.items.filter((item) => item.kind === "habit").map((item) => item.id);
+    // One still on its way to the server has no id to be put in order by yet
+    const habitIds = block.items.filter((item) => item.kind === "habit" && !item.saving).map((item) => item.id);
     const canReorder = reorderable && habitIds.length > 1;
     const { handleProps, rowStyle, dragging, settling } = useReorder({ ids: habitIds, onReorder });
 
@@ -53,11 +54,11 @@ const PlanBlock = ({ block, reorderable, today, firstDay, onReorder, onEdit, onD
                 <AnimatePresence initial={false}>
                     {block.items.map((item) => {
                         const place = habitIds.indexOf(item.id);
-                        const sortable = canReorder && item.kind === "habit";
+                        const sortable = canReorder && item.kind === "habit" && !item.saving;
 
                         return (
                             <PlanRow
-                                key={item.key}
+                                key={item.row}
                                 item={item}
                                 today={today}
                                 firstDay={firstDay}
@@ -65,7 +66,7 @@ const PlanBlock = ({ block, reorderable, today, firstDay, onReorder, onEdit, onD
                                 dragging={dragging === item.id}
                                 style={sortable ? rowStyle(item.id) : undefined}
                                 menu={
-                                    <PlanItemMenu
+                                    item.saving ? null : <PlanItemMenu
                                         item={item}
                                         onEdit={onEdit}
                                         onDelete={onDelete}
@@ -127,13 +128,13 @@ const PlanPage = () => {
         {
             [KEYS.edit]: (key) => {
                 const item = itemOf(key);
-                if (!item) return false;
+                if (!item || item.saving) return false;
                 setEditing({ kind: item.kind, item: item.source });
                 return true;
             },
             [KEYS.remove]: (key, row, neighbour) => {
                 const item = itemOf(key);
-                if (!item) return false;
+                if (!item || item.saving) return false;
                 // The row is about to go: the keyboard moves on to the one beside it
                 focusRow(neighbour);
                 deleteItem(item.kind, item.source);
@@ -254,11 +255,11 @@ const PlanPage = () => {
                                 <AnimatePresence initial={false}>
                                     {shown.upcoming.map((item) => (
                                         <PlanRow
-                                            key={item.key}
+                                            key={item.row}
                                             item={item}
                                             today={date}
                                             firstDay={firstDay}
-                                            menu={<PlanItemMenu item={item} onEdit={edit} onDelete={remove} />}
+                                            menu={item.saving ? null : <PlanItemMenu item={item} onEdit={edit} onDelete={remove} />}
                                         />
                                     ))}
                                 </AnimatePresence>

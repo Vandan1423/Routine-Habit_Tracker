@@ -41,6 +41,10 @@ const api = axios.create({
     headers: DEFAULT_HEADERS,
 });
 
+// For a change that is already on screen when it is sent (see services/outbox.js). Nobody is waiting on
+// its answer, so a server that has to wake up first (about half a minute) is waited for, not given up on.
+export const PATIENT = { timeout: 60000 };
+
 //Now store the access token into the memory
 let accessToken = readStoredAccessToken();
 

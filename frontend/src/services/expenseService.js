@@ -1,4 +1,5 @@
 import api from "./api";
+import { write } from "./outbox";
 import { joinPages, PAGE_SIZE } from "../lib/expenses";
 
 // Money: accounts, transactions, limits and subscriptions. Each call throws when it fails, with the
@@ -46,16 +47,19 @@ const expenseService = {
     // name and openingBalance are what can be changed
     updateAccount: (id, data) => call(() => api.put(`/expenses/accounts/${id}`, data), NOT_SAVED),
 
-    createTransaction: (data) => call(() => api.post("/expenses/transactions", data), NOT_SAVED),
-    updateTransaction: (id, data) => call(() => api.put(`/expenses/transactions/${id}`, data), NOT_SAVED),
-    deleteTransaction: (id) => call(() => api.delete(`/expenses/transactions/${id}`), "It couldn’t be deleted."),
+    // These are on screen before they are sent, so they go through the outbox. `key` is the new thing's
+    // own (newKey), so that sending it twice still makes one.
+    createTransaction: (data, key) => call(() => write("post", "/expenses/transactions", data, { key }), NOT_SAVED),
+    updateTransaction: (id, data) => call(() => write("put", `/expenses/transactions/${id}`, data), NOT_SAVED),
+    deleteTransaction: (id) => call(() => write("delete", `/expenses/transactions/${id}`), "It couldn’t be deleted."),
 
-    createSubscription: (data) => call(() => api.post("/expenses/subscriptions", data), NOT_SAVED),
-    updateSubscription: (id, data) => call(() => api.put(`/expenses/subscriptions/${id}`, data), NOT_SAVED),
-    deleteSubscription: (id) => call(() => api.delete(`/expenses/subscriptions/${id}`), "It couldn’t be deleted."),
+    createSubscription: (data, key) => call(() => write("post", "/expenses/subscriptions", data, { key }), NOT_SAVED),
+    updateSubscription: (id, data) => call(() => write("put", `/expenses/subscriptions/${id}`, data), NOT_SAVED),
+    deleteSubscription: (id) => call(() => write("delete", `/expenses/subscriptions/${id}`), "It couldn’t be deleted."),
 
-    // Sets a category's monthly limit, or takes it away (isActive: false)
-    saveBudget: (data) => call(() => api.post("/expenses/budgets", data), NOT_SAVED),
+    // Sets a category's monthly limit, or takes it away (isActive: false). A category has one limit, so
+    // sending this twice changes nothing.
+    saveBudget: (data) => call(() => write("post", "/expenses/budgets", data, { again: true }), NOT_SAVED),
 
     // One month's transactions as a spreadsheet file
     exportMonth: (month) =>

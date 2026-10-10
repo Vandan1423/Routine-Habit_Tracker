@@ -2,12 +2,11 @@
 .line {
     display: flex;
     align-items: center;
-    gap: var(--s-3);
+    gap: var(--s-2);
     min-height: var(--row);
     margin-inline: calc(var(--s-2) * -1);
     padding-inline: var(--s-2);
     border-radius: var(--r-2);
-    cursor: text;
     transition: background-color var(--t-fast) var(--ease);
 }
 
@@ -19,6 +18,28 @@
 
 .line:focus-within {
     background: var(--hover);
+}
+
+/* All of the line but the button: pressing anywhere on it puts the cursor in the field */
+.field {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: var(--s-3);
+    min-width: 0;
+    cursor: text;
+}
+
+/* There only once something has been written. It comes in place: the line is as tall with it as without. */
+.send {
+    flex: none;
+    animation: send-in var(--t-fast) var(--ease);
+}
+
+@keyframes send-in {
+    from {
+        opacity: 0;
+    }
 }
 
 /* As wide as a check, so what is typed starts where the words of the rows above do */

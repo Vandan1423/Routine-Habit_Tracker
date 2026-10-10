@@ -1,6 +1,7 @@
 import TodoList from "../models/TodoList.js";
 import Todo from "../models/Todo.js";
 import { generalListOf } from "../utils/todoLists.js";
+import { keyOf, saveOnce } from "../utils/saveOnce.js";
 import { KEPT, trashStamp } from "../utils/trash.js";
 
 // To-do lists: one general list every account has, and any number of named ones.
@@ -46,7 +47,7 @@ export const createList = async (req, res, next) => {
             return res.status(400).json({ message: `At most ${MOST_LISTS} lists can be kept.` });
         }
 
-        const list = await TodoList.create({ user: req.user._id, name: req.body.name });
+        const { doc: list } = await saveOnce(new TodoList({ user: req.user._id, name: req.body.name }), keyOf(req));
 
         res.status(201).json({ list: withTodos(list, []) });
     } catch (error) {
@@ -143,11 +144,10 @@ export const createTodo = async (req, res, next) => {
             return res.status(400).json({ message: `A list holds at most ${MOST_TODOS} to-dos.` });
         }
 
-        const todo = await Todo.create({
-            user: req.user._id,
-            list: list._id,
-            title: req.body.title,
-        });
+        const { doc: todo } = await saveOnce(
+            new Todo({ user: req.user._id, list: list._id, title: req.body.title }),
+            keyOf(req),
+        );
 
         res.status(201).json({ todo });
     } catch (error) {

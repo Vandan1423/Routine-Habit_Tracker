@@ -5,6 +5,7 @@ import ExpenseTransaction from "../models/ExpenseTransaction.js";
 import KnownSpendPlace from "../models/KnownSpendPlace.js";
 import { getUserToday } from "../utils/dateRules.js";
 import { KEPT, trashStamp } from "../utils/trash.js";
+import { keyOf, saveOnce } from "../utils/saveOnce.js";
 
 const CATEGORIES = [
     "Food & Dining",
@@ -491,7 +492,7 @@ export const createTransaction = async (req, res, next) => {
             return res.status(400).json({ message: "Invalid payment method" });
         }
 
-        const transaction = await ExpenseTransaction.create({
+        const { doc: transaction, repeated } = await saveOnce(new ExpenseTransaction({
             user: req.user._id,
             type,
             amount: Number(amount),
@@ -505,9 +506,10 @@ export const createTransaction = async (req, res, next) => {
             transactionDate: transactionDate || new Date(`${getUserToday(req.user)}T00:00:00Z`),
             notes,
             subscription: subscriptionId || null,
-        });
+        }), keyOf(req));
 
-        if (type === "expense" && transaction.placeName && normalizePlaceName(transaction.placeName) !== "other") {
+        // A request sent a second time has had its place counted already
+        if (!repeated && type === "expense" && transaction.placeName && normalizePlaceName(transaction.placeName) !== "other") {
             const normalizedName = normalizePlaceName(transaction.placeName);
             await KnownSpendPlace.findOneAndUpdate(
                 { user: req.user._id, normalizedName },
@@ -562,17 +564,20 @@ export const createSubscription = async (req, res, next) => {
             return res.status(404).json({ message: "Subscription account not found" });
         }
 
-        const subscription = await ExpenseSubscription.create({
-            user: req.user._id,
-            name,
-            amount: Number(amount),
-            category: CATEGORIES.includes(category) ? category : "Other",
-            frequency,
-            account: accountId,
-            description,
-            nextDueDate: nextDueDate || Date.now(),
-            reminderDays,
-        });
+        const { doc: subscription } = await saveOnce(
+            new ExpenseSubscription({
+                user: req.user._id,
+                name,
+                amount: Number(amount),
+                category: CATEGORIES.includes(category) ? category : "Other",
+                frequency,
+                account: accountId,
+                description,
+                nextDueDate: nextDueDate || Date.now(),
+                reminderDays,
+            }),
+            keyOf(req),
+        );
 
         const populated = await ExpenseSubscription.findById(subscription._id).populate("account", "name type");
         res.status(201).json({ subscription: populated });

@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { madeOnce } from "../utils/saveOnce.js";
 
 // A to-do is a line on a list: something to get done once, with no day, no XP and no penalty.
 const todoSchema = new mongoose.Schema({
@@ -45,6 +46,8 @@ const todoSchema = new mongoose.Schema({
 });
 
 todoSchema.index({ user: 1, list: 1, createdAt: 1 });
+
+todoSchema.plugin(madeOnce);
 
 const Todo = mongoose.model("Todo", todoSchema);
 export default Todo;

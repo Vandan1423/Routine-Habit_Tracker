@@ -25,8 +25,10 @@ import {
     sameForm,
     validate,
 } from "../../lib/itemForm";
-import { KIND_WORDS, stakesWords } from "../../lib/itemWords";
+import { KIND_WORDS, notSavedWords, stakesWords } from "../../lib/itemWords";
 import { HABIT_XP, ROUTINE_XP } from "../../lib/stakes";
+import { toast } from "../../lib/toast";
+import { newKey } from "../../services/outbox";
 import styles from "./ItemEditor.module.css";
 
 const EVERY_DAY = [0, 1, 2, 3, 4, 5, 6];
@@ -154,20 +156,22 @@ const ItemEditor = ({ request, onClose, onSaved, onDeleted }) => {
             return;
         }
 
-        setSaving(true);
-        setFailure("");
+        // It is in the plan the moment it is sent, so the form does not wait. If the server refuses, the
+        // plan takes it back and a toast says why; trying again sends the same thing under the same key.
+        const data = payloadOf(kind, form);
+        const key = newKey();
+        const send = () =>
+            (item ? updateItem(kind, item._id, data) : createItem(kind, data, key)).then(
+                (saved) => onSaved?.(saved, { created: !item }),
+                (error) =>
+                    toast.error(notSavedWords(data.title, Boolean(item)), {
+                        detail: reasonOf(error),
+                        action: { label: "Try again", onClick: send },
+                    }),
+            );
 
-        try {
-            const data = payloadOf(kind, form);
-            const saved = item ? await updateItem(kind, item._id, data) : await createItem(kind, data);
-
-            onSaved?.(saved, { created: !item });
-            onClose();
-        } catch (error) {
-            setFailure(reasonOf(error));
-        } finally {
-            setSaving(false);
-        }
+        send();
+        onClose();
     };
 
     const remove = () => {

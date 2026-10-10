@@ -26,6 +26,7 @@ import usePlan from "../../hooks/usePlan";
 import useRemembered from "../../hooks/useRemembered";
 import useSlow from "../../hooks/useSlow";
 import useToday from "../../hooks/useToday";
+import useTodos from "../../hooks/useTodos";
 import { addDays, formatDayTitle, localDay } from "../../lib/dates";
 import { buildDay, minutesOf, stepQuantity, tallyOf } from "../../lib/day";
 import {
@@ -50,6 +51,10 @@ const NEW_DAY_RETRIES_MS = [15 * 1000, 60 * 1000];
 const JUST_AFTER_MIDNIGHT_MINUTES = 10;
 
 const NOTHING_REMEMBERED = {};
+
+// The to-do lists are shown ahead of the day, so the day waits this long for them, and no longer: they
+// are an extra, and arriving late only moves the day down the page once
+const WAITS_FOR_TODOS_MS = 2500;
 
 // Nothing is planned at all, as far as this screen can tell: no habits, nothing today, and no day on record
 const looksNew = ({ habits, week }, day) =>
@@ -134,6 +139,7 @@ const TodayList = ({
             const item = day.items.find((entry) => entry.key === key);
             // A to-do is reworded in its own row
             if (!item) return press("[data-edit]")(key, row);
+            if (item.saving) return false;
             onEdit(item);
             return true;
         },
@@ -162,6 +168,7 @@ const TodayList = ({
             />
             <DayRecap recap={recap} onDismiss={onDismissRecap} />
             <DayProgress message={message} done={day.done} total={day.total} blocks={day.blocks} />
+            <TodayTodos now={now} />
             {day.blocks.map((block) => (
                 <DayBlock
                     key={block.id}
@@ -172,9 +179,10 @@ const TodayList = ({
                     onFold={fold}
                     onCheck={onCheck}
                     onStep={onStep}
-                    renderMenu={(item) => (
-                        <RowMenu item={item} onEdit={onEdit} onSetAmount={onSetAmount} />
-                    )}
+                    // One still on its way to the server has nothing to open yet
+                    renderMenu={(item) =>
+                        item.saving ? null : <RowMenu item={item} onEdit={onEdit} onSetAmount={onSetAmount} />
+                    }
                 />
             ))}
             <OwedNote owed={owed} />
@@ -183,7 +191,6 @@ const TodayList = ({
                 bonus={bonus}
                 note={day.sealed && owed.length === 0 ? tomorrowWords(tomorrow) : ""}
             />
-            <TodayTodos now={now} />
         </DayLayout>
     );
 };
@@ -199,6 +206,7 @@ const TodayPage = () => {
     const { ensure, retry, refresh, subscribe } = today;
     const { setRoutineDone, setHabitQuantity, stepHabit } = today;
     const { createItem } = usePlan();
+    const { status: todosStatus, ensure: ensureTodos } = useTodos();
     const { user } = useAuth();
     const now = useNow();
 
@@ -218,7 +226,12 @@ const TodayPage = () => {
 
     useEffect(() => {
         ensure();
-    }, [ensure]);
+        ensureTodos();
+    }, [ensure, ensureTodos]);
+
+    // Asked for with the day, not after it, and waited for a moment so that they arrive together
+    const todosOnTheirWay = todosStatus === "idle" || todosStatus === "loading";
+    const todosLate = useSlow(todosOnTheirWay, WAITS_FOR_TODOS_MS);
 
     const day = useMemo(
         () => buildDay({ routines, habits, now, pending }),
@@ -305,7 +318,7 @@ const TodayPage = () => {
         );
     }
 
-    if (status !== "ready") {
+    if (status !== "ready" || (todosOnTheirWay && !todosLate)) {
         return (
             <Page>
                 <p className="visually-hidden" role="status">
@@ -401,6 +414,7 @@ const TodayPage = () => {
                 >
                     {header(!fresh && <NewItemMenu onNew={setEditing} />)}
                     <DayRecap recap={recap} onDismiss={dismissRecap} />
+                    {!fresh && <TodayTodos now={now} />}
                     {fresh ? (
                         <EmptyState
                             className={styles.state}
@@ -442,12 +456,7 @@ const TodayPage = () => {
                             no XP.
                         </EmptyState>
                     )}
-                    {!fresh && (
-                        <>
-                            <OwedNote owed={today.owed} />
-                            <TodayTodos now={now} />
-                        </>
-                    )}
+                    {!fresh && <OwedNote owed={today.owed} />}
                 </DayLayout>
                 {editor}
             </Page>

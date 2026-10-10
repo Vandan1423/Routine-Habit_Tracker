@@ -42,8 +42,12 @@ export const dayOfDate = (value) => String(value ?? "").slice(0, 10);
 
 // ── One month ──
 
-const entryOf = (transaction) => ({
+const entryOf = (transaction, keys) => ({
     id: transaction._id,
+    // What its line is told apart by: one first shown before it was saved keeps the key it was drawn under
+    key: keys.get(transaction._id) ?? transaction._id,
+    // On its way to the server: shown, but not yet there to be opened or deleted
+    pending: Boolean(transaction.pending),
     type: transaction.type,
     amount: Number(transaction.amount) || 0,
     date: dayOfDate(transaction.transactionDate),
@@ -130,6 +134,8 @@ const subscriptionOf = (subscription, today) => {
         due,
         dueIn,
         active,
+        // On its way to the server: shown, but not yet there to be paid, changed or deleted
+        pending: Boolean(subscription.pending),
         // "paused", "late", "today", "soon" or "later"
         state: !active
             ? "paused"
@@ -152,8 +158,9 @@ const subscriptionOf = (subscription, today) => {
  * @param {Object[]} transactions - GET /expenses/transactions for the month, newest first: the pages read so far
  * @param {Number} [total] - how many transactions the month has in all; the ones given, unless said
  * @param {Set} [hidden] - ids of transactions and subscriptions on their way out, already gone from the page
+ * @param {Map} [keys] - saved id => the key that transaction's line was first drawn under
  */
-export const buildExpenseMonth = ({ summary, transactions = [], total, hidden = new Set() }) => {
+export const buildExpenseMonth = ({ summary, transactions = [], total, hidden = new Set(), keys = new Map() }) => {
     const today = summary.today ?? "";
     const month = summary.month ?? monthOf(today);
     const accounts = (summary.accounts ?? []).map((account) => ({
@@ -166,7 +173,9 @@ export const buildExpenseMonth = ({ summary, transactions = [], total, hidden = 
     }));
     const currency = summary.accounts?.[0]?.currency || DEFAULT_CURRENCY;
 
-    const entries = transactions.filter((transaction) => !hidden.has(transaction._id)).map(entryOf);
+    const entries = transactions
+        .filter((transaction) => !hidden.has(transaction._id))
+        .map((transaction) => entryOf(transaction, keys));
     const count = Math.max(total ?? 0, entries.length);
     const spentByDay = new Map((summary.monthDays ?? []).map((day) => [day.date, Number(day.spent) || 0]));
     const spent = Number(summary.monthExpensesTotal) || 0;
@@ -279,6 +288,203 @@ export const monthBounds = ({ today, firstMonth, lastMonth }) => {
         last: lastMonth && lastMonth > current ? lastMonth : current,
     };
 };
+
+// ── A transaction shown before the server has answered for it ──
+
+const round = (amount) => Math.round(amount * 100) / 100;
+
+/**
+ * A transaction as the API would send it, made from what its form sends: what is shown while the real one
+ * is on its way.
+ * @param {Object} payload - from transactionPayload
+ * @param {Object} from - id: what it goes by until the server gives it an id of its own;
+ *   accounts: from buildExpenseMonth; existing: the transaction it rewrites, as the API sent it, if any
+ */
+export const draftTransaction = (payload, { id, accounts = [], existing = null }) => {
+    const accountOf = (accountId) => {
+        const account = accounts.find((entry) => entry.id === accountId);
+        return account ? { _id: account.id, name: account.name, type: account.type } : null;
+    };
+
+    return {
+        ...existing,
+        _id: existing?._id ?? id,
+        pending: true,
+        type: payload.type,
+        amount: payload.amount,
+        category: payload.category,
+        description: payload.description,
+        paymentMethod: payload.paymentMethod,
+        placeName: payload.placeName || UNCATEGORISED,
+        notes: payload.notes,
+        transactionDate: `${payload.transactionDate}T00:00:00.000Z`,
+        account: accountOf(payload.accountId),
+        transferToAccount: payload.transferToAccountId ? accountOf(payload.transferToAccountId) : null,
+    };
+};
+
+// Rows of totals by name ({ [key]: name, total }, some with a count) after an amount is moved under one
+// name: largest first, as the server lists them, and without a name that has nothing left under it
+const tallied = (rows = [], key, name, amount, count) => {
+    const held = rows.find((row) => row[key] === name) ?? { [key]: name, total: 0 };
+    const next = { ...held, total: round(held.total + amount) };
+    if (count !== undefined) next.count = (held.count ?? 0) + count;
+
+    return [...rows.filter((row) => row[key] !== name), ...(next.total > 0 ? [next] : [])].sort(
+        (a, b) => b.total - a.total || String(a[key]).localeCompare(String(b[key])),
+    );
+};
+
+/**
+ * A month's figures as they stand with one more transaction counted in (sign 1) or one taken out (-1).
+ * The figures are the server's to work out. This only moves them ahead of its answer, for a transaction
+ * that is on its way; the answer, when it comes, replaces all of it.
+ * @param {Object} summary - GET /expenses/summary
+ * @param {Object} transaction - as the API sends one
+ */
+export const countTransaction = (summary, transaction, sign = 1) => {
+    const { type } = transaction;
+    const amount = sign * (Number(transaction.amount) || 0);
+    const day = dayOfDate(transaction.transactionDate);
+    const month = monthOf(day);
+    const shown = summary.month ?? monthOf(summary.today ?? "");
+    const from = idOf(transaction.account);
+    const to = idOf(transaction.transferToAccount);
+    const plus = (figure) => round((Number(figure) || 0) + amount);
+
+    // What an account holds follows everything logged on it, whichever month that is dated in
+    const balanceOf = (account) => {
+        const change =
+            (account._id === from ? (type === "income" ? amount : -amount) : 0) +
+            (type === "transfer" && account._id === to ? amount : 0);
+
+        return change === 0
+            ? account
+            : { ...account, currentBalance: round((Number(account.currentBalance) || 0) + change) };
+    };
+
+    const next = { ...summary, accounts: (summary.accounts ?? []).map(balanceOf) };
+
+    if (sign > 0 && month) {
+        next.firstMonth = summary.firstMonth && summary.firstMonth < month ? summary.firstMonth : month;
+        next.lastMonth = summary.lastMonth && summary.lastMonth > month ? summary.lastMonth : month;
+    }
+    if (type === "income" && month === shown) next.monthIncomeTotal = plus(summary.monthIncomeTotal);
+    if (type !== "expense") return next;
+
+    next.monthSeries = (summary.monthSeries ?? []).map((point) =>
+        point.monthKey === month ? { ...point, total: plus(point.total) } : point,
+    );
+
+    if (month === addMonths(shown, -1)) {
+        next.previousMonthExpensesTotal = plus(summary.previousMonthExpensesTotal);
+        // What had been spent by this day of last month
+        if (summary.previousMonthToDate != null && day.slice(8) <= String(summary.today ?? "").slice(8)) {
+            next.previousMonthToDate = plus(summary.previousMonthToDate);
+        }
+    }
+    if (month !== shown) return next;
+
+    const spentThatDay = (summary.monthDays ?? []).find((entry) => entry.date === day)?.spent;
+    const dayNow = { date: day, spent: plus(spentThatDay) };
+
+    next.monthExpensesTotal = plus(summary.monthExpensesTotal);
+    next.categoryTotals = tallied(summary.categoryTotals, "category", transaction.category || UNCATEGORISED, amount);
+    next.monthPlaceTotals = tallied(summary.monthPlaceTotals, "name", transaction.placeName || UNCATEGORISED, amount, sign);
+    next.monthDays = [
+        ...(summary.monthDays ?? []).filter((entry) => entry.date !== day),
+        ...(dayNow.spent > 0 ? [dayNow] : []),
+    ].sort((a, b) => b.date.localeCompare(a.date));
+
+    return next;
+};
+
+// The server lists a month's transactions newest first: by the day, then by when each was logged.
+// One that it has not saved yet was logged last of all.
+const listedBefore = (a, b) => {
+    const [dayA, dayB] = [dayOfDate(a.transactionDate), dayOfDate(b.transactionDate)];
+    if (dayA !== dayB) return dayA > dayB;
+
+    return !a.createdAt || (Boolean(b.createdAt) && a.createdAt >= b.createdAt);
+};
+
+/**
+ * A month as it was read, with one transaction put into it ahead of the server's next answer: its line
+ * in the ledger, where the server will list it, and its part in the figures.
+ * @param {Object} held - { summary, transactions, total }, as useExpenses keeps a month
+ * @param {Object} now - the transaction as it is to be shown
+ * @param {Object} [was] - the same transaction before it was rewritten, when it is not a new one
+ */
+export const withTransaction = (held, now, was = null) => {
+    const month = held.summary.month ?? monthOf(held.summary.today ?? "");
+    const inMonth = (transaction) => monthOf(dayOfDate(transaction.transactionDate)) === month;
+
+    const summary = countTransaction(was ? countTransaction(held.summary, was, -1) : held.summary, now);
+    const others = held.transactions.filter((entry) => entry._id !== now._id && entry._id !== was?._id);
+    const listed = held.transactions.length - others.length;
+
+    if (!inMonth(now)) {
+        return { ...held, summary, transactions: others, total: Math.max(0, (held.total ?? 0) - listed) };
+    }
+
+    const place = others.findIndex((entry) => listedBefore(now, entry));
+    const at = place < 0 ? others.length : place;
+
+    return {
+        ...held,
+        summary,
+        transactions: [...others.slice(0, at), now, ...others.slice(at)],
+        total: (held.total ?? 0) - listed + 1,
+    };
+};
+
+/**
+ * A subscription as the API would send it, made from what its form sends: what is shown while the real
+ * one is on its way.
+ * @param {Object} payload - from subscriptionPayload
+ * @param {Object} from - id, accounts, existing: as for draftTransaction
+ */
+export const draftSubscription = (payload, { id, accounts = [], existing = null }) => {
+    const account = accounts.find((entry) => entry.id === payload.accountId);
+
+    return {
+        ...existing,
+        _id: existing?._id ?? id,
+        pending: true,
+        name: payload.name,
+        amount: payload.amount,
+        frequency: payload.frequency,
+        category: payload.category,
+        description: payload.description,
+        nextDueDate: `${payload.nextDueDate}T00:00:00.000Z`,
+        isActive: existing?.isActive ?? true,
+        account: account ? { _id: account.id, name: account.name, type: account.type } : null,
+    };
+};
+
+/**
+ * A month as it was read, with one subscription put into it, in place of the one with its id (or with
+ * the id `instead`, for the saved one taking over from what was shown for it).
+ */
+export const withSubscription = (held, subscription, instead = subscription._id) => ({
+    ...held,
+    summary: {
+        ...held.summary,
+        subscriptions: [
+            ...(held.summary.subscriptions ?? []).filter((entry) => entry._id !== subscription._id && entry._id !== instead),
+            subscription,
+        ],
+    },
+});
+
+// A month as it was read, with one category's limit set to this. A category has one limit.
+export const withBudget = (held, budget) => ({
+    ...held,
+    summary: {
+        ...held.summary,
+        budgets: [...(held.summary.budgets ?? []).filter((entry) => entry.category !== budget.category), budget],
+    },
+});
 
 // What an account's opening balance has to be for its balance now to read `wanted`
 export const openingFor = (account, wanted) => Math.round((account.opening + (wanted - account.balance)) * 100) / 100;

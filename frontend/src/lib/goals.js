@@ -1,5 +1,7 @@
 // Goals, laid out for the screen, and the form one is set in. Worked out from its arguments alone.
 
+import { isDraftId } from "./drafts";
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // How far back "how it has been kept" looks, today included
@@ -79,6 +81,53 @@ export const withGoal = (goals, goal) =>
         ? goals.map((entry) => (entry._id === goal._id ? goal : entry))
         : [...goals, goal];
 
+// The order the server lists goals in: the open ones first, the soonest date first, then as they were made
+const inGoalOrder = (a, b) =>
+    Number(Boolean(a.reachedAt)) - Number(Boolean(b.reachedAt)) ||
+    (a.targetDate ?? "9999-99-99").localeCompare(b.targetDate ?? "9999-99-99") ||
+    String(a.createdAt).localeCompare(String(b.createdAt));
+
+/**
+ * The goals with one put among them where the server will list it, in place of the goal with its id or
+ * with the id `instead` (the saved one taking over from what was shown for it).
+ */
+export const withGoalPlaced = (goals, goal, instead = goal._id) =>
+    [...goals.filter((entry) => entry._id !== goal._id && entry._id !== instead), goal].sort(inGoalOrder);
+
+/**
+ * A goal as the API would send it, made from what its form sends: what is shown while the real one is
+ * on its way. It is marked `pending`, and nothing on it can be pressed until the server has it.
+ * @param {Object} payload - from goalPayload
+ * @param {Object} from - id: what a new one goes by meanwhile; existing: the goal it rewrites, if any;
+ *   items: the routines and habits there are, for the names of the ones that carry it
+ */
+export const draftGoal = (payload, { id, existing = null, items = [], now = new Date() }) => {
+    const was = new Map((existing?.milestones ?? []).map((milestone) => [milestone.id, milestone]));
+
+    return {
+        ...existing,
+        _id: existing?._id ?? id,
+        pending: true,
+        title: payload.title,
+        note: payload.note,
+        targetDate: payload.targetDate,
+        reachedAt: existing?.reachedAt ?? null,
+        createdAt: existing?.createdAt ?? now.toISOString(),
+        milestones: payload.milestones.map((milestone, index) => ({
+            id: milestone.id ?? `${id}:${index}`,
+            title: milestone.title,
+            done: Boolean(milestone.done),
+            doneAt: milestone.done ? (was.get(milestone.id)?.doneAt ?? now.toISOString()) : null,
+        })),
+        links: payload.links
+            .map((link) => {
+                const item = items.find((entry) => entry._id === link.id);
+                return item ? { kind: link.kind, id: link.id, title: item.title, active: true } : null;
+            })
+            .filter(Boolean),
+    };
+};
+
 // ── The form ──
 
 let rowCount = 0;
@@ -146,9 +195,12 @@ export const goalPayload = (form) => ({
 export const linkChoices = (routines = [], habits = [], goal = null) => {
     const choices = [
         ...routines
-            .filter((routine) => routine.isRecurring)
+            // One still on its way to the server has no id to be linked by yet
+            .filter((routine) => routine.isRecurring && !isDraftId(routine._id))
             .map((routine) => ({ key: `routine:${routine._id}`, kind: "routine", title: routine.title, gone: false })),
-        ...habits.map((habit) => ({ key: `habit:${habit._id}`, kind: "habit", title: habit.title, gone: false })),
+        ...habits
+            .filter((habit) => !isDraftId(habit._id))
+            .map((habit) => ({ key: `habit:${habit._id}`, kind: "habit", title: habit.title, gone: false })),
     ];
     const known = new Set(choices.map((choice) => choice.key));
 

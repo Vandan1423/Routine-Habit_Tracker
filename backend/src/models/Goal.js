@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { madeOnce } from "../utils/saveOnce.js";
 
 // A goal is something to reach, by a date or not: a few milestones to tick off on the way,
 // and the routines and habits that carry it. It earns no XP and costs none.
@@ -74,6 +75,8 @@ const goalSchema = new mongoose.Schema({
 });
 
 goalSchema.index({ user: 1, createdAt: 1 });
+
+goalSchema.plugin(madeOnce);
 
 const Goal = mongoose.model("Goal", goalSchema);
 export default Goal;

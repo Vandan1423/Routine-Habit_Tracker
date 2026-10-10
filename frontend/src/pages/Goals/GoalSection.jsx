@@ -33,18 +33,21 @@ const GoalSection = ({ goal, onTick, onEdit, onReach, onDelete }) => {
                         </p>
                     )}
                 </div>
-                <Menu align="end" trigger={<IconButton icon="more" label={`Options for ${goal.title}`} />}>
-                    <Menu.Item icon="edit" onSelect={() => onEdit(goal)}>
-                        Edit
-                    </Menu.Item>
-                    <Menu.Item icon={goal.reached ? "undo" : "check"} onSelect={() => onReach(goal, !goal.reached)}>
-                        {goal.reached ? "Open it again" : "Mark as reached"}
-                    </Menu.Item>
-                    <Menu.Separator />
-                    <Menu.Item icon="trash" tone="danger" onSelect={() => onDelete(goal)}>
-                        Delete
-                    </Menu.Item>
-                </Menu>
+                {/* One still on its way to the server is shown as it will be, with nothing on it to press yet */}
+                {!goal.pending && (
+                    <Menu align="end" trigger={<IconButton icon="more" label={`Options for ${goal.title}`} />}>
+                        <Menu.Item icon="edit" onSelect={() => onEdit(goal)}>
+                            Edit
+                        </Menu.Item>
+                        <Menu.Item icon={goal.reached ? "undo" : "check"} onSelect={() => onReach(goal, !goal.reached)}>
+                            {goal.reached ? "Open it again" : "Mark as reached"}
+                        </Menu.Item>
+                        <Menu.Separator />
+                        <Menu.Item icon="trash" tone="danger" onSelect={() => onDelete(goal)}>
+                            Delete
+                        </Menu.Item>
+                    </Menu>
+                )}
             </header>
 
             {goal.note && <p className={styles.note}>{goal.note}</p>}
@@ -58,6 +61,7 @@ const GoalSection = ({ goal, onTick, onEdit, onReach, onDelete }) => {
                                 <Checkbox
                                     className={styles.check}
                                     checked={milestone.done}
+                                    disabled={goal.pending}
                                     onChange={(event) => onTick(goal, milestone, event.target.checked)}
                                     label={milestone.title}
                                 />
@@ -67,7 +71,7 @@ const GoalSection = ({ goal, onTick, onEdit, onReach, onDelete }) => {
                 </>
             )}
 
-            {goal.allDone && !goal.reached && (
+            {goal.allDone && !goal.reached && !goal.pending && (
                 <p className={styles.arrived}>
                     {ALL_DONE_WORDS}
                     <Button size="sm" onClick={() => onReach(goal, true)}>

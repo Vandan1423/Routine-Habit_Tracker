@@ -48,6 +48,7 @@ const ListDialog = ({ request, onSave, onClose }) => {
 
         setSaving(true);
         try {
+            // Usually done at once: the list is shown before the server has answered
             await onSave(name.trim(), shown?.list ?? null);
             onClose();
         } catch (failure) {

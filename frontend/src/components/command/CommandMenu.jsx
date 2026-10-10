@@ -17,6 +17,7 @@ import { cx } from "../../lib/cx";
 import { buildDay } from "../../lib/day";
 import { describeKey } from "../../lib/hotkeys";
 import { KEYS } from "../../lib/shortcuts";
+import { isDraftId } from "../../lib/drafts";
 import { openTodos } from "../../lib/todos";
 import dialog from "../ui/Dialog.module.css";
 import styles from "./CommandMenu.module.css";
@@ -49,7 +50,10 @@ const Commands = ({ onClose, onNew, onNewTodo, onShortcuts }) => {
         ensureTodos();
     }, [ensureToday, ensurePlan, ensureTodos]);
 
-    const { status, routines, habits, pending } = today;
+    const { status, pending } = today;
+    // What is still on its way to the server has no id to be acted on by yet, so it is not offered
+    const routines = useMemo(() => today.routines.filter((routine) => !isDraftId(routine._id)), [today.routines]);
+    const habits = useMemo(() => today.habits.filter((habit) => !isDraftId(habit._id)), [today.habits]);
     const day = useMemo(
         () => (status === "ready" ? buildDay({ routines, habits, now, pending }) : null),
         [status, routines, habits, now, pending],
@@ -58,7 +62,9 @@ const Commands = ({ onClose, onNew, onNewTodo, onShortcuts }) => {
     const planned = plan.routines;
     const items = useMemo(
         () => [
-            ...planned.map((routine) => ({ kind: "routine", id: routine._id, title: routine.title })),
+            ...planned
+                .filter((routine) => !isDraftId(routine._id))
+                .map((routine) => ({ kind: "routine", id: routine._id, title: routine.title })),
             ...habits.map((habit) => ({ kind: "habit", id: habit._id, title: habit.title })),
         ],
         [planned, habits],

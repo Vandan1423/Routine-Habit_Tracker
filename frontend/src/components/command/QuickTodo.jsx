@@ -5,10 +5,11 @@ import useTodos from "../../hooks/useTodos";
 import { TODO_PATH } from "../../lib/places";
 import { toast } from "../../lib/toast";
 import { listLabel } from "../../lib/todos";
-import { addedWords, NOT_SAVED_WORDS, TODO_MAX } from "../../lib/todoWords";
+import { addedWords, notAddedWords, TODO_MAX } from "../../lib/todoWords";
 
 /**
  * A to-do written down from wherever one happens to be: one line, and the list it goes on.
+ * It closes as soon as the line is sent; if the server then refuses, a toast says so and offers to try again.
  * open, onOpenChange(open): whether it is showing
  */
 const QuickTodo = ({ open, onOpenChange }) => {
@@ -21,7 +22,6 @@ const QuickTodo = ({ open, onOpenChange }) => {
     const [title, setTitle] = useState("");
     const [listId, setListId] = useState("");
     const [error, setError] = useState("");
-    const [saving, setSaving] = useState(false);
 
     // Opened afresh: an empty line
     if (open !== seen) {
@@ -40,9 +40,8 @@ const QuickTodo = ({ open, onOpenChange }) => {
     const general = lists.find((list) => list.isDefault);
     const chosen = lists.find((list) => list._id === listId) ?? general ?? null;
 
-    const submit = async (event) => {
+    const submit = (event) => {
         event.preventDefault();
-        if (saving) return;
 
         const words = title.trim();
         if (!words) {
@@ -51,35 +50,37 @@ const QuickTodo = ({ open, onOpenChange }) => {
             return;
         }
 
-        setSaving(true);
-        try {
-            const todo = await addTodo(words, chosen?._id);
-            onOpenChange(false);
-            toast(addedWords(listLabel(chosen) || "To-do"), {
-                action: {
-                    label: "Show",
-                    onClick: () => navigate(chosen && !chosen.isDefault ? `${TODO_PATH}/${todo.list}` : TODO_PATH),
-                },
+        const label = listLabel(chosen) || "To-do";
+        const path = chosen && !chosen.isDefault ? `${TODO_PATH}/${chosen._id}` : TODO_PATH;
+
+        const send = () => {
+            const said = toast(addedWords(label), { action: { label: "Show", onClick: () => navigate(path) } });
+
+            addTodo(words, chosen?._id).catch((failure) => {
+                const refused = notAddedWords(words, failure);
+
+                toast.dismiss(said);
+                toast.error(refused.message, {
+                    detail: refused.detail,
+                    action: { label: "Try again", onClick: send },
+                });
             });
-        } catch (failure) {
-            setError(failure?.message || NOT_SAVED_WORDS);
-        } finally {
-            setSaving(false);
-        }
+        };
+
+        onOpenChange(false);
+        send();
     };
 
     return (
         <Dialog
             open={open}
-            onOpenChange={(next) => {
-                if (!saving) onOpenChange(next);
-            }}
+            onOpenChange={onOpenChange}
             size="sm"
             title="New to-do"
             footer={
                 <>
                     <Button onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button variant="primary" type="submit" form={formId} loading={saving}>
+                    <Button variant="primary" type="submit" form={formId}>
                         Add
                     </Button>
                 </>

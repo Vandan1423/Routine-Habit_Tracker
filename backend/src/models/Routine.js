@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { madeOnce } from "../utils/saveOnce.js";
 
 const routineSchema = new mongoose.Schema({
     user: {
@@ -75,6 +76,8 @@ const routineSchema = new mongoose.Schema({
         default: 0, // The XP it had earned, taken from the account while it is in Trash and given back if it is recovered
     },
 });
+
+routineSchema.plugin(madeOnce);
 
 const Routine = mongoose.model("Routine", routineSchema);
 export default Routine;

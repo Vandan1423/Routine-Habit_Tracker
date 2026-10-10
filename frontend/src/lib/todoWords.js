@@ -31,8 +31,19 @@ export const clearedWords = (count) =>
     `${countWord(count)} finished ${todos(count)} moved to Trash`;
 
 export const NOT_SAVED_WORDS = "That didn’t save. Check your connection and try again.";
+// A to-do that was on its list for a moment and could not be saved. The server's own reason, where it gave one.
+export const notAddedWords = (title, failure) => ({
+    message: `${named(title)} wasn’t added`,
+    detail: failure?.cause?.response ? failure.message : "Check your connection and try again.",
+});
 export const NOT_DELETED_WORDS = "That wasn’t deleted. Check your connection and try again.";
 export const NOT_RESTORED_WORDS = "That didn’t come back. It is still in Trash.";
+
+// A list that was among the lists for a moment and could not be saved. The server's own reason, where it gave one.
+export const listNotMadeWords = (name, failure) => ({
+    message: `${named(name)} wasn’t made`,
+    detail: failure?.cause?.response ? failure.message : "Check your connection and try again.",
+});
 
 // What a list's name may be, as the form says it
 export const listNameError = (name) => {

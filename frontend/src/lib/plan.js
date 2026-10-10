@@ -3,6 +3,7 @@
 // alone: the same lists give the same plan.
 
 import { BLOCKS, blockAt } from "./day";
+import { isDraftId, rowKeyOf } from "./drafts";
 import { localDay, weekdayOf, weekOf } from "./dates";
 import { parseTime, toMinutes } from "./time";
 
@@ -34,6 +35,10 @@ const routineItem = (routine) => {
 
     return {
         key: `routine:${routine._id}`,
+        // What its row is told apart by, and whether it is still on its way to the server (see lib/drafts.js):
+        // until the server has it, nothing on its row can be pressed
+        row: `routine:${rowKeyOf(routine._id)}`,
+        saving: isDraftId(routine._id),
         kind: "routine",
         id: routine._id,
         title: routine.title,
@@ -55,6 +60,10 @@ const habitItem = (habit) => {
 
     return {
         key: `habit:${habit._id}`,
+        // What its row is told apart by, and whether it is still on its way to the server (see lib/drafts.js):
+        // until the server has it, nothing on its row can be pressed
+        row: `habit:${rowKeyOf(habit._id)}`,
+        saving: isDraftId(habit._id),
         kind: "habit",
         id: habit._id,
         title: habit.title,

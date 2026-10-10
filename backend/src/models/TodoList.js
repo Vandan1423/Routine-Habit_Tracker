@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { madeOnce } from "../utils/saveOnce.js";
 
 const todoListSchema = new mongoose.Schema({
     user: {
@@ -36,6 +37,8 @@ todoListSchema.index(
     { user: 1 },
     { unique: true, partialFilterExpression: { isDefault: true } },
 );
+
+todoListSchema.plugin(madeOnce);
 
 const TodoList = mongoose.model("TodoList", todoListSchema);
 export default TodoList;

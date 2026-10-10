@@ -5,25 +5,43 @@ import { monthOf } from "../../lib/dates";
 import {
     buildExpenseMonth,
     dayOfDate,
+    draftSubscription,
+    draftTransaction,
     joinPages,
     limitPayload,
     openingFor,
     paymentOf,
     removedLimit,
+    withBudget,
+    withSubscription,
+    withTransaction,
 } from "../../lib/expenses";
 import {
     categoryLabel,
     failureWords,
     monthLabel,
     paidWords,
+    REFUSED_WORDS,
     SAVED_WORDS,
 } from "../../lib/expenseWords";
 import { toast } from "../../lib/toast";
 import expenseService from "../../services/expenseService";
+import { newKey } from "../../services/outbox";
 import trashService from "../../services/trashService";
 
 const NOT_DELETED = "It couldn’t be deleted. Check your connection and try again.";
 const NOT_PUT_BACK = "It couldn’t be put back. Check your connection and try again.";
+
+// A transaction shown before it was saved is drawn under a key of ours, and its line keeps that key once
+// the server has given the transaction an id, so the line stays where it is. By saved id, for the session.
+const lineKeys = new Map();
+let drafted = 0;
+
+// A key no line has been drawn under before, whichever visit to the screen asks
+const newLineKey = () => {
+    drafted += 1;
+    return `draft:${drafted}`;
+};
 
 // The same list without one of its members
 const without = (list, id) => list.filter((member) => member._id !== id);
@@ -35,13 +53,13 @@ const changed = (list, id, fields) => list.map((member) => (member._id === id ? 
  * One month of the account's money, and every way the Expenses screen changes it.
  * The month is read from the API and kept for the session, so turning back to it shows it at once.
  * Its figures are whole; its transactions come a page at a time, the latest first (showEarlier reads on).
- * A change that takes something away (a delete, a pause) is shown first and sent after; one that adds or
- * rewrites waits for the server. What is deleted goes to Trash, and Undo brings the same record back. Either way the month is read again afterwards, so every figure on the
- * screen is the server's own.
+ * Every change is shown first and sent after: no form waits for the server. If the server refuses, the
+ * change is taken back and a toast says so. What is deleted goes to Trash, and Undo brings the same
+ * record back. Either way the month is read again afterwards, so every figure on the screen is the
+ * server's own.
  *
  * month: "YYYY-MM". onShowMonth(month): the reader asked to be taken to another month (from a toast).
- * Returns { model, status, retry }, showEarlier with readingEarlier (it is under way), and the changes. The ones a form calls reject when they fail, so the
- * form can say why; the ones behind a single press say so themselves, in a toast.
+ * Returns { model, status, retry }, showEarlier with readingEarlier (it is under way), and the changes.
  */
 const useExpenses = (month, { onShowMonth } = {}) => {
     const { user } = useAuth();
@@ -56,34 +74,92 @@ const useExpenses = (month, { onShowMonth } = {}) => {
         expenseService.getMonth(month, pages),
     );
 
+    // What the forms have sent and the server has not answered for yet: { key, lay }, where lay(held)
+    // gives the month as it was read with that change laid over it. A reading of the month that comes
+    // back meanwhile does not have the change yet, and is shown with it all the same.
+    const [unanswered, setUnanswered] = useState([]);
+
     const model = useMemo(
-        () =>
-            data
-                ? buildExpenseMonth({ summary: data.summary, transactions: data.transactions, total: data.total })
-                : null,
-        [data],
+        () => (data ? buildExpenseMonth({ ...unanswered.reduce((held, change) => change.lay(held), data), keys: lineKeys }) : null),
+        [data, unanswered],
     );
+
+    /**
+     * Shows a change at once and sends it.
+     * lay(held): the month with the change in it, as it is shown meanwhile. send(): the request.
+     * settle(held, answer): the month once the server has answered, until it has been read again.
+     * refused: what the toast says if the server will not have it. again(): what "Try again" does.
+     * then(answer): anything else that follows from the server's answer.
+     */
+    const sendShown = ({ lay, send, settle, refused, again, then }) => {
+        const key = newLineKey();
+        const answered = () => setUnanswered((current) => current.filter((change) => change.key !== key));
+
+        setUnanswered((current) => [...current, { key, lay }]);
+
+        send().then(
+            (answer) => {
+                // The server's own takes the place of what was shown for it, in the same breath
+                update((held) => settle(held, answer));
+                answered();
+                retry();
+                then?.(answer);
+            },
+            (error) => {
+                answered();
+                // No answer at all is not a refusal: the month is read again, in case the server has it
+                if (!error?.cause?.response) retry();
+                toast.error(refused, {
+                    detail: failureWords(error, "Check your connection and try again."),
+                    action: { label: "Try again", onClick: again },
+                });
+            },
+        );
+    };
 
     const updateSummary = (change) => update((held) => ({ ...held, summary: change(held.summary) }));
     const today = model?.today ?? "";
 
     // ── Transactions ──
 
-    const saveTransaction = async (payload, existing = null) => {
-        const { transaction } = existing
-            ? await expenseService.updateTransaction(existing._id, payload)
-            : await expenseService.createTransaction(payload);
-        retry();
+    /**
+     * Logs a transaction, or rewrites one. It is in the ledger and the figures at once, as the form gave
+     * it, and the form does not wait.
+     * @param {Object} payload - from transactionPayload
+     * @param {Object} [existing] - the transaction it rewrites, as the API sent it
+     * @param {String} [sentAs] - the key a new one was sent under before, when this is a second try
+     */
+    const saveTransaction = (payload, existing = null, sentAs = newKey()) => {
+        const line = newLineKey();
+        const now = draftTransaction(payload, { id: line, accounts: model?.accounts, existing });
 
-        // Dated in another month, it will not show up on this one: say where it went
-        const landed = monthOf(dayOfDate(transaction.transactionDate));
-        if (landed !== month) {
-            toast(`${SAVED_WORDS[transaction.type][existing ? "moved" : "made"]} to ${monthLabel(landed, today)}`, {
-                action: { label: "Show", onClick: () => onShowMonth?.(landed) },
-            });
-        }
+        sendShown({
+            lay: (held) => withTransaction(held, now, existing),
+            send: async () => {
+                const answer = existing
+                    ? await expenseService.updateTransaction(existing._id, payload)
+                    : await expenseService.createTransaction(payload, sentAs);
 
-        return transaction;
+                if (!existing) lineKeys.set(answer.transaction._id, line);
+                return answer;
+            },
+            // Unless a reading of the month that came back meanwhile has it already
+            settle: (held, { transaction }) =>
+                held.transactions.some((entry) => entry._id === transaction._id && entry.updatedAt === transaction.updatedAt)
+                    ? held
+                    : withTransaction(held, transaction, existing),
+            refused: REFUSED_WORDS[payload.type][existing ? "changed" : "made"],
+            again: () => saveTransaction(payload, existing, sentAs),
+            then: ({ transaction }) => {
+                // Dated in another month, it will not show up on this one: say where it went
+                const landed = monthOf(dayOfDate(transaction.transactionDate));
+                if (landed !== month) {
+                    toast(`${SAVED_WORDS[transaction.type][existing ? "moved" : "made"]} to ${monthLabel(landed, today)}`, {
+                        action: { label: "Show", onClick: () => onShowMonth?.(landed) },
+                    });
+                }
+            },
+        });
     };
 
     const restoreTransaction = async (transaction) => {
@@ -136,13 +212,20 @@ const useExpenses = (month, { onShowMonth } = {}) => {
 
     // ── Subscriptions ──
 
-    const saveSubscription = async (payload, existing = null) => {
-        const { subscription } = existing
-            ? await expenseService.updateSubscription(existing._id, payload)
-            : await expenseService.createSubscription(payload);
-        retry();
+    // Adds a subscription, or rewrites one: there at once, as the form gave it
+    const saveSubscription = (payload, existing = null, sentAs = newKey()) => {
+        const now = draftSubscription(payload, { id: newLineKey(), accounts: model?.accounts, existing });
 
-        return subscription;
+        sendShown({
+            lay: (held) => withSubscription(held, now),
+            send: () =>
+                existing
+                    ? expenseService.updateSubscription(existing._id, payload)
+                    : expenseService.createSubscription(payload, sentAs),
+            settle: (held, { subscription }) => withSubscription(held, subscription, now._id),
+            refused: `${payload.name} wasn’t ${existing ? "changed" : "added"}`,
+            again: () => saveSubscription(payload, existing, sentAs),
+        });
     };
 
     const restoreSubscription = async (subscription) => {
@@ -214,7 +297,7 @@ const useExpenses = (month, { onShowMonth } = {}) => {
 
         let logged = null;
         try {
-            logged = (await expenseService.createTransaction(payment.transaction)).transaction;
+            logged = (await expenseService.createTransaction(payment.transaction, newKey())).transaction;
             await expenseService.updateSubscription(subscription.id, { nextDueDate: payment.nextDue });
 
             const words = paidWords(subscription, payment.nextDue);
@@ -235,9 +318,18 @@ const useExpenses = (month, { onShowMonth } = {}) => {
 
     // ── Limits ──
 
-    const saveLimit = async (form, existing = null) => {
-        await expenseService.saveBudget(limitPayload(form, existing));
-        retry();
+    // Sets a category's limit: shown at once. A category has one limit, so there is nothing here to wait for.
+    const saveLimit = (form, existing = null) => {
+        const payload = limitPayload(form, existing);
+        const now = { ...existing, ...payload };
+
+        sendShown({
+            lay: (held) => withBudget(held, now),
+            send: () => expenseService.saveBudget(payload),
+            settle: (held, answer) => withBudget(held, answer?.budget ?? now),
+            refused: `The limit on ${categoryLabel(payload.category).toLowerCase()} wasn’t saved`,
+            again: () => saveLimit(form, existing),
+        });
     };
 
     const removeLimit = async (budget) => {

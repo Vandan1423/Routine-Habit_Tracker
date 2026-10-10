@@ -14,7 +14,7 @@ const xpFormat = new Intl.NumberFormat();
  * One thing in the plan: its name, when it falls, and what it is worth. Pressing it opens its own page.
  * It comes into the list, and leaves it, by its own height.
  *
- * item: from buildPlan (lib/plan.js)
+ * item: from buildPlan (lib/plan.js). One that is `saving` is on its way to the server and has no page yet.
  * today, firstDay: for saying when it falls
  * menu: what opens from the row's "more" button
  * handle: props for a handle that reorders it (see useReorder). Without them it cannot be dragged.
@@ -56,9 +56,13 @@ const PlanRow = ({ item, today, firstDay, menu, handle, dragging = false, style 
                     </button>
                 )}
                 <div className={styles.main}>
-                    <Link to={itemPath(item)} className={styles.title}>
-                        {item.title}
-                    </Link>
+                    {item.saving ? (
+                        <span className={styles.title}>{item.title}</span>
+                    ) : (
+                        <Link to={itemPath(item)} className={styles.title}>
+                            {item.title}
+                        </Link>
+                    )}
                     <span className={styles.meta}>
                         {detail}
                         {detail && " · "}

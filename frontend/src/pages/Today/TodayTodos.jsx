@@ -1,26 +1,23 @@
-import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { AnimatePresence } from "motion/react";
 import { TodoAdd, TodoRow } from "../../components/todo";
 import { SectionHeader } from "../../components/ui";
 import useTodos from "../../hooks/useTodos";
 import { TODO_PATH } from "../../lib/places";
-import { todayTodos } from "../../lib/todos";
+import { rowKey, todayTodos } from "../../lib/todos";
 import { moreOnListWords } from "../../lib/todoWords";
 import styles from "./TodayPage.module.css";
 
 /**
- * The general to-do list, at the foot of today: what is still open on it and what was ticked today,
- * with a line to write the next one on. It is an extra: until the lists have arrived, and if they
- * never do, the day is shown without it.
+ * The general to-do list, ahead of the day's own parts: what is still open on it and what was ticked
+ * today, with a line to write the next one on. It is an extra: until the lists have arrived, and if
+ * they never do, the day is shown without it. (TodayPage holds the day back a moment for them, so the
+ * day is not pushed down the page when they come.)
  * now: the moment the screen is showing
  */
 const TodayTodos = ({ now }) => {
-    const { status, lists, ensure, addTodo, setDone, renameTodo, moveTodo, deleteTodo } = useTodos();
-
-    useEffect(() => {
-        ensure();
-    }, [ensure]);
+    // TodayPage asks for the lists, alongside the day
+    const { status, lists, addTodo, setDone, renameTodo, moveTodo, deleteTodo } = useTodos();
 
     if (status !== "ready") return null;
 
@@ -37,7 +34,7 @@ const TodayTodos = ({ now }) => {
                 <AnimatePresence initial={false}>
                     {view.rows.map((todo) => (
                         <TodoRow
-                            key={todo._id}
+                            key={rowKey(todo)}
                             todo={todo}
                             lists={lists}
                             onCheck={setDone}
