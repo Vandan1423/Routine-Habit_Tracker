@@ -184,7 +184,7 @@ export const KIND_WORDS = {
 export const deletedWords = (title) => `“${title}” moved to Trash`;
 
 /**
- * What the toast adds once a routine or habit is in Trash: the XP that went with it, and whether tonight
+ * What the toast adds once a routine or habit is in Trash: the XP an older delete took (none now), and whether tonight
  * still counts it as missed.
  * @param {Object} answer - what the delete answered: { xpTaken, owed }
  */

@@ -21,7 +21,7 @@ import { settleEndedDays } from "../../src/utils/dailyPenaltyJob.js";
 import { purgeExpiredTrash } from "../../src/utils/trashKinds.js";
 
 // Trash: what is deleted waits there for as long as its owner chose, comes back exactly as it was,
-// and is gone for good after that. A routine's or habit's XP goes into Trash with it.
+// and is gone for good after that. A routine's or habit's XP stays with the account.
 
 const TZ = "Asia/Kolkata";
 const DAY = 24 * 60 * 60 * 1000;
@@ -75,7 +75,7 @@ describe("trash", { skip: skipWithoutDatabase }, () => {
     });
 
     describe("a routine or habit", () => {
-        it("goes into Trash with the XP it earned, and brings it back", async () => {
+        it("goes into Trash keeping the XP it earned, and brings it back", async () => {
             const { client, routine, keepDayOpen, xp, trash, restore } = await setup();
             await keepDayOpen();
             const item = await routine({ title: "Morning run", startTime: "06:00", endTime: "23:59" });
@@ -84,9 +84,9 @@ describe("trash", { skip: skipWithoutDatabase }, () => {
 
             const deleted = await client.delete(`/routines/${item._id}`);
             assert.equal(deleted.status, 200);
-            assert.equal(deleted.body.xpTaken, 10);
+            assert.equal(deleted.body.xpTaken, 0);
             assert.equal(deleted.body.owed, 0);
-            assert.equal(await xp(), 0);
+            assert.equal(await xp(), 10);
             assert.equal((await client.get("/routines")).body.routines.some((entry) => entry._id === item._id), false);
 
             const { items, days } = await trash();
@@ -95,14 +95,14 @@ describe("trash", { skip: skipWithoutDatabase }, () => {
             const [held] = items;
             assert.deepEqual(
                 [held.kind, held.id, held.title, held.xp, held.startTime, held.endTime, held.isRecurring],
-                ["routine", item._id, "Morning run", 10, "06:00", "23:59", true],
+                ["routine", item._id, "Morning run", 0, "06:00", "23:59", true],
             );
             assert.deepEqual(held.recurringDays, EVERY_DAY);
             assert.equal(Date.parse(held.purgeAt) - Date.parse(held.deletedAt), 7 * DAY);
 
             const back = await restore("routine", item._id);
             assert.equal(back.status, 200);
-            assert.equal(back.body.xpReturned, 10);
+            assert.equal(back.body.xpReturned, 0);
             assert.equal(await xp(), 10);
             assert.equal((await trash()).items.length, 0);
 
@@ -113,11 +113,10 @@ describe("trash", { skip: skipWithoutDatabase }, () => {
             assert.ok(listed.todayLog);
         });
 
-        it("takes everything it ever earned, not just today's, and none of what its misses cost", async () => {
-            const { client, user, habit, keepDayOpen, trash, restore, reload } = await setup();
+        it("keeps everything it ever earned, and does not refund what its misses cost", async () => {
+            const { client, user, habit, keepDayOpen, restore, reload } = await setup();
             await keepDayOpen();
             const item = await habit({ difficulty: "hard" });
-            // Three earlier days done (one from before the amount was kept on the log), and a charge for a miss
             await HabitLog.create([
                 { habit: item._id, user: user._id, date: daysAgo(3), completed: true, xpEarned: 25 },
                 { habit: item._id, user: user._id, date: daysAgo(2), completed: true, xpEarned: 10 },
@@ -127,52 +126,43 @@ describe("trash", { skip: skipWithoutDatabase }, () => {
             await XPLog.create({ user: user._id, amount: -8, reason: "habit_missed", metadata: { habitId: item._id, date: daysAgo(4) } });
             await User.updateOne({ _id: user._id }, { xp: 500 });
 
-            const deleted = await client.delete(`/habits/${item._id}`);
-            assert.equal(deleted.body.xpTaken, 25 + 10 + 25);
-            assert.equal((await reload()).xp, 440);
-            assert.equal((await trash()).items[0].xp, 60);
-
-            const entry = await XPLog.findOne({ user: user._id, reason: "item_trashed" });
-            assert.equal(entry.amount, -60);
-            assert.equal(entry.metadata.habitId.toString(), item._id);
+            assert.equal((await client.delete(`/habits/${item._id}`)).body.xpTaken, 0);
+            assert.equal((await reload()).xp, 500);
+            assert.equal(await XPLog.countDocuments({ user: user._id, reason: "item_trashed" }), 0);
 
             await restore("habit", item._id);
             assert.equal((await reload()).xp, 500);
-            assert.equal((await XPLog.findOne({ user: user._id, reason: "item_restored" })).amount, 60);
+            assert.equal(await XPLog.countDocuments({ user: user._id, reason: "item_restored" }), 0);
         });
 
-        it("gives back only what was actually taken from an account that had less", async () => {
+        it("still pays back XP that an older delete held while the item was in Trash", async () => {
             const { client, user, routine, restore, reload } = await setup();
             const item = await routine();
-            await RoutineLog.create({ routine: item._id, user: user._id, date: daysAgo(1), completedAt: "08:00", xpEarned: 10 });
-            await User.updateOne({ _id: user._id }, { xp: 4 });
-
-            assert.equal((await client.delete(`/routines/${item._id}`)).body.xpTaken, 4);
-            assert.equal((await reload()).xp, 0);
-
             await User.updateOne({ _id: user._id }, { xp: 50 });
+            await client.delete(`/routines/${item._id}`);
+            await Routine.updateOne({ _id: item._id }, { xpHeld: 4 });
+
             assert.equal((await restore("routine", item._id)).body.xpReturned, 4);
             assert.equal((await reload()).xp, 54);
         });
 
-        it("returns the coins of a level the delete takes away, and pays them again on recovery", async () => {
+        it("leaves the level and its coins alone", async () => {
             const { client, user, routine, keepDayOpen, restore, reload } = await setup();
             await keepDayOpen();
             const item = await routine();
             await RoutineLog.create({ routine: item._id, user: user._id, date: daysAgo(1), completedAt: "08:00", xpEarned: 10 });
-            // Level 2 starts at 100 XP and paid 100 coins
             await User.updateOne({ _id: user._id }, { xp: 105, level: 2, coins: 100 });
 
             await client.delete(`/routines/${item._id}`);
             let account = await reload();
-            assert.deepEqual([account.xp, account.coins], [95, 0]);
+            assert.deepEqual([account.xp, account.level, account.coins], [105, 2, 100]);
 
             await restore("routine", item._id);
             account = await reload();
-            assert.deepEqual([account.xp, account.coins], [105, 100]);
+            assert.deepEqual([account.xp, account.level, account.coins], [105, 2, 100]);
         });
 
-        it("takes its XP once when two deletes arrive together, and returns it once", async () => {
+        it("moves it once when two deletes arrive together, and recovers it once", async () => {
             const { client, user, routine, keepDayOpen, restore, reload } = await setup();
             await keepDayOpen();
             const item = await routine();
@@ -181,7 +171,7 @@ describe("trash", { skip: skipWithoutDatabase }, () => {
 
             const both = await Promise.all([client.delete(`/routines/${item._id}`), client.delete(`/routines/${item._id}`)]);
             assert.deepEqual(both.map((response) => response.status).sort(), [200, 404]);
-            assert.equal((await reload()).xp, 90);
+            assert.equal((await reload()).xp, 100);
 
             const backs = await Promise.all([restore("routine", item._id), restore("routine", item._id)]);
             assert.deepEqual(backs.map((response) => response.status).sort(), [200, 404]);
@@ -402,7 +392,7 @@ describe("trash", { skip: skipWithoutDatabase }, () => {
     describe("when its time runs out", () => {
         const expire = (model, id) => model.updateOne({ _id: id }, { purgeAt: new Date(Date.now() - 1000) });
 
-        it("a routine can no longer be recovered, its XP stays gone, and past days still name it", async () => {
+        it("a routine can no longer be recovered, its XP stays, and past days still name it", async () => {
             const { client, user, routine, keepDayOpen, trash, restore, reload } = await setup();
             await keepDayOpen();
             const item = await routine({ title: "Morning run" });
@@ -414,7 +404,7 @@ describe("trash", { skip: skipWithoutDatabase }, () => {
             assert.equal((await trash()).items.length, 0);
             assert.equal((await restore("routine", item._id)).status, 404);
             assert.equal((await client.post(`/routines/${item._id}/restore`)).status, 404);
-            assert.equal((await reload()).xp, 90);
+            assert.equal((await reload()).xp, 100);
 
             const kept = await Routine.findById(item._id);
             assert.ok(kept.purgedAt);

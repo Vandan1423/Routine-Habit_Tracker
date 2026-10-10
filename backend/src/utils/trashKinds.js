@@ -21,7 +21,7 @@ import { IN_TRASH, OUT_OF_TRASH } from "./trash.js";
 const dayOf = (date) => new Date(date).toISOString().slice(0, 10);
 
 // A routine or habit that is let go of keeps a bare record: the days it was done or missed on still name it.
-// It leaves Trash, cannot be recovered, and the XP that went with it stays gone.
+// It leaves Trash, cannot be recovered, and any XP an older delete held stays gone. Newer deletes hold none.
 const itemKind = (model, kind, describe) => ({
     find: (userId) => model.find({ user: userId, ...ITEM_IN_TRASH }),
     describe: (item) => ({ title: item.title, xp: item.xpHeld || 0, ...describe(item) }),

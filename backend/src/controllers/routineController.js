@@ -161,7 +161,7 @@ export const updateRoutine = async (req, res, next) => {
     }
 };
 
-// @desc    Move a routine to Trash. The XP it earned goes with it, and comes back if it is recovered.
+// @desc    Move a routine to Trash. Its XP stays with the account.
 // @route   DELETE /api/routines/:id
 export const deleteRoutine = async (req, res, next) => {
     try {
@@ -385,7 +385,7 @@ export const uncompleteRoutine = async (req, res, next) => {
         const today = getUserToday(req.user);
         const logDate = date || today;
 
-        // Verify the routine belongs to this user. One in Trash has had its XP taken already, and stays as it is.
+        // Verify the routine belongs to this user. One in Trash stays as it is.
         const routine = await Routine.findOne({ _id: id, user: req.user._id, isActive: true });
         if (!routine) {
             return res.status(404).json({ message: "Routine not found" });

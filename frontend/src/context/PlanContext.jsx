@@ -27,8 +27,8 @@ import routineService from "../services/routineService";
  * moment its form is sent, as the form gave it; it takes the server's id when that arrives, and until
  * then nothing on its row can be pressed. A changed one is shown as changed at once. If the server
  * refuses, the item is taken out, or put back as it was, and whoever asked is told why. A deleted item
- * leaves for Trash at once, and a toast offers to bring it back. The XP it earned goes with it and comes
- * back with it, so the level is read again both times.
+ * leaves for Trash at once, and a toast offers to bring it back. The XP it earned stays; only one deleted
+ * under the older rule has XP held back, and recovering it pays that back, so the level is read again then.
  */
 
 const EMPTY = {

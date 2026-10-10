@@ -394,7 +394,7 @@ export const updateHabit = async (req, res, next) => {
     }
 };
 
-// @desc    Move a habit to Trash. The XP it earned goes with it, and comes back if it is recovered.
+// @desc    Move a habit to Trash. Its XP stays with the account.
 // @route   DELETE /api/habits/:id
 export const deleteHabit = async (req, res, next) => {
     try {
