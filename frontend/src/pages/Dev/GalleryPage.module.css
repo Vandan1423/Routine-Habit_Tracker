@@ -28,22 +28,6 @@
     letter-spacing: var(--track-heading);
 }
 
-.mark {
-    display: inline-flex;
-    gap: 2px;
-}
-
-.mark i {
-    width: 5px;
-    height: 12px;
-    border-radius: 1.5px;
-    background: var(--accent);
-}
-
-.mark i:last-child {
-    background: var(--fill-strong);
-}
-
 .barNote {
     padding-left: 9px;
     border-left: 1px solid var(--line-strong);

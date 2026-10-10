@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="description" content="Nitya keeps your day: the routines and habits you set yourself, what is done, what is next, and what it adds up to." />
+    <meta name="description" content="नित्यक्रम keeps your day: the routines and habits you set yourself, what is done, what is next, and what it adds up to." />
     <meta name="theme-color" content="#faf8f4" />
     <!-- The mark, drawn for both themes; the PNG is for browsers that do not take an SVG -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -12,7 +12,7 @@
     <!-- Added to a phone's home screen, the app opens on its own, without the browser around it -->
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="Nitya" />
+    <meta name="apple-mobile-web-app-title" content="नित्यक्रम" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <!-- The interface's typeface is asked for at once, so the first words are set in it -->
     <link
@@ -25,13 +25,14 @@
     <script>
       // Applies the saved theme before the first paint, so the page never flashes the wrong one.
       // The keys and defaults are the ones in src/lib/appearance.js; the two colours are --paper in src/styles/tokens.css.
+      // The "nitya." keys are where a choice was kept under the app's earlier name, until the app moves it (src/lib/remembered.js).
       (function () {
         var root = document.documentElement;
         var theme = "light";
         var motion = "system";
         try {
-          theme = localStorage.getItem("nitya.theme") || theme;
-          motion = localStorage.getItem("nitya.motion") || motion;
+          theme = localStorage.getItem("nityakram.theme") || localStorage.getItem("nitya.theme") || theme;
+          motion = localStorage.getItem("nityakram.motion") || localStorage.getItem("nitya.motion") || motion;
         } catch (error) {
           // storage is blocked: the defaults apply
         }
@@ -45,7 +46,7 @@
           .setAttribute("content", theme === "dark" ? "#1b1a18" : "#faf8f4");
       })();
     </script>
-    <title>Nitya</title>
+    <title>नित्यक्रम</title>
   </head>
   <body>
     <div id="root"></div>

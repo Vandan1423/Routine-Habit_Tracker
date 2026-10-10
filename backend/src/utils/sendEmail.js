@@ -3,7 +3,7 @@ import { Resend } from "resend";
 
 // Resend's shared test sender. It only delivers to the address the Resend account was opened with,
 // so to reach anyone else through Resend, EMAIL_FROM has to be an address on a domain verified there.
-const TEST_SENDER = "Nitya <onboarding@resend.dev>";
+const TEST_SENDER = "नित्यक्रम <onboarding@resend.dev>";
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GMAIL_SEND_URL =
@@ -66,10 +66,39 @@ const getGmailAccessToken = async () => {
 // A header may never carry a line break: that would let its value start a header of its own
 const headerValue = (value) => String(value).replace(/[\r\n]+/g, " ");
 
-const subjectHeader = (subject) =>
-    /^[\x20-\x7e]*$/.test(subject)
-        ? subject
-        : `=?UTF-8?B?${Buffer.from(subject, "utf8").toString("base64")}?=`;
+// A header is plain ASCII. Anything else (the app's name, for one) travels as "encoded words":
+// pieces short enough that no line passes 76 characters, each holding whole characters, on lines of their own.
+const ENCODED_WORD_BYTES = 39; // 52 characters of base64, the 12 around them, and room for "Subject: " in front
+
+const encodedWords = (value) => {
+    const pieces = [];
+    let piece = "";
+
+    for (const character of value) {
+        if (Buffer.byteLength(piece + character, "utf8") > ENCODED_WORD_BYTES) {
+            pieces.push(piece);
+            piece = "";
+        }
+        piece += character;
+    }
+    pieces.push(piece);
+
+    return pieces
+        .map((part) => `=?UTF-8?B?${Buffer.from(part, "utf8").toString("base64")}?=`)
+        .join("\r\n ");
+};
+
+const isAscii = (value) => /^[\x20-\x7e]*$/.test(value);
+
+const subjectHeader = (subject) => (isAscii(subject) ? subject : encodedWords(subject));
+
+// "Name <address>": only the name may need encoding, the address has to stay as it is
+const fromHeader = (from) => {
+    const named = /^\s*"?([^"<]*?)"?\s*<([^<>]+)>\s*$/.exec(from);
+
+    if (!named || isAscii(named[1])) return from;
+    return `${encodedWords(named[1])} <${named[2]}>`;
+};
 
 const base64Lines = (content) =>
     (Buffer.from(content, "utf8").toString("base64").match(/.{1,76}/g) ?? []).join("\r\n");
@@ -77,14 +106,14 @@ const base64Lines = (content) =>
 // The whole email as one piece of text, the way mail servers pass it along:
 // the headers first, then the plain-text and HTML copies of the body
 const buildMimeMessage = ({ from, to, subject, html, text }) => {
-    const boundary = `nitya-${crypto.randomUUID()}`;
+    const boundary = `nityakram-${crypto.randomUUID()}`;
     const bodies = [
         ["text/plain", text],
         ["text/html", html],
     ].filter(([, content]) => content);
 
     return [
-        ...(from ? [`From: ${headerValue(from)}`] : []),
+        ...(from ? [`From: ${fromHeader(headerValue(from))}`] : []),
         `To: ${headerValue(to)}`,
         `Subject: ${subjectHeader(headerValue(subject))}`,
         "MIME-Version: 1.0",
@@ -156,7 +185,7 @@ const sendEmail = async ({ to, subject, html, text }) => {
     const email = { from: process.env.EMAIL_FROM, to, subject, html, text };
 
     // Gmail always sends from the account's own address. There EMAIL_FROM only sets the name shown beside it,
-    // e.g. "Nitya <the.account@gmail.com>"; without it Gmail uses the account's own name.
+    // e.g. "नित्यक्रम <the.account@gmail.com>"; without it Gmail uses the account's own name.
     return usesGmail() ? sendWithGmail(email) : sendWithResend(email);
 };
 

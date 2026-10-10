@@ -1,7 +1,7 @@
 {
-    "name": "Nitya",
-    "short_name": "Nitya",
-    "description": "Nitya keeps your day: the routines and habits you set yourself, what is done, what is next, and what it adds up to.",
+    "name": "नित्यक्रम",
+    "short_name": "नित्यक्रम",
+    "description": "नित्यक्रम keeps your day: the routines and habits you set yourself, what is done, what is next, and what it adds up to.",
     "id": "/",
     "start_url": "/today",
     "scope": "/",

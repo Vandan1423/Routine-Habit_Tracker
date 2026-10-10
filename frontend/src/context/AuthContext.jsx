@@ -9,13 +9,13 @@ import {
 } from "../services/api";
 import gamificationService from "../services/gamificationService";
 import { clearFetched } from "../hooks/useFetched";
-import { adoptStored } from "../lib/remembered";
+import { adoptEarlierNames } from "../lib/remembered";
 
-const AUTH_USER_STORAGE_KEY = "nitya.authUser";
+const AUTH_USER_STORAGE_KEY = "nityakram.authUser";
 
-// Whoever was signed in before the app was called Nitya is still known under the new name
+// Whoever was signed in before the app had this name is still known under the new one
 if (typeof window !== "undefined") {
-    adoptStored(AUTH_USER_STORAGE_KEY, "life-management.authUser");
+    adoptEarlierNames();
 }
 
 const readStoredUser = () => {

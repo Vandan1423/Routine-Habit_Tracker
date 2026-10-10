@@ -17,6 +17,7 @@ import {
     Switch,
     Textarea,
 } from "../../components/ui";
+import Brand from "../../components/shell/Brand";
 import { ICONS } from "../../components/ui/icons";
 import { THEME_OPTIONS } from "../../lib/appearance";
 import { cx } from "../../lib/cx";
@@ -200,12 +201,7 @@ const GalleryPage = () => {
         <div className={styles.page}>
             <header className={styles.bar}>
                 <div className={styles.brand}>
-                    <span className={styles.mark} aria-hidden="true">
-                        <i />
-                        <i />
-                        <i />
-                    </span>
-                    <span>Nitya</span>
+                    <Brand />
                     <span className={styles.barNote}>Controls</span>
                 </div>
                 <div className={styles.barControls}>

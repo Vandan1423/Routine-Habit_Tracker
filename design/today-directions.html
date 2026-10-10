@@ -6,7 +6,7 @@
 <title>Today: direction mockups</title>
 <!--
   Phase 0 of the redesign: a static mockup of the Today screen for choosing the look.
-  Chosen on 2026-10-09 and now the default: Ink and saffron, Hanken Grotesk, serif date, the name Nitya.
+  Chosen on 2026-10-09 and now the default: Ink and saffron, Hanken Grotesk, serif date. The name chosen then was changed on 2026-10-10 to नित्यक्रम (Nityakram).
   Nothing here is app code. Open through `node design/serve.mjs` or straight from disk.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -308,7 +308,7 @@ kbd { font-family: inherit; font-size: 11px; line-height: 16px; padding: 0 5px; 
     </div>
     <label class="lab-group">Name
         <select id="name-select">
-            <option>Nitya</option>
+            <option>नित्यक्रम</option>
             <option>Daybook</option>
             <option>Riyaz</option>
             <option>Kept</option>
@@ -441,7 +441,7 @@ function mount(app) {
     app.innerHTML = `
     <div class="shell">
         <aside class="side">
-            <div class="brand"><span class="mark"><i></i><i></i><i></i></span><span data-name>Nitya</span></div>
+            <div class="brand"><span class="mark"><i></i><i></i><i></i></span><span data-name>नित्यक्रम</span></div>
             <button class="jump">${icon("search")}<span>Jump to…</span><kbd>⌘K</kbd></button>
             <nav class="nav">
                 <a class="nav-item is-active">${icon("today")}Today</a>

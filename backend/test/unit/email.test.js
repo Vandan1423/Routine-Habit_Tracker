@@ -34,11 +34,11 @@ describe("sending email", () => {
 
     it("uses Resend's test sender until EMAIL_FROM names a real one", async () => {
         await sendEmail(message);
-        assert.equal(outbox.at(-1).from, "Nitya <onboarding@resend.dev>");
+        assert.equal(outbox.at(-1).from, "नित्यक्रम <onboarding@resend.dev>");
 
-        process.env.EMAIL_FROM = "Nitya <hello@nitya.example>";
+        process.env.EMAIL_FROM = "नित्यक्रम <hello@nityakram.example>";
         await sendEmail(message);
-        assert.equal(outbox.at(-1).from, "Nitya <hello@nitya.example>");
+        assert.equal(outbox.at(-1).from, "नित्यक्रम <hello@nityakram.example>");
         assert.deepEqual(
             { to: outbox.at(-1).to, subject: outbox.at(-1).subject, html: outbox.at(-1).html, text: outbox.at(-1).text },
             message,
@@ -107,7 +107,7 @@ describe("sending email through a Gmail account", () => {
         process.env.GMAIL_CLIENT_ID = "client-id";
         process.env.GMAIL_CLIENT_SECRET = "client-secret";
         process.env.GMAIL_REFRESH_TOKEN = "refresh-token";
-        process.env.EMAIL_FROM = "Nitya <app@gmail.example>";
+        process.env.EMAIL_FROM = "Nityakram <app@gmail.example>";
     });
     afterEach(() => {
         for (const name of ["GMAIL_CLIENT_ID", "GMAIL_CLIENT_SECRET", "GMAIL_REFRESH_TOKEN", "EMAIL_FROM"]) {
@@ -155,13 +155,38 @@ describe("sending email through a Gmail account", () => {
         assert.equal(sendRequests[0].authorization, "Bearer access-1");
 
         const { headers, bodies } = read(sendRequests[0].message);
-        assert.ok(headers.includes("From: Nitya <app@gmail.example>"));
+        assert.ok(headers.includes("From: Nityakram <app@gmail.example>"));
         assert.ok(headers.includes("To: someone@example.com"));
         assert.ok(headers.includes("Subject: Confirm your email"));
         assert.deepEqual(bodies, { "text/plain": message.text, "text/html": message.html });
 
         // Nothing went to Resend
         assert.equal(outbox.filter((email) => email.subject === message.subject).length, 0);
+    });
+
+    it("sends a name and a subject that are not in English letters as encoded words", async () => {
+        process.env.EMAIL_FROM = "नित्यक्रम <app@gmail.example>";
+        const subject = "Confirm your email for नित्यक्रम, and then sign in to नित्यक्रम to begin";
+
+        const sendEmail = await freshSendEmail();
+        await sendEmail({ ...message, subject });
+
+        const [head] = sendRequests[0].message.split("\r\n\r\n");
+
+        // Nothing but ASCII in the headers, and no line of encoded words longer than the 76 characters allowed
+        assert.match(head, /^[\x20-\x7e\r\n]*$/);
+        const encodedLines = head.split("\r\n").filter((line) => line.includes("=?UTF-8?"));
+        assert.ok(encodedLines.length > 2);
+        assert.ok(encodedLines.every((line) => line.length <= 76));
+
+        // A reader's mail app joins the pieces back together: the break between two of them is not part of the text
+        const decoded = head
+            .replace(/\?=\r\n =\?/g, "?==?")
+            .replace(/=\?UTF-8\?B\?([^?]+)\?=/g, (_, encoded) => Buffer.from(encoded, "base64").toString("utf8"))
+            .split("\r\n");
+
+        assert.ok(decoded.includes("From: नित्यक्रम <app@gmail.example>"));
+        assert.ok(decoded.includes(`Subject: ${subject}`));
     });
 
     it("keeps Google's access token for the next email", async () => {

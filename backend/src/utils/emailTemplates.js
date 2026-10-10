@@ -1,4 +1,4 @@
-const APP_NAME = "Nitya";
+const APP_NAME = "नित्यक्रम";
 
 // The app's own colours (frontend/src/styles/tokens.css, the light theme). An email cannot read the
 // stylesheet, so they are written out here, and every style sits on the element it applies to:

@@ -1,8 +1,8 @@
 // The reader's own choices about how the app looks: theme and motion.
 // index.html applies the saved ones before the first paint; keep the keys and defaults there in step with these.
 
-export const THEME_STORAGE_KEY = "nitya.theme";
-export const MOTION_STORAGE_KEY = "nitya.motion";
+export const THEME_STORAGE_KEY = "nityakram.theme";
+export const MOTION_STORAGE_KEY = "nityakram.motion";
 
 export const THEMES = ["light", "dark", "system"];
 export const DEFAULT_THEME = "light";

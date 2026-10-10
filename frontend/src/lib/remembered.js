@@ -2,7 +2,10 @@
 // as JSON under names of the app's own. Storage that is full, blocked or holds something unreadable
 // is treated as nothing remembered.
 
-const PREFIX = "nitya.";
+const PREFIX = "nityakram.";
+
+// The names the app had before, newest first: what was kept under them is still this browser's
+const EARLIER_PREFIXES = ["nitya.", "life-management."];
 
 export const readRemembered = (name, fallback = null) => {
     try {
@@ -30,18 +33,24 @@ export const forget = (name) => {
 };
 
 /**
- * Something this browser kept under an earlier name is moved to the name it has now, once.
- * key and oldKey are the full names, as they stand in storage.
+ * Everything this browser kept under one of the app's earlier names (a session, the theme, a folded block)
+ * is moved to the name it has now, once. Whoever reads storage as the app loads calls this first.
  */
-export const adoptStored = (key, oldKey) => {
+export const adoptEarlierNames = () => {
     try {
-        const old = window.localStorage.getItem(oldKey);
-        if (old === null) return;
+        const storage = window.localStorage;
+        const keys = Array.from({ length: storage.length }, (_, index) => storage.key(index));
 
-        if (window.localStorage.getItem(key) === null) {
-            window.localStorage.setItem(key, old);
+        for (const prefix of EARLIER_PREFIXES) {
+            for (const oldKey of keys.filter((key) => key.startsWith(prefix))) {
+                const key = PREFIX + oldKey.slice(prefix.length);
+
+                if (storage.getItem(key) === null) {
+                    storage.setItem(key, storage.getItem(oldKey));
+                }
+                storage.removeItem(oldKey);
+            }
         }
-        window.localStorage.removeItem(oldKey);
     } catch {
         // Storage is blocked: there is nothing to move
     }

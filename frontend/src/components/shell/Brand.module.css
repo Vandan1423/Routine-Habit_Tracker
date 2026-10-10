@@ -1,15 +1,26 @@
+/* The segments stand on the letters' foot line and reach their headline: the two are one height */
 .brand {
+    --mark-height: 13px;
     display: inline-flex;
-    align-items: center;
-    gap: var(--s-2);
+    align-items: flex-end;
+    gap: 9px;
     color: var(--ink);
 }
 
+/* Sized by the letters between headline and foot (635 of the drawing's 895 units), which match the mark's
+   height. What rises above the headline (the first letter's hook) is let out of the box, so the name is
+   centred by its letters wherever it is placed. */
 .name {
-    font-size: var(--fs-item);
-    line-height: var(--lh-item);
-    font-weight: var(--fw-semibold);
-    letter-spacing: var(--track-heading);
+    flex: none;
+    width: auto;
+    height: calc(var(--mark-height) * 895 / 635);
+    margin-top: calc(var(--mark-height) * -260 / 635);
+    overflow: visible;
+    fill: currentColor;
+    /* A hair of weight, in the drawing's own units: at this size the thin strokes would otherwise fade */
+    stroke: currentColor;
+    stroke-width: 14;
+    stroke-linejoin: round;
 }
 
 /* Drawn at one size everywhere, like a glyph */
@@ -21,7 +32,7 @@
 
 .mark i {
     width: 5px;
-    height: 12px;
+    height: var(--mark-height);
     border-radius: 1.5px;
     background: var(--accent);
 }

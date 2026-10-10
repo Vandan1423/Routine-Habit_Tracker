@@ -39,7 +39,7 @@ describe("emails", { skip: skipWithoutDatabase }, () => {
 
             const [sent] = emailsTo(email);
             assert.equal(emailsTo(email).length, 1);
-            assert.equal(sent.from, "Nitya <onboarding@resend.dev>");
+            assert.equal(sent.from, "नित्यक्रम <onboarding@resend.dev>");
             assert.match(sent.subject, /Confirm your email/);
             assert.match(sent.html, /Hi Asha,/);
             assert.match(sent.html, /href="http:\/\/localhost:5173\/verify-email\/[0-9a-f]{64}"/);
@@ -225,7 +225,7 @@ describe("emails", { skip: skipWithoutDatabase }, () => {
             // Its owner is told by email, which carries no link that confirms or changes anything
             const notice = emailsTo(owner.email).at(-1);
             assert.equal(emailsTo(owner.email).length, 2);
-            assert.match(notice.subject, /already have a Nitya account/);
+            assert.match(notice.subject, /already have a नित्यक्रम account/);
             assert.match(notice.html, /Hi Owner,/);
             assert.match(notice.html, /href="http:\/\/localhost:5173\/login"/);
             assert.match(notice.text, /http:\/\/localhost:5173\/login/);
@@ -296,7 +296,7 @@ describe("emails", { skip: skipWithoutDatabase }, () => {
         const requestReset = (email) => createClient().post("/auth/forgot-password", { email });
         const resetEmailTo = async (email, count) => {
             const sent = await waitForEmailTo(email, count);
-            assert.match(sent.subject, /Reset your Nitya password/);
+            assert.match(sent.subject, /Reset your नित्यक्रम password/);
             return sent;
         };
 
@@ -404,7 +404,7 @@ describe("emails", { skip: skipWithoutDatabase }, () => {
             // Signing up for its address again doesn't start it over, as it would an account still waiting
             const again = await createClient().signUp({ email: account.email });
             assert.equal(again.response.status, 201);
-            assert.match(emailsTo(account.email).at(-1).subject, /already have a Nitya account/);
+            assert.match(emailsTo(account.email).at(-1).subject, /already have a नित्यक्रम account/);
             assert.equal((await createClient().login(again)).status, 400);
             assert.equal((await createClient().login(account)).status, 200);
         });
