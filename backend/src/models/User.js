@@ -118,6 +118,16 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
 };
 
+// A hash of nothing anyone knows, made the way a real password's is
+const NO_ACCOUNT_HASH = bcrypt.hashSync(crypto.randomUUID(), 10);
+
+// Checks a password for an address that has no account. It never matches; it only takes as long as a real
+// check does, so how fast "wrong email or password" comes back doesn't say whether the address has an account.
+userSchema.statics.checkAgainstNothing = async function (enteredPassword) {
+    await bcrypt.compare(enteredPassword, NO_ACCOUNT_HASH);
+    return false;
+};
+
 // Generate Access Token (Short-lived, e.g., 15 minutes)
 userSchema.methods.generateAccessToken = function () {
     return jwt.sign(

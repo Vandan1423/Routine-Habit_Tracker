@@ -18,6 +18,9 @@ import {
 
 const REFRESH_TOKEN_TTL_MS = 15 * 24 * 60 * 60 * 1000; // 15 days
 const EMAIL_VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+// Signing in to an unconfirmed account sends its link again, but not while the last one is this new:
+// at most 3 an hour, the same as asking for it on purpose (see verificationEmailRateLimit)
+const EMAIL_VERIFICATION_RESEND_MS = 20 * 60 * 1000; // 20 minutes
 const PASSWORD_RESET_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
 // New accounts must confirm their email before they can be used, unless EMAIL_VERIFICATION_REQUIRED is "false".
@@ -220,18 +223,28 @@ export const loginUser = async (req, res, next) => {
         }
 
         const user = await User.findOne({ email });
+        // An address with no account has its password checked all the same, so that answer takes as long
+        const passwordMatches = user
+            ? await user.matchPassword(password)
+            : await User.checkAgainstNothing(password);
 
-        if (user && (await user.matchPassword(password))) {
+        if (user && passwordMatches) {
             // Answered exactly like a wrong password, so signing up and then signing in can't be used to tell
             // that an address has an account. The owner is told by email instead: a fresh confirmation link.
             if (isEmailVerificationRequired() && !user.emailVerified) {
-                const confirmation = startEmailVerification(user);
-                await user.save({ validateBeforeSave: false });
+                // Only once the last link is a while old. One sent a moment ago is still good, a new one would
+                // end it, and without this the 5 tries an account gets could each put an email in its inbox.
+                const lastLinkSentAt = (user.emailVerificationExpiry?.getTime() ?? 0) - EMAIL_VERIFICATION_TTL_MS;
 
-                // Not awaited, so this answer arrives as fast as a wrong password does
-                sendEmail(confirmation).catch((error) =>
-                    console.error("Confirmation email failed:", error.message),
-                );
+                if (Date.now() - lastLinkSentAt >= EMAIL_VERIFICATION_RESEND_MS) {
+                    const confirmation = startEmailVerification(user);
+                    await user.save({ validateBeforeSave: false });
+
+                    // Not awaited, so this answer arrives as fast as a wrong password does
+                    sendEmail(confirmation).catch((error) =>
+                        console.error("Confirmation email failed:", error.message),
+                    );
+                }
 
                 return res.status(400).json({ message: "Invalid credentials" });
             }

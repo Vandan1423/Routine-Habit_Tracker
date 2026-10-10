@@ -50,16 +50,22 @@ describe("emails", { skip: skipWithoutDatabase }, () => {
             const client = createClient();
             const account = await client.signUp();
 
+            // The right password is answered word for word like a wrong one, and like an address with no account
             const early = await client.login(account);
+            const wrong = await createClient().post("/auth/login", { email: account.email, password: "not-the-password" });
+            const nobody = await createClient().post("/auth/login", { email: uniqueEmail("nobody"), password: account.password });
+
             assert.equal(early.status, 400);
-            assert.equal(early.body.message, "Invalid credentials");
-            assert.equal(emailsTo(account.email).length, 2); // a fresh link went to the address's owner
             assert.equal(early.body.accessToken, undefined);
             assert.equal(early.setCookie, undefined);
+            for (const other of [wrong, nobody]) {
+                assert.equal(other.status, early.status);
+                assert.deepEqual(other.body, early.body);
+            }
 
-            // A wrong password is answered as for any other account
-            const wrong = await createClient().post("/auth/login", { email: account.email, password: "not-the-password" });
-            assert.equal(wrong.status, 400);
+            // The link from signing up is a moment old and still good: no other is sent, and it is not replaced
+            await new Promise((resolve) => setTimeout(resolve, 200));
+            assert.equal(emailsTo(account.email).length, 1);
 
             const token = linkTokenFor(account.email);
             assert.equal((await confirm(token)).status, 200);
@@ -93,7 +99,35 @@ describe("emails", { skip: skipWithoutDatabase }, () => {
             const expired = await confirm(linkTokenFor(account.email));
             assert.equal(expired.status, 400);
             assert.match(expired.body.message, /invalid or has expired/);
-            assert.equal((await client.login(account)).status, 403);
+            assert.equal((await client.login(account)).status, 400);
+        });
+
+        it("sends a fresh link when someone signs in to an account whose link has gone stale", async () => {
+            const client = createClient();
+            const account = await client.signUp();
+            const first = linkTokenFor(account.email);
+
+            // The link was sent half an hour ago (it is good for 24 hours from when it was sent)
+            const halfAnHourAgo = Date.now() - 30 * 60 * 1000;
+            await User.updateOne(
+                { email: account.email },
+                { emailVerificationExpiry: new Date(halfAnHourAgo + 24 * 60 * 60 * 1000) },
+            );
+
+            // Still answered like a wrong password, but the address's owner gets a new link, which replaces the old
+            assert.equal((await client.login(account)).status, 400);
+            const fresh = tokenIn(await waitForEmailTo(account.email, 2));
+            assert.notEqual(fresh, first);
+
+            // Trying again straight away sends nothing more: the 5 tries an account gets can't fill an inbox
+            assert.equal((await client.login(account)).status, 400);
+            assert.equal((await client.login(account)).status, 400);
+            await new Promise((resolve) => setTimeout(resolve, 200));
+            assert.equal(emailsTo(account.email).length, 2);
+
+            assert.equal((await confirm(first)).status, 400);
+            assert.equal((await confirm(fresh)).status, 200);
+            assert.equal((await client.login(account)).status, 200);
         });
 
         it("escapes whatever was typed as a name", async () => {
