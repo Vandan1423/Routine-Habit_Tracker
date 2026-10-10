@@ -121,22 +121,23 @@
     }
 }
 
-/* The last line: the way to the neighbouring page at one end, the privacy note at the other */
-.foot {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: var(--s-2) var(--s-6);
-    margin-top: auto;
+/* The way to the neighbouring page, ruled off under the form so it is found without looking for it */
+.neighbour {
+    margin-top: var(--s-8);
     padding-top: var(--s-4);
     border-top: 1px solid var(--line);
+    color: var(--ink-2);
+}
+
+/* The last line of the column: the privacy note */
+.foot {
+    margin-top: auto;
     color: var(--ink-2);
     font-size: var(--fs-meta);
     line-height: var(--lh-meta);
 }
 
 .column .privacy {
-    margin-inline-start: auto;
     border-radius: var(--r-1);
     color: var(--ink-2);
     transition: color var(--t-fast) var(--ease);
@@ -161,26 +162,26 @@
     }
 
     .side {
+        align-items: flex-start;
         justify-content: flex-end;
         padding-inline: var(--s-16);
     }
 
+    /* The day is shown whole, so in a window shorter than it the page scrolls: the column stays where it is meanwhile */
     .column {
+        position: sticky;
+        top: var(--s-8);
+        min-height: calc(100vh - var(--s-8) - var(--s-6));
+        min-height: calc(100dvh - var(--s-8) - var(--s-6));
         margin-inline: auto;
     }
 
-    /* Stays where it is while a long form scrolls, and runs off the foot of the window like a page that carries on */
     .sample {
-        position: sticky;
-        top: 0;
         display: flex;
         flex-direction: column;
         gap: var(--s-8);
-        height: 100vh;
-        height: 100dvh;
         /* Its first line starts level with the page's heading: past the name's row, then the same drop */
-        padding: calc(var(--s-8) + var(--lh-item) + clamp(var(--s-10), 15vh, 9rem)) var(--s-16) 0;
-        overflow: hidden;
+        padding: calc(var(--s-8) + var(--lh-item) + clamp(var(--s-10), 15vh, 9rem)) var(--s-16) var(--s-16);
         border-inline-start: 1px solid var(--line);
         background: var(--paper-side);
         user-select: none;

@@ -18,3 +18,4 @@ process.env.GMAIL_REFRESH_TOKEN = "";
 
 // Lets every test client have its own address, so rate limits apply per client as they would in production
 process.env.CLIENT_IP_HEADER = "x-test-client-ip";
+process.env.VISITOR_IP_HEADER = "x-test-visitor-ip";

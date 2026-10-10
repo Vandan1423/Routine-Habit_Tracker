@@ -110,7 +110,7 @@ const VerifyEmailPage = () => {
 
     if (status === "checking") {
         return (
-            <AuthLayout title="Confirming your email" foot={signInLink}>
+            <AuthLayout title="Confirming your email" neighbour={signInLink}>
                 <div className={styles.form}>
                     <Loader label="Confirming your email" />
                     {slow && <SlowNote>{SLOW_WORDS}</SlowNote>}
@@ -124,7 +124,7 @@ const VerifyEmailPage = () => {
             <AuthLayout
                 title="Your email is confirmed"
                 lead={isAuthenticated ? "Your account is ready." : "Your account is ready. Sign in to begin."}
-                foot={null}
+                neighbour={null}
             >
                 <div className={styles.form}>
                     <div className={styles.actions}>
@@ -148,7 +148,7 @@ const VerifyEmailPage = () => {
             <AuthLayout
                 title="Your email isn’t confirmed yet"
                 lead="The server couldn’t be reached. The link is still good; try it again."
-                foot={signInLink}
+                neighbour={signInLink}
             >
                 <div className={styles.form}>
                     <div className={styles.actions}>
@@ -172,7 +172,7 @@ const VerifyEmailPage = () => {
         <AuthLayout
             title="This link didn’t work"
             lead="A confirmation link works for 24 hours, and only the newest one counts. Enter your email for a new one."
-            foot={signInLink}
+            neighbour={signInLink}
         >
             <NewLink />
         </AuthLayout>

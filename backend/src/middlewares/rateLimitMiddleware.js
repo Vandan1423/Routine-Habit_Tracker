@@ -1,3 +1,4 @@
+import { isIP } from "node:net";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 
 // The address a request came from.
@@ -11,6 +12,27 @@ const clientAddress = (req) => {
     return ipKeyGenerator(
         typeof forwarded === "string" && forwarded ? forwarded : req.ip,
     );
+};
+
+// The visitor's own address, as the website's server reports it when it passes a request on to us.
+// The website reaches this API from its host's servers, so clientAddress is one of those for every visitor.
+// VISITOR_IP_HEADER names the header that host writes the visitor's address in (from Vercel: x-forwarded-for,
+// which later proxies add to, so the first entry is read).
+// Unlike CLIENT_IP_HEADER, someone calling the API directly can put anything here. So it is never used alone:
+// it only divides the budget of the address it arrived from (visitorKey), and authAddressRateLimit caps how
+// much one address can get by claiming many visitors.
+const visitorAddress = (req) => {
+    const header = process.env.VISITOR_IP_HEADER?.toLowerCase();
+    const claimed = header ? req.headers[header] : undefined;
+    const first = typeof claimed === "string" ? claimed.split(",")[0].trim() : "";
+
+    return isIP(first) ? ipKeyGenerator(first) : null;
+};
+
+// One visitor behind one address. A made-up visitor cannot use up anyone's budget but its own address's.
+const visitorKey = (req) => {
+    const visitor = visitorAddress(req);
+    return visitor ? `${clientAddress(req)}|${visitor}` : clientAddress(req);
 };
 
 // Limits that follow the account rather than the network: they hold no matter how the request reached us
@@ -34,20 +56,36 @@ const rateLimitMiddleware = rateLimit({
 
 export default rateLimitMiddleware;
 
-// Flood guard for the public auth endpoints, per address.
-// Password guessing is stopped by the per-account limits below, so this one can afford to be roomy.
-export const authRateLimit = rateLimit({
+const AUTH_LIMIT_MESSAGE = {
+    success: false,
+    message:
+        "Too many auth attempts from this IP, please try again after 15 minutes",
+};
+
+// Everything one address may send to the public auth endpoints, whoever it says it is sending for.
+// Ten visitors' worth: room for the people who reach us through the same server of the website's host.
+const authAddressRateLimit = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 30,
+    max: 300,
     keyGenerator: clientAddress,
-    message: {
-        success: false,
-        message:
-            "Too many auth attempts from this IP, please try again after 15 minutes",
-    },
+    message: AUTH_LIMIT_MESSAGE,
     standardHeaders: true,
     legacyHeaders: false,
 });
+
+const authVisitorRateLimit = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 30,
+    keyGenerator: visitorKey,
+    message: AUTH_LIMIT_MESSAGE,
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// Flood guard for the public auth endpoints: 30 requests per visitor per 15 minutes, and 300 per address.
+// The address's cap runs first, so a refused request never opens a new visitor's count.
+// Password guessing is stopped by the per-account limits below, so this one can afford to be roomy.
+export const authRateLimit = [authAddressRateLimit, authVisitorRateLimit];
 
 // At most 5 failed logins per account per 15 minutes. Must run after the body is validated.
 export const loginAccountRateLimit = rateLimit({

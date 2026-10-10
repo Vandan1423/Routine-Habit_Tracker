@@ -72,7 +72,7 @@ const ResetPasswordPage = () => {
             <AuthLayout
                 title="This link has run out"
                 lead="A reset link works once, for 15 minutes. Ask for a new one and use it straight away."
-                foot={signInLink}
+                neighbour={signInLink}
             >
                 <div className={styles.form}>
                     <div className={styles.actions}>
@@ -89,7 +89,7 @@ const ResetPasswordPage = () => {
         <AuthLayout
             title="Choose a new password"
             lead="Every device signed in to this account will be signed out."
-            foot={signInLink}
+            neighbour={signInLink}
         >
             <form className={styles.form} onSubmit={submit} noValidate>
                 <PasswordInput

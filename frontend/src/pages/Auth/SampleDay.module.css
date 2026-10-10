@@ -5,7 +5,6 @@
     max-width: 35rem;
     padding: var(--s-8) var(--s-10) var(--s-10);
     border: 1px solid var(--line);
-    border-bottom: 0;
-    border-radius: var(--r-3) var(--r-3) 0 0;
+    border-radius: var(--r-3);
     background: var(--paper);
 }

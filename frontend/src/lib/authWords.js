@@ -72,6 +72,9 @@ const commonFailure = (error) => {
     return null;
 };
 
+const WRONG_SIGN_IN =
+    "That email and password don’t match. If you’ve just signed up, open the link in your email first.";
+
 /**
  * A sign-in that was refused.
  * @returns {Object} - errors by field; or `{ unconfirmed: true }` when the password was right
@@ -83,9 +86,10 @@ export const signInFailure = (error) => {
     const common = commonFailure(error);
     if (common) return common;
 
-    // The server does not say which of the two was wrong, and neither does this
+    // The server does not say which of the two was wrong, and neither does this. It answers the same way for
+    // a right password on an account whose email is still to be confirmed, so everyone is told about the link.
     if (error.status === 400 && /invalid credentials/i.test(error.message)) {
-        return { password: "That email and password don’t match." };
+        return { password: WRONG_SIGN_IN };
     }
     return { form: error.message };
 };

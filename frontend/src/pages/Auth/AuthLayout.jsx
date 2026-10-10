@@ -12,9 +12,9 @@ import styles from "./AuthLayout.module.css";
  *
  * title: the page's heading, and the name of the browser tab
  * lead: a sentence under it. An element takes the sentence's place (a notice, for one).
- * foot: the last line of the column, usually the way to the neighbouring page
+ * neighbour: the way to the neighbouring page, set straight under what the page holds
  */
-const AuthLayout = ({ title, lead, foot, children }) => {
+const AuthLayout = ({ title, lead, neighbour, children }) => {
     useDocumentTitle(title);
 
     return (
@@ -28,9 +28,9 @@ const AuthLayout = ({ title, lead, foot, children }) => {
                         <h1 className={styles.title}>{title}</h1>
                         {typeof lead === "string" ? <p className={styles.lead}>{lead}</p> : lead}
                         {children}
+                        {neighbour && <p className={styles.neighbour}>{neighbour}</p>}
                     </div>
                     <p className={styles.foot}>
-                        {foot}
                         <Link to="/privacy" className={styles.privacy}>
                             Privacy
                         </Link>

@@ -56,7 +56,7 @@ const ForgotPasswordPage = () => {
 
     if (sentTo) {
         return (
-            <AuthLayout title={RESET_SENT.title} lead={RESET_SENT.text(sentTo)} foot={back}>
+            <AuthLayout title={RESET_SENT.title} lead={RESET_SENT.text(sentTo)} neighbour={back}>
                 <p className={styles.more}>
                     Wrong address?{" "}
                     <button type="button" className={styles.textButton} onClick={() => setSentTo("")}>
@@ -72,7 +72,7 @@ const ForgotPasswordPage = () => {
         <AuthLayout
             title="Reset your password"
             lead="Enter your account’s email and we’ll send a link to choose a new one."
-            foot={back}
+            neighbour={back}
         >
             <form className={styles.form} onSubmit={submit} noValidate>
                 <Input

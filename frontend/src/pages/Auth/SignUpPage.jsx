@@ -93,7 +93,7 @@ const SignUpPage = () => {
 
     if (sentTo) {
         return (
-            <AuthLayout title={CONFIRM_SENT.title} lead={CONFIRM_SENT.text(sentTo)} foot={signIn}>
+            <AuthLayout title={CONFIRM_SENT.title} lead={CONFIRM_SENT.text(sentTo)} neighbour={signIn}>
                 <ResendLink email={sentTo} />
                 <p className={styles.more}>
                     Wrong address?{" "}
@@ -110,7 +110,7 @@ const SignUpPage = () => {
         <AuthLayout
             title="Create your account"
             lead="Routines and habits, kept as one list for each day."
-            foot={signIn}
+            neighbour={signIn}
         >
             <form className={styles.form} onSubmit={submit} noValidate>
                 <Input

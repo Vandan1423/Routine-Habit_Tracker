@@ -76,7 +76,7 @@ const SignInPage = () => {
         <AuthLayout
             title="Sign in"
             lead={arrival ? <Notice>{arrival}</Notice> : null}
-            foot={
+            neighbour={
                 <span>
                     New to {APP_NAME}?{" "}
                     <Link to="/signup" state={onward} className={styles.link}>

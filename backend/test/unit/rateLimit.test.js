@@ -91,6 +91,73 @@ describe("rate limits", () => {
         });
     });
 
+    describe("per visitor, behind one address", () => {
+        const through = (address, visitor) => ({
+            headers: { "x-test-client-ip": address, "x-test-visitor-ip": visitor },
+        });
+
+        it("gives each visitor who arrives from the same address a budget of their own", async () => {
+            const first = await hit("/flood", through("203.0.113.50", "198.51.100.1"));
+            const second = await hit("/flood", through("203.0.113.50", "198.51.100.1"));
+            const other = await hit("/flood", through("203.0.113.50", "198.51.100.2"));
+
+            assert.equal(first.remaining, 29);
+            assert.equal(second.remaining, 28);
+            assert.equal(other.remaining, 29);
+        });
+
+        it("reads the first entry when proxies on the way have added their own", async () => {
+            const again = await hit("/flood", through("203.0.113.50", "198.51.100.1, 203.0.113.50, 10.0.0.1"));
+            assert.equal(again.remaining, 27);
+        });
+
+        it("does not let another address spend a visitor's budget", async () => {
+            const elsewhere = await hit("/flood", through("203.0.113.51", "198.51.100.1"));
+            assert.equal(elsewhere.remaining, 29);
+        });
+
+        it("ignores a claim that is not an address", async () => {
+            const a = await hit("/flood", through("203.0.113.52", "not-an-address"));
+            const b = await hit("/flood", through("203.0.113.52", "someone else"));
+            assert.equal(a.remaining, 29);
+            assert.equal(b.remaining, 28);
+        });
+
+        it("still blocks one visitor's 31st request in 15 minutes", async () => {
+            const statuses = [];
+            for (let i = 0; i < 31; i++) {
+                statuses.push((await hit("/flood", through("203.0.113.53", "198.51.100.9"))).status);
+            }
+            assert.ok(statuses.slice(0, 30).every((status) => status === 200));
+            assert.equal(statuses[30], 429);
+        });
+
+        it("caps one address at 300 requests however many visitors it claims", async () => {
+            const statuses = [];
+            for (let i = 0; i < 302; i++) {
+                statuses.push((await hit("/flood", through("203.0.113.54", `192.0.2.${i % 250}`))).status);
+            }
+            assert.ok(statuses.slice(0, 300).every((status) => status === 200));
+            assert.deepEqual(statuses.slice(300), [429, 429]);
+
+            // Refused before it was counted for anyone: the next address is untouched
+            const next = await hit("/flood", through("203.0.113.55", "192.0.2.1"));
+            assert.equal(next.remaining, 29);
+        });
+
+        it("does not read the visitor header unless it is configured", async () => {
+            const configured = process.env.VISITOR_IP_HEADER;
+            delete process.env.VISITOR_IP_HEADER;
+            try {
+                const a = await hit("/flood", through("203.0.113.56", "198.51.100.1"));
+                const b = await hit("/flood", through("203.0.113.56", "198.51.100.2"));
+                assert.equal(b.remaining, a.remaining - 1);
+            } finally {
+                process.env.VISITOR_IP_HEADER = configured;
+            }
+        });
+    });
+
     describe("per account", () => {
         it("allows 5 failed logins per account, then blocks", async () => {
             const statuses = [];
