@@ -89,6 +89,7 @@ export const ICONS = {
         </>
     ),
     pause: <path d="M7.5 5v10M12.5 5v10" />,
+    refresh: <path d="M15.5 10a5.5 5.5 0 1 1-1.6-3.9M15.5 3.8v3.4h-3.4" />,
     play: <path d="M6.5 4.5v11l9-5.5z" />,
     bell: (
         <>

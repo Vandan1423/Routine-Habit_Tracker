@@ -1,5 +1,6 @@
 import { Suspense, useLayoutEffect } from "react";
 import { Outlet, useLocation, useNavigationType } from "react-router-dom";
+import AppRefresh from "./AppRefresh";
 import ErrorBoundary from "./ErrorBoundary";
 import { destinationFor } from "./navigation";
 import PageSkeleton from "./PageSkeleton";
@@ -58,6 +59,7 @@ const Shell = ({ title, children }) => {
                 </ErrorBoundary>
             </main>
             {isPhone && <TabBar />}
+            <AppRefresh />
         </div>
     );
 };
