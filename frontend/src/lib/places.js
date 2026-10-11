@@ -5,5 +5,6 @@
 export const TODO_PATH = "/todo";
 export const GOALS_PATH = "/goals";
 export const TRASH_PATH = "/trash";
+export const ARCHIVE_PATH = "/archive";
 
 export const NEW_GOAL = { add: "goal" };

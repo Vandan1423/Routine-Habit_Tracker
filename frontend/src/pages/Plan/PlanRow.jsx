@@ -4,7 +4,7 @@ import { useIsPresent } from "motion/react";
 import * as m from "motion/react-m";
 import { Icon } from "../../components/ui";
 import { cx } from "../../lib/cx";
-import { detailWords, patternWords } from "../../lib/itemWords";
+import { detailWords, patternWords, pauseWords } from "../../lib/itemWords";
 import { itemPath } from "./planPaths";
 import styles from "./PlanRow.module.css";
 
@@ -15,6 +15,7 @@ const xpFormat = new Intl.NumberFormat();
  * It comes into the list, and leaves it, by its own height.
  *
  * item: from buildPlan (lib/plan.js). One that is `saving` is on its way to the server and has no page yet.
+ *   One with a `pause` says so after when it falls.
  * today, firstDay: for saying when it falls
  * menu: what opens from the row's "more" button
  * handle: props for a handle that reorders it (see useReorder). Without them it cannot be dragged.
@@ -67,6 +68,12 @@ const PlanRow = ({ item, today, firstDay, menu, handle, dragging = false, style 
                         {detail}
                         {detail && " · "}
                         {pattern}
+                        {item.pause && (
+                            <>
+                                {" · "}
+                                <span className={styles.paused}>{pauseWords(item.pause, today)}</span>
+                            </>
+                        )}
                     </span>
                 </div>
                 {menu && <span className={styles.menu}>{menu}</span>}

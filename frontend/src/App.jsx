@@ -8,6 +8,7 @@ import NotFoundPage, { NOT_FOUND_TITLE } from "./pages/NotFound/NotFoundPage";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import PublicOnlyRoute from "./routes/PublicOnlyRoute";
 import {
+    ArchivePage,
     ExpensesPage,
     ForgotPasswordPage,
     GalleryPage,
@@ -92,6 +93,7 @@ function App() {
                         <Route path="/history/:when?" element={<HistoryPage />} />
                         {/* A month ("2026-09"); the month today is in without one */}
                         <Route path="/expenses/:month?" element={<ExpensesPage />} />
+                        <Route path="/archive" element={<ArchivePage />} />
                         <Route path="/trash" element={<TrashPage />} />
                         <Route path="/settings" element={<SettingsPage />} />
                     </Route>

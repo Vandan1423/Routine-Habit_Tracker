@@ -132,8 +132,9 @@ export const TRASH_DAYS_NOTE =
 
 // ── What is said when something is done with it ──
 
+// One deleted from Archive goes back there, not into the plan
 export const recoveredWords = (item, xpReturned = 0) => ({
-    message: `${named(titleOf(item))} recovered`,
+    message: `${named(titleOf(item))} recovered${item.archived ? " to Archive" : ""}`,
     detail: xpReturned > 0 ? `Its ${xp(xpReturned)} came back with it.` : undefined,
 });
 

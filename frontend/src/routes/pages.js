@@ -13,6 +13,7 @@ export const HistoryPage = lazyPage(() => import("../pages/History/HistoryPage")
 export const ExpensesPage = lazyPage(() => import("../pages/Expenses/ExpensesPage"));
 export const SettingsPage = lazyPage(() => import("../pages/Settings/SettingsPage"));
 export const TrashPage = lazyPage(() => import("../pages/Trash/TrashPage"));
+export const ArchivePage = lazyPage(() => import("../pages/Archive/ArchivePage"));
 
 // On their own, outside the shell
 export const SignInPage = lazyPage(() => import("../pages/Auth/SignInPage"));

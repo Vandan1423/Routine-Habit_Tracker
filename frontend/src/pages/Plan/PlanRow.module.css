@@ -37,6 +37,12 @@
     composes: meta from "../../components/day/DayRow.module.css";
 }
 
+/* A pause is the one fact in the line that changes what the row means for now */
+.paused {
+    color: var(--ink-2);
+    font-weight: var(--fw-medium);
+}
+
 .xp {
     composes: xp from "../../components/day/DayRow.module.css";
 }

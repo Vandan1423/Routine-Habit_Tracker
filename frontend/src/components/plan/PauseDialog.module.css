@@ -1,0 +1,17 @@
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-5);
+}
+
+/* The usual lengths, one press away, under the field they fill in */
+.lengths {
+    composes: shortcuts from "./ItemEditor.module.css";
+}
+
+/* What the days chosen come to: plain, and the last thing read */
+.summary {
+    composes: stakes from "./ItemEditor.module.css";
+    /* Holds its line while the number is being typed */
+    white-space: pre-wrap;
+}

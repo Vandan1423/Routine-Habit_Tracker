@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useState, useSyncExternalStore } from "react";
 import { Link } from "react-router-dom";
 import DeleteAccountDialog from "./DeleteAccountDialog";
 import PasswordDialog from "./PasswordDialog";
@@ -12,6 +12,7 @@ import {
     Kbd,
     SectionHeader,
     SegmentedControl,
+    Select,
     Switch,
 } from "../../components/ui";
 import useAppearance from "../../hooks/useAppearance";
@@ -20,6 +21,16 @@ import useCommands from "../../hooks/useCommands";
 import { THEME_OPTIONS } from "../../lib/appearance";
 import { cx } from "../../lib/cx";
 import { TRASH_PATH } from "../../lib/places";
+import {
+    needsHomeScreen,
+    permission,
+    remindersOnHere,
+    sendTestReminder,
+    subscribeReminders,
+    turnOffHere,
+    turnOnHere,
+} from "../../lib/notify";
+import { DEFAULT_REMINDER_LEAD, REMINDER_LEAD_OPTIONS } from "../../lib/reminders";
 import { KEYS } from "../../lib/shortcuts";
 import { timezoneWords } from "../../lib/timezone";
 import { TRASH_DAYS_NOTE } from "../../lib/trashWords";
@@ -118,6 +129,120 @@ const NameRow = () => {
     );
 };
 
+// What is said under "On this device", by where reminders stand here
+const deviceNote = (on, state) => {
+    if (state === "unsupported") {
+        return needsHomeScreen()
+            ? "On iPhone and iPad, add the app to your Home Screen first (Share, then Add to Home Screen) and turn reminders on from there."
+            : "This browser can’t show notifications.";
+    }
+    if (state === "denied") {
+        return "Notifications are blocked for this site. Allow them in the browser’s site settings, then turn this on.";
+    }
+    return on
+        ? "Reminders come to this device before each routine, and for habits still open."
+        : "Get a reminder before each routine and one-off task, and a nudge for habits still open.";
+};
+
+/**
+ * Reminders: whether this device gets them (its own choice, with the browser's permission), and how early
+ * they come and whether habits are nudged about (the account's, the same on every device).
+ */
+const ReminderRows = () => {
+    const { user, updateProfile } = useAuth();
+    const on = useSyncExternalStore(subscribeReminders, remindersOnHere, () => false);
+    const [state, setState] = useState(permission);
+    const [busy, setBusy] = useState(false);
+    // What was just chosen, until the account itself says the same
+    const [chosen, setChosen] = useState({});
+
+    const lead = chosen.reminderLead ?? user?.reminderLead ?? DEFAULT_REMINDER_LEAD;
+    const habitsOn = chosen.remindHabits ?? user?.remindHabits ?? true;
+
+    const toggle = async (wanted) => {
+        setBusy(true);
+        try {
+            if (!wanted) {
+                await turnOffHere();
+                return;
+            }
+
+            const result = await turnOnHere();
+            setState(permission());
+            if (result.on) {
+                toast("Reminders are on for this device", {
+                    detail: result.push ? undefined : "They come while the app is open in a tab.",
+                });
+            } else if (result.reason === "denied") {
+                toast.error("Notifications are blocked for this site.");
+            }
+        } catch {
+            toast.error("Reminders couldn’t be turned on. Try again.");
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const save = async (field, value) => {
+        setChosen((current) => ({ ...current, [field]: value }));
+        try {
+            await updateProfile({ [field]: value });
+        } catch {
+            toast.error("That didn’t save. Check your connection and try again.");
+        } finally {
+            setChosen((current) => {
+                const next = { ...current };
+                delete next[field];
+                return next;
+            });
+        }
+    };
+
+    const test = async () => {
+        try {
+            await sendTestReminder();
+        } catch {
+            toast.error("The test reminder couldn’t be shown.");
+        }
+    };
+
+    return (
+        <>
+            <Row name="On this device" note={deviceNote(on, state)}>
+                <Switch
+                    aria-label="Reminders on this device"
+                    checked={on}
+                    disabled={busy || state === "unsupported"}
+                    onChange={(event) => toggle(event.target.checked)}
+                />
+            </Row>
+            <Row name="Before a routine" note="How early the reminder comes. The same on all your devices." stack>
+                <Select
+                    aria-label="Before a routine"
+                    options={REMINDER_LEAD_OPTIONS}
+                    value={lead}
+                    onChange={(value) => save("reminderLead", value)}
+                />
+            </Row>
+            <Row
+                name="Habits still open"
+                note="A nudge in the morning, afternoon and evening for the habits of that part of the day not yet done, and one at 8 pm for the rest."
+            >
+                <Switch
+                    aria-label="Habits still open"
+                    checked={habitsOn}
+                    onChange={(event) => save("remindHabits", event.target.checked)}
+                />
+            </Row>
+            <Row name="Try it" note="Sends a reminder now, to see how it looks here." stack>
+                <Button icon="bell" disabled={!on} onClick={test}>
+                    Send a test reminder
+                </Button>
+            </Row>
+        </>
+    );
+};
+
 /**
  * Settings: how the app looks and moves on this device, who the account belongs to, the zone its day
  * is counted in, and the ways out of it (signing out, here or everywhere, and deleting it).
@@ -184,6 +309,10 @@ const SettingsPage = () => {
                     <Row name="Email" note="You sign in with this address. It can’t be changed here." stack>
                         <span className={styles.value}>{user?.email}</span>
                     </Row>
+                </Section>
+
+                <Section title="Reminders">
+                    <ReminderRows />
                 </Section>
 
                 <Section title="Your day">

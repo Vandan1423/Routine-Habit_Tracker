@@ -24,7 +24,13 @@ const dayOf = (date) => new Date(date).toISOString().slice(0, 10);
 // It leaves Trash, cannot be recovered, and any XP an older delete held stays gone. Newer deletes hold none.
 const itemKind = (model, kind, describe) => ({
     find: (userId) => model.find({ user: userId, ...ITEM_IN_TRASH }),
-    describe: (item) => ({ title: item.title, xp: item.xpHeld || 0, ...describe(item) }),
+    // archived: it was deleted from Archive, and recovering it puts it back there
+    describe: (item) => ({
+        title: item.title,
+        xp: item.xpHeld || 0,
+        archived: Boolean(item.archivedAt),
+        ...describe(item),
+    }),
     restore: async (user, id) => {
         const restored = await restoreItemFromTrash(user, kind, id);
         return restored && { item: restored.item, xpReturned: restored.xpReturned };

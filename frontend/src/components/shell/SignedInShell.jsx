@@ -1,4 +1,5 @@
 import { lazy, Suspense } from "react";
+import Reminders from "./Reminders";
 import Shell from "./Shell";
 import CommandLayer from "../command/CommandLayer";
 
@@ -7,7 +8,7 @@ const DayNotices = lazy(() => import("./DayNotices"));
 
 /**
  * The shell once someone is known to be signed in, with what only works then: the command menu and the
- * keyboard shortcuts around it, and the notices about today. (While the session is still being checked,
+ * keyboard shortcuts around it, the notices about today, and today's reminders. (While the session is still being checked,
  * the bare Shell is drawn instead: today's data and the plan do not exist yet.)
  * Takes what Shell takes.
  */
@@ -16,6 +17,7 @@ const SignedInShell = (props) => (
         <Suspense fallback={null}>
             <DayNotices />
         </Suspense>
+        <Reminders />
         <Shell {...props} />
     </CommandLayer>
 );

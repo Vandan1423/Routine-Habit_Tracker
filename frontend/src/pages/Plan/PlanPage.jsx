@@ -5,8 +5,9 @@ import PlanRow from "./PlanRow";
 import PlanSkeleton from "./PlanSkeleton";
 import PlanWeek from "./PlanWeek";
 import useReorder from "./useReorder";
+import { Link } from "react-router-dom";
 import { DayLayout } from "../../components/day";
-import { ItemEditor, NewItemMenu } from "../../components/plan";
+import { ItemEditor, NewItemMenu, PauseDialog } from "../../components/plan";
 import Page from "../../components/shell/Page";
 import { Button, EmptyState, ErrorState, SectionHeader } from "../../components/ui";
 import useListKeys, { focusRow } from "../../hooks/useListKeys";
@@ -16,6 +17,7 @@ import { cx } from "../../lib/cx";
 import { localDay, weekdayOf } from "../../lib/dates";
 import { movedWords, planWords } from "../../lib/itemWords";
 import { buildPlan, findPlanItem, moveWithin } from "../../lib/plan";
+import { ARCHIVE_PATH } from "../../lib/places";
 import { KEYS } from "../../lib/shortcuts";
 import { firstDayOfWeek, weekdayName } from "../../lib/week";
 import styles from "./PlanPage.module.css";
@@ -29,7 +31,19 @@ import styles from "./PlanPage.module.css";
  * onReorder(ids, { id, to }): its habits' ids in their new order
  * the rest is passed to each row and its menu
  */
-const PlanBlock = ({ block, reorderable, today, firstDay, onReorder, onEdit, onDelete, onShowUnder }) => {
+const PlanBlock = ({
+    block,
+    reorderable,
+    today,
+    firstDay,
+    onReorder,
+    onEdit,
+    onDelete,
+    onPause,
+    onResume,
+    onRetire,
+    onShowUnder,
+}) => {
     // One still on its way to the server has no id to be put in order by yet
     const habitIds = block.items.filter((item) => item.kind === "habit" && !item.saving).map((item) => item.id);
     const canReorder = reorderable && habitIds.length > 1;
@@ -70,6 +84,9 @@ const PlanBlock = ({ block, reorderable, today, firstDay, onReorder, onEdit, onD
                                         item={item}
                                         onEdit={onEdit}
                                         onDelete={onDelete}
+                                        onPause={onPause}
+                                        onResume={onResume}
+                                        onRetire={onRetire}
                                         onShowUnder={onShowUnder}
                                         onMove={sortable ? move : null}
                                         canMoveUp={place > 0}
@@ -93,12 +110,13 @@ const PlanBlock = ({ block, reorderable, today, firstDay, onReorder, onEdit, onD
 const PlanPage = () => {
     const plan = usePlan();
     const today = useToday();
-    const { ensure, retry, reorderHabits, deleteItem } = plan;
+    const { ensure, retry, reorderHabits, deleteItem, retireItem, resumeItem } = plan;
 
     const [firstDay] = useState(firstDayOfWeek);
     // One day of this week picked out ("YYYY-MM-DD"), or the whole plan
     const [pickedDay, setPickedDay] = useState(null);
     const [editing, setEditing] = useState(null);
+    const [pausing, setPausing] = useState(null);
     const [said, setSaid] = useState("");
 
     useEffect(() => {
@@ -156,7 +174,19 @@ const PlanPage = () => {
             {ready && !whole.empty && <NewItemMenu onNew={setEditing} />}
         </header>
     );
-    const editor = <ItemEditor request={editing} onClose={() => setEditing(null)} />;
+    const editor = (
+        <>
+            <ItemEditor request={editing} onClose={() => setEditing(null)} />
+            <PauseDialog request={pausing} onClose={() => setPausing(null)} />
+        </>
+    );
+    // Where retired things are kept, said under the plan (and under nothing, when nothing is planned)
+    const archiveNote = (
+        <p className={styles.archiveNote}>
+            Routines and habits you retire are kept in <Link to={ARCHIVE_PATH}>Archive</Link>, with their
+            history, to bring back whenever you want them again.
+        </p>
+    );
 
     if (failed) {
         return (
@@ -200,6 +230,7 @@ const PlanPage = () => {
                         A routine has a time of day and the days it falls on. A habit is kept through
                         the day, with no set time. Each one you add shows up on Today when it is due.
                     </EmptyState>
+                    {archiveNote}
                 </DayLayout>
                 {editor}
             </Page>
@@ -208,6 +239,9 @@ const PlanPage = () => {
 
     const edit = (item) => setEditing({ kind: item.kind, item: item.source });
     const remove = (item) => deleteItem(item.kind, item.source);
+    const pause = (item) => setPausing({ kind: item.kind, item: item.source });
+    const resume = (item) => resumeItem(item.kind, item.source);
+    const retire = (item) => retireItem(item.kind, item.source);
     const showUnder = (item, block) => today.moveHabit(item.id, block);
 
     const reorder = (ids, { id, to }) => {
@@ -224,7 +258,16 @@ const PlanPage = () => {
             today={date}
         />
     );
-    const rowProps = { today: date, firstDay, onEdit: edit, onDelete: remove, onShowUnder: showUnder };
+    const rowProps = {
+        today: date,
+        firstDay,
+        onEdit: edit,
+        onDelete: remove,
+        onPause: pause,
+        onResume: resume,
+        onRetire: retire,
+        onShowUnder: showUnder,
+    };
 
     return (
         <Page>
@@ -283,6 +326,8 @@ const PlanPage = () => {
                         </EmptyState>
                     )}
                 </div>
+
+                {archiveNote}
 
                 <p className="visually-hidden" aria-live="polite">
                     {said}

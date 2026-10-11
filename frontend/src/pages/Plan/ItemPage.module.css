@@ -95,6 +95,60 @@
     box-shadow: inset 0 0 0 1.5px var(--loss);
 }
 
+/* A day off: paused, or in Archive. A short dash, asking nothing. */
+.off::after {
+    content: "";
+    position: absolute;
+    inset: 4px 1px auto;
+    height: 2px;
+    border-radius: 1px;
+    background: var(--ink-3);
+}
+
+/* Edit, and the rest behind a "more" button */
+.actions {
+    display: flex;
+    align-items: center;
+    gap: var(--s-1);
+}
+
+/* Where it stands for now, said once under its name: retired, or paused */
+.status {
+    display: flex;
+    align-items: baseline;
+    gap: var(--s-2);
+    margin-top: var(--s-4);
+    padding: var(--s-2) var(--s-3);
+    border-radius: var(--r-2);
+    background: var(--accent-soft);
+    color: var(--ink-2);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+    text-wrap: pretty;
+}
+
+.status > svg {
+    flex: none;
+    transform: translateY(2px);
+}
+
+.status a,
+.inline {
+    border-radius: var(--r-1);
+    color: var(--ink);
+    font-weight: var(--fw-medium);
+    text-decoration: underline;
+    text-decoration-color: var(--line-strong);
+    text-underline-offset: 3px;
+}
+
+@media (hover: hover) {
+    .status a:hover,
+    .inline:hover {
+        text-decoration-color: currentColor;
+    }
+}
+
 .legend {
     display: flex;
     flex-wrap: wrap;

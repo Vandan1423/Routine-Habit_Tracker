@@ -179,16 +179,20 @@ export const reopenWords = (item) => ({
 export const BONUS_LABEL = "Everything done";
 
 /**
- * What was moved to Trash today while it was still due: tonight counts it as missed all the same.
- * @param {Array} owed - from GET /streaks/info: [{ title, xp }]
+ * What was moved to Trash or retired to Archive today while it was still due: tonight counts it as missed all the same.
+ * @param {Array} owed - from GET /streaks/info: [{ title, xp, archived }]
  */
 export const owedWords = (owed) => {
     const cost = xp(owed.reduce((sum, item) => sum + item.xp, 0));
+    const retired = owed.every((item) => item.archived);
+    const deleted = owed.every((item) => !item.archived);
+    const how = retired ? "retired" : deleted ? "deleted" : "deleted or retired";
+    const back = retired ? "brought back" : deleted ? "recovered" : "brought back";
 
     if (owed.length === 1) {
-        return `${named(owed[0].title)} was deleted today while it was still due. Tonight counts it as missed, ${cost}, unless it is recovered and done.`;
+        return `${named(owed[0].title)} was ${how} today while it was still due. Tonight counts it as missed, ${cost}, unless it is ${back} and done.`;
     }
-    return `${countWord(owed.length)} things were deleted today while they were still due. Tonight counts them as missed, ${cost}, unless they are recovered and done.`;
+    return `${countWord(owed.length)} things were ${how} today while they were still due. Tonight counts them as missed, ${cost}, unless they are ${back} and done.`;
 };
 
 // Under a finished day: where tomorrow begins. `first` is { title, start } from firstRoutineOf.

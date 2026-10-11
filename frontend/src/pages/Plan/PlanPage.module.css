@@ -72,6 +72,32 @@
     transition: none;
 }
 
+/* Where retired things went: a quiet line at the foot of the plan */
+.archiveNote {
+    margin-top: var(--s-10);
+    padding-top: var(--s-4);
+    border-top: 1px solid var(--line);
+    color: var(--ink-3);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+    text-wrap: pretty;
+}
+
+.archiveNote a {
+    border-radius: var(--r-1);
+    color: var(--ink-2);
+    text-decoration: underline;
+    text-decoration-color: var(--line-strong);
+    text-underline-offset: 3px;
+    transition: text-decoration-color var(--t-fast) var(--ease);
+}
+
+@media (hover: hover) {
+    .archiveNote a:hover {
+        text-decoration-color: currentColor;
+    }
+}
+
 /* bp: phone */
 @media (max-width: 699.98px) {
     .header {

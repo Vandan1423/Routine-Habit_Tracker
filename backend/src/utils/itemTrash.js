@@ -6,6 +6,7 @@ import { awardXP } from "./rewardEngine.js";
 import { updateDailyStreak } from "./dailyStreakCalculator.js";
 import { getUserToday, isHabitScheduledOn, isRoutineScheduledOn } from "./dateRules.js";
 import { countsOn, missCost } from "./dayPlan.js";
+import { ITEM_IN_PLAN_OR_ARCHIVE } from "./itemArchive.js";
 import { OUT_OF_TRASH, trashStamp } from "./trash.js";
 
 // Moving a routine or a habit to Trash, and bringing it back.
@@ -33,19 +34,21 @@ const KINDS = {
 export const ITEM_IN_TRASH = { isActive: false, deletedAt: { $ne: null }, purgedAt: null };
 
 /**
- * Moves a routine or a habit to Trash.
+ * Moves a routine or a habit to Trash, from the plan or from Archive.
+ * One taken from Archive keeps the day it was retired (archivedAt): that is the day it left the plan, and
+ * recovering it puts it back in Archive.
  * @param {Object} user - needs _id, timezone and trashDays
  * @param {String} kind - "routine" or "habit"
  * @param {String} id
- * @returns {Object|null} - null when the user has no such item in their plan. Otherwise item: as it now stands;
- *   xpTaken: always 0, no XP leaves with an item; owed: what tonight still charges for it, or 0
+ * @returns {Object|null} - null when the user has no such item in their plan or Archive. Otherwise item: as it
+ *   now stands; xpTaken: always 0, no XP leaves with an item; owed: what tonight still charges for it, or 0
  */
 export const moveItemToTrash = async (user, kind, id, now = new Date()) => {
     const { model, isDueOn, doneOn } = KINDS[kind];
 
     // Claimed in one step, so two requests arriving together can't both move it
     const item = await model.findOneAndUpdate(
-        { _id: id, user: user._id, isActive: true },
+        { _id: id, user: user._id, ...ITEM_IN_PLAN_OR_ARCHIVE },
         { $set: { isActive: false, ...trashStamp(user, now) } },
         { returnDocument: "after" },
     );
@@ -64,18 +67,23 @@ export const moveItemToTrash = async (user, kind, id, now = new Date()) => {
 };
 
 /**
- * Brings a routine or a habit back from Trash exactly as it was, with any XP an older delete held back.
+ * Brings a routine or a habit back from Trash exactly as it was, with any XP an older delete held back:
+ * into the plan, or into Archive for one that was deleted from there.
  * @returns {Object|null} - null when the user has no such item in Trash. Otherwise item, and xpReturned
  */
 export const restoreItemFromTrash = async (user, kind, id, now = new Date()) => {
     const { model, idField } = KINDS[kind];
+    const claim = (where, set) =>
+        model.findOneAndUpdate(
+            { _id: id, user: user._id, ...ITEM_IN_TRASH, ...where },
+            { $set: { xpHeld: 0, ...OUT_OF_TRASH, ...set } },
+            { returnDocument: "before" },
+        );
 
     // The copy from before the change still says how much XP was held
-    const before = await model.findOneAndUpdate(
-        { _id: id, user: user._id, ...ITEM_IN_TRASH },
-        { $set: { isActive: true, xpHeld: 0, ...OUT_OF_TRASH } },
-        { returnDocument: "before" },
-    );
+    const before =
+        (await claim({ archivedAt: null }, { isActive: true })) ??
+        (await claim({ archivedAt: { $ne: null } }, {}));
     if (!before) return null;
 
     const xpReturned = before.xpHeld || 0;

@@ -81,6 +81,21 @@ export const ICONS = {
         <path d="M4 6h12M8 6V4.5h4V6M5.5 6l.7 9.5a1.5 1.5 0 0 0 1.5 1.4h4.6a1.5 1.5 0 0 0 1.5-1.4L14.5 6M8.5 9v5M11.5 9v5" />
     ),
     undo: <path d="M7.5 4.5L4 8l3.5 3.5M4 8h8a4 4 0 0 1 0 8H9" />,
+    // A box with its lid: put away, not thrown out
+    archive: (
+        <>
+            <rect x="3" y="4" width="14" height="3.5" rx="1" />
+            <path d="M4.5 7.5V15a1.5 1.5 0 0 0 1.5 1.5h8a1.5 1.5 0 0 0 1.5-1.5V7.5M8 10.5h4" />
+        </>
+    ),
+    pause: <path d="M7.5 5v10M12.5 5v10" />,
+    play: <path d="M6.5 4.5v11l9-5.5z" />,
+    bell: (
+        <>
+            <path d="M5 13.5V9a5 5 0 0 1 10 0v4.5l1.5 1.5h-13z" />
+            <path d="M8.3 17a1.8 1.8 0 0 0 3.4 0" />
+        </>
+    ),
     more: (
         <>
             <circle cx="4.5" cy="10" r=".6" />

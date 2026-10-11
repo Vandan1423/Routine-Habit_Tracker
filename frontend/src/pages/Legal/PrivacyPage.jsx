@@ -58,6 +58,15 @@ const PrivacyPage = () => {
                                     without use.
                                 </dd>
                             </div>
+                            <div>
+                                <dt>Reminders</dt>
+                                <dd>
+                                    Only if you turn them on: for each device, the address your browser’s
+                                    push service gives for sending it reminders, and a note of which
+                                    reminders were sent, kept for three days. Turning reminders off, or
+                                    logging out, removes that device’s address.
+                                </dd>
+                            </div>
                         </dl>
                     </section>
 
@@ -68,6 +77,11 @@ const PrivacyPage = () => {
                             <li>
                                 To email you a link when you sign up (to confirm the address is yours) and
                                 when you ask to reset your password. We send no other email.
+                            </li>
+                            <li>
+                                To remind you of what is coming up, on the devices where you have turned
+                                reminders on. A reminder carries the name of the routine or habit, and passes
+                                through your browser’s own push service (Google, Apple or Mozilla) to reach you.
                             </li>
                             <li>
                                 To protect the app from abuse: the network address a request comes from is

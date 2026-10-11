@@ -1,9 +1,23 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { DayLayout } from "../../components/day";
-import { ItemEditor } from "../../components/plan";
+import { ItemEditor, PauseDialog } from "../../components/plan";
 import Page from "../../components/shell/Page";
-import { Button, Calendar, EmptyState, ErrorState, Fact, Facts, Icon, Kbd, Skeleton } from "../../components/ui";
+import {
+    Button,
+    Calendar,
+    EmptyState,
+    ErrorState,
+    Fact,
+    Facts,
+    Icon,
+    IconButton,
+    Kbd,
+    Menu,
+    Skeleton,
+} from "../../components/ui";
+import useAuth from "../../hooks/useAuth";
+import useFetched from "../../hooks/useFetched";
 import useHotkeys from "../../hooks/useHotkeys";
 import usePlan from "../../hooks/usePlan";
 import useToday from "../../hooks/useToday";
@@ -17,10 +31,14 @@ import {
     historyWords,
     KIND_WORDS,
     patternWords,
+    pauseWords,
     stakesWords,
 } from "../../lib/itemWords";
+import { isPausedOn, pauseAhead } from "../../lib/pauses";
+import { ARCHIVE_PATH } from "../../lib/places";
 import { findPlanItem } from "../../lib/plan";
 import { KEYS } from "../../lib/shortcuts";
+import archiveService from "../../services/archiveService";
 import habitService from "../../services/habitService";
 import routineService from "../../services/routineService";
 import { PLAN_PATH } from "./planPaths";
@@ -36,6 +54,7 @@ const LEGEND = [
     ["late", "Late"],
     ["partial", "Partly"],
     ["missed", "Missed"],
+    ["off", "Off"],
 ];
 
 // The small square a day carries: filled when it was done, part filled for a count that fell short,
@@ -48,17 +67,20 @@ const Mark = ({ status, share = 0 }) => (
 
 /**
  * One routine or habit on a page of its own: when it falls, what is at stake, and how it has gone,
- * month by month.
+ * month by month. One that has been retired is found in Archive instead, and can be brought back from here.
  * kind: "routine" or "habit". The id comes from the address.
  */
 const ItemPage = ({ kind }) => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { user } = useAuth();
     const plan = usePlan();
     const today = useToday();
-    const { ensure, retry } = plan;
+    const { ensure, retry, retireItem, resumeItem, bringBackItem } = plan;
+    const account = user?._id ?? user?.id ?? user?.email ?? "account";
 
     const [editing, setEditing] = useState(null);
+    const [pausing, setPausing] = useState(null);
     const [month, setMonth] = useState(null);
     // The history, and which item it was fetched for
     const [fetched, setFetched] = useState({ key: null, data: null, failed: false });
@@ -68,7 +90,20 @@ const ItemPage = ({ kind }) => {
         ensure();
     }, [ensure]);
 
-    const item = findPlanItem({ routines: plan.routines, habits: today.habits }, kind, id);
+    const date = today.date ?? localDay();
+    const ready = plan.status === "ready" && today.status === "ready";
+    const planned = findPlanItem({ routines: plan.routines, habits: today.habits }, kind, id);
+
+    // Not in the plan: it may have been retired. Archive is only asked for then.
+    const archive = useFetched(ready && !planned ? `archive:${account}` : null, archiveService.getArchive);
+    const retiredSource = planned
+        ? null
+        : (archive.data?.[kind === "routine" ? "routines" : "habits"] ?? []).find((entry) => entry._id === id);
+    const retired = retiredSource
+        ? findPlanItem(kind === "routine" ? { routines: [retiredSource] } : { habits: [retiredSource] }, kind, id)
+        : null;
+
+    const item = planned ?? retired;
     const exists = Boolean(item);
     const key = `${kind}:${id}`;
 
@@ -86,18 +121,19 @@ const ItemPage = ({ kind }) => {
         };
     }, [kind, id, key, exists, attempt]);
 
-    const date = today.date ?? localDay();
-    const ready = plan.status === "ready" && today.status === "ready";
     const failed = plan.status === "error" || today.status === "error";
     const history = fetched.key === key ? fetched : { data: null, failed: false };
+    // Still looking for it in Archive
+    const looking = ready && !planned && archive.status === "loading";
 
-    // The same key that edits a row on Plan edits the item its page is about
-    useHotkeys({ [KEYS.edit]: () => setEditing({ kind, item: item.source }) }, ready && exists);
+    // The same key that edits a row on Plan edits the item its page is about. A retired one can't be changed.
+    useHotkeys({ [KEYS.edit]: () => setEditing({ kind, item: item.source }) }, ready && Boolean(planned));
 
+    // A retired one is reached from Archive, and goes back there
     const back = (
-        <Link to={PLAN_PATH} className={styles.back}>
+        <Link to={retired ? ARCHIVE_PATH : PLAN_PATH} className={styles.back}>
             <Icon name="arrow-left" size={14} />
-            Plan
+            {retired ? "Archive" : "Plan"}
         </Link>
     );
 
@@ -112,7 +148,7 @@ const ItemPage = ({ kind }) => {
         );
     }
 
-    if (!ready) {
+    if (!ready || looking) {
         return (
             <Page>
                 <p className="visually-hidden" role="status">
@@ -145,9 +181,14 @@ const ItemPage = ({ kind }) => {
                         className={styles.state}
                         title="This is no longer in the plan"
                         actions={
-                            <Button as={Link} to={PLAN_PATH} variant="primary">
-                                Go to Plan
-                            </Button>
+                            <>
+                                <Button as={Link} to={PLAN_PATH} variant="primary">
+                                    Go to Plan
+                                </Button>
+                                <Button as={Link} to={ARCHIVE_PATH}>
+                                    Open Archive
+                                </Button>
+                            </>
                         }
                     >
                         It may have been deleted, or the link may be out of date.
@@ -164,6 +205,15 @@ const ItemPage = ({ kind }) => {
     const words = history.data ? historyWords(history.data, { once: Boolean(item.once) }) : null;
     const category = CATEGORIES.find((entry) => entry.value === source.category)?.label;
     const since = source.createdAt ? localDay(new Date(source.createdAt)) : null;
+    const retiredOn = retired && source.archivedAt ? localDay(new Date(source.archivedAt)) : null;
+    const pause = planned && !item.once ? pauseAhead(source, date) : null;
+    // A day it was off, and has nothing else to show for
+    const isOff = (day) => !days.has(day) && isPausedOn(source, day);
+    const legend = LEGEND.filter(([status]) =>
+        status === "off"
+            ? (source.pauses ?? []).some((entry) => entry.from <= date)
+            : present.some(([shown]) => shown === status),
+    );
 
     const facts = (
         <section>
@@ -183,14 +233,18 @@ const ItemPage = ({ kind }) => {
                 </Fact>
                 {category && <Fact label="Category">{category}</Fact>}
                 {since && <Fact label="In the plan since">{formatDayBrief(since)}</Fact>}
+                {retiredOn && <Fact label="Retired">{formatDayBrief(retiredOn)}</Fact>}
             </Facts>
-            <p className={styles.stakes}>
-                {stakesWords(kind, {
-                    worth: item.worth,
-                    hasEnd: item.end !== null,
-                    once: Boolean(item.once),
-                })}
-            </p>
+            {/* A retired one asks nothing, so has nothing at stake */}
+            {!retired && (
+                <p className={styles.stakes}>
+                    {stakesWords(kind, {
+                        worth: item.worth,
+                        hasEnd: item.end !== null,
+                        once: Boolean(item.once),
+                    })}
+                </p>
+            )}
         </section>
     );
 
@@ -202,14 +256,63 @@ const ItemPage = ({ kind }) => {
                         {back}
                         <h1 className={styles.title}>{item.title}</h1>
                     </div>
-                    <Button
-                        icon="edit"
-                        trailing={<Kbd keys={KEYS.edit} />}
-                        onClick={() => setEditing({ kind, item: source })}
-                    >
-                        Edit
-                    </Button>
+                    {retired ? (
+                        <Button variant="primary" icon="undo" onClick={() => bringBackItem(kind, source)}>
+                            Bring back
+                        </Button>
+                    ) : (
+                        <div className={styles.actions}>
+                            <Button
+                                icon="edit"
+                                trailing={<Kbd keys={KEYS.edit} />}
+                                onClick={() => setEditing({ kind, item: source })}
+                            >
+                                Edit
+                            </Button>
+                            {!item.once && (
+                                <Menu
+                                    align="end"
+                                    trigger={<IconButton icon="more" label={`More for ${item.title}`} />}
+                                >
+                                    <Menu.Item icon="pause" onSelect={() => setPausing({ kind, item: source })}>
+                                        {pause ? "Change pause…" : "Pause…"}
+                                    </Menu.Item>
+                                    {pause && (
+                                        <Menu.Item icon="play" onSelect={() => resumeItem(kind, source)}>
+                                            Resume now
+                                        </Menu.Item>
+                                    )}
+                                    <Menu.Separator />
+                                    <Menu.Item icon="archive" onSelect={() => retireItem(kind, source)}>
+                                        Retire to Archive
+                                    </Menu.Item>
+                                </Menu>
+                            )}
+                        </div>
+                    )}
                 </header>
+
+                {retired && (
+                    <p className={styles.status}>
+                        <Icon name="archive" size={14} />
+                        <span>
+                            Retired{retiredOn ? ` ${formatDayBrief(retiredOn)}` : ""}. It is kept in{" "}
+                            <Link to={ARCHIVE_PATH}>Archive</Link> with its history, and asks nothing of any day
+                            until it is brought back.
+                        </span>
+                    </p>
+                )}
+                {pause && (
+                    <p className={styles.status}>
+                        <Icon name="pause" size={14} />
+                        <span>
+                            {pauseWords(pause, date)}. Days off cost nothing and don’t break its run.{" "}
+                            <button type="button" className={styles.inline} onClick={() => resumeItem(kind, source)}>
+                                Resume now
+                            </button>
+                        </span>
+                    </p>
+                )}
 
                 {history.failed ? (
                     <ErrorState
@@ -237,10 +340,12 @@ const ItemPage = ({ kind }) => {
                             today={date}
                             min={history.data?.since}
                             max={date}
-                            describeDay={(day) => dayStatusWords(days.get(day), { unit: item.unit })}
+                            describeDay={(day) =>
+                                isOff(day) && day <= date ? "Off" : dayStatusWords(days.get(day), { unit: item.unit })
+                            }
                             renderDay={(day) => {
                                 const entry = days.get(day);
-                                if (!entry) return null;
+                                if (!entry) return isOff(day) && day <= date ? <Mark status="off" /> : null;
 
                                 return (
                                     <Mark
@@ -250,9 +355,9 @@ const ItemPage = ({ kind }) => {
                                 );
                             }}
                         />
-                        {present.length > 0 && (
+                        {legend.length > 0 && (
                             <ul className={styles.legend}>
-                                {present.map(([status, label]) => (
+                                {legend.map(([status, label]) => (
                                     <li key={status}>
                                         <Mark status={status} share={0.5} />
                                         {label}
@@ -275,6 +380,7 @@ const ItemPage = ({ kind }) => {
                 onClose={() => setEditing(null)}
                 onDeleted={() => navigate(PLAN_PATH)}
             />
+            <PauseDialog request={pausing} onClose={() => setPausing(null)} />
         </Page>
     );
 };

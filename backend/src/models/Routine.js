@@ -75,6 +75,24 @@ const routineSchema = new mongoose.Schema({
         type: Number,
         default: 0, // The XP it had earned, taken from the account while it is in Trash and given back if it is recovered
     },
+    // Retired: out of the plan for good, but kept in Archive with everything it did, and can be brought back.
+    // isActive is false from the moment it is retired. See utils/itemArchive.js.
+    archivedAt: {
+        type: Date,
+        default: null,
+    },
+    // The stretches of days it was off: paused, or in Archive. Not due on any of them, so they neither
+    // cost XP nor break a run. Each is { from, until }, "YYYY-MM-DD", both days included. See utils/itemPause.js.
+    pauses: {
+        type: [
+            {
+                _id: false,
+                from: { type: String, required: true },
+                until: { type: String, required: true },
+            },
+        ],
+        default: [],
+    },
 });
 
 routineSchema.plugin(madeOnce);

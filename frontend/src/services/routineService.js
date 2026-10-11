@@ -80,6 +80,58 @@ const routineService = {
         }
     },
 
+    // Retires a routine to Archive: out of the plan, history kept, to be brought back any time
+    archiveRoutine: async (id) => {
+        try {
+            const response = await api.post(`/routines/${id}/archive`);
+            return response.data;
+        } catch (error) {
+            const message =
+                error.response?.data?.message ||
+                "Failed to retire routine. Please try again.";
+            throw new Error(message, { cause: error });
+        }
+    },
+
+    // Brings a retired routine back from Archive into the plan
+    unarchiveRoutine: async (id) => {
+        try {
+            const response = await api.post(`/routines/${id}/unarchive`);
+            return response.data;
+        } catch (error) {
+            const message =
+                error.response?.data?.message ||
+                "Failed to bring the routine back. Please try again.";
+            throw new Error(message, { cause: error });
+        }
+    },
+
+    // Pauses a routine: { days, from } (from: "YYYY-MM-DD", today when left out)
+    pauseRoutine: async (id, data) => {
+        try {
+            const response = await api.post(`/routines/${id}/pause`, data);
+            return response.data;
+        } catch (error) {
+            const message =
+                error.response?.data?.message ||
+                "Failed to pause routine. Please try again.";
+            throw new Error(message, { cause: error });
+        }
+    },
+
+    // Ends a routine's pause early: due again from today
+    resumeRoutine: async (id) => {
+        try {
+            const response = await api.delete(`/routines/${id}/pause`);
+            return response.data;
+        } catch (error) {
+            const message =
+                error.response?.data?.message ||
+                "Failed to resume routine. Please try again.";
+            throw new Error(message, { cause: error });
+        }
+    },
+
     // Brings back a routine that was deleted
     restoreRoutine: async (id) => {
         try {

@@ -18,6 +18,8 @@ import expenseRoutes from "./src/routes/expenseRoutes.js";
 import todoRoutes from "./src/routes/todoRoutes.js";
 import goalRoutes from "./src/routes/goalRoutes.js";
 import trashRoutes from "./src/routes/trashRoutes.js";
+import archiveRoutes from "./src/routes/archiveRoutes.js";
+import notificationRoutes from "./src/routes/notificationRoutes.js";
 
 // The Express app on its own: no database connection, no background jobs, no port.
 // server.js adds those to run it for real; the tests import this file and run it against a test database.
@@ -47,6 +49,8 @@ app.use("/api/expenses", expenseRoutes);
 app.use("/api/todos", todoRoutes);
 app.use("/api/goals", goalRoutes);
 app.use("/api/trash", trashRoutes);
+app.use("/api/archive", archiveRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // 404 Handler - Must be after all routes
 app.use((req, res, next) => {

@@ -6,6 +6,8 @@ import app from "./app.js";
 import connectDB from "./src/config/db.js";
 import { sweepEndedDays } from "./src/utils/dailyPenaltyJob.js";
 import { purgeExpiredTrash } from "./src/utils/trashKinds.js";
+import { sendDueReminders } from "./src/utils/reminders.js";
+import { isPushConfigured } from "./src/config/push.js";
 import { isEmailVerificationRequired } from "./src/controllers/authController.js";
 import { usesTestSender } from "./src/utils/sendEmail.js";
 
@@ -33,6 +35,19 @@ cron.schedule("5,35 * * * *", () => {
 cron.schedule("20,50 * * * *", () => {
     purgeExpiredTrash().catch((error) => console.error("Error emptying expired Trash:", error));
 });
+
+// Every minute, the reminders that have come due: a routine about to start, habits still open.
+// Only with push keys set (see src/config/push.js); without them the app shows reminders itself while it is open.
+if (isPushConfigured()) {
+    cron.schedule("* * * * *", () => {
+        sendDueReminders();
+    });
+} else {
+    console.warn(
+        "Push reminders are off: VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY are not set " +
+            "(`npx web-push generate-vapid-keys` makes a pair). The app still reminds while it is open.",
+    );
+}
 
 app.listen(process.env.PORT || 4000, () => {
     console.log(`Server is running on port ${process.env.PORT || 4000}`);

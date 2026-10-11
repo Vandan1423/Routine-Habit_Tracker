@@ -197,6 +197,67 @@ export const trashedDetail = ({ xpTaken = 0, owed = 0 } = {}) => {
     return parts.length > 0 ? parts.join(" ") : undefined;
 };
 export const notDeletedWords = (title) => `“${title}” wasn’t deleted.`;
+
+// ── Retiring to Archive, and bringing back ──
+
+export const retiredWords = (title) => `“${title}” retired to Archive`;
+
+// What the toast adds once it is retired: whether tonight still counts it as missed
+export const retiredDetail = ({ owed = 0 } = {}) =>
+    owed > 0
+        ? `It was still due today: tonight counts it as missed, ${xp(owed)}, unless it is brought back and done.`
+        : "Its history is kept there. Bring it back whenever you want it again.";
+
+export const broughtBackWords = (title) => `“${title}” is back in the plan`;
+export const notRetiredWords = (title) => `“${title}” wasn’t retired.`;
+export const notBroughtBackWords = (title) => `“${title}” didn’t come back.`;
+
+// ── Pausing ──
+
+// A day named inside a sentence: "today", "tomorrow", "Sat 18 Oct"
+const dayRef = (date, today) => {
+    if (date === today) return "today";
+    if (today && date === addDays(today, 1)) return "tomorrow";
+    return formatDayBrief(date);
+};
+
+/**
+ * A pause, said beside an item: "Paused until Sat 18 Oct", or "Paused from Mon 13 Oct to Sat 18 Oct" for one
+ * still to come. The days named are the first and last days off.
+ * @param {Object} pause - { from, until }
+ * @param {String} today - "YYYY-MM-DD"
+ */
+export const pauseWords = (pause, today) => {
+    if (!pause) return "";
+    if (pause.from <= today) {
+        return pause.until === today ? "Paused today" : `Paused until ${dayRef(pause.until, today)}`;
+    }
+    return pause.from === pause.until
+        ? `Paused ${dayRef(pause.from, today)}`
+        : `Paused from ${dayRef(pause.from, today)} to ${dayRef(pause.until, today)}`;
+};
+
+/**
+ * What the pause form says about the days chosen.
+ * @param {Object} span - from: the first day off; days: how many
+ */
+export const pauseSpanWords = ({ from, days }, today) => {
+    const until = addDays(from, days - 1);
+    const off =
+        days === 1
+            ? `Off ${dayRef(from, today)} only.`
+            : `Off from ${dayRef(from, today)} to ${dayRef(until, today)}, ${countWord(days).toLowerCase()} days.`;
+
+    return `${off} Back ${dayRef(addDays(until, 1), today)}. Days off cost nothing and don’t break a run.`;
+};
+
+export const pausedWords = (title, pause, today) =>
+    pause.from <= today
+        ? `“${title}” paused until ${dayRef(pause.until, today)}`
+        : `“${title}” will pause from ${dayRef(pause.from, today)}`;
+export const resumedWords = (title) => `“${title}” is back from today`;
+export const notPausedWords = (title) => `“${title}” wasn’t paused.`;
+export const notResumedWords = (title) => `“${title}” is still paused.`;
 // One that was on the page for a moment as its form gave it, and that the server would not take
 export const notSavedWords = (title, changed) => `“${title}” wasn’t ${changed ? "changed" : "added"}`;
 export const notRestoredWords = (title) => `“${title}” didn’t come back.`;

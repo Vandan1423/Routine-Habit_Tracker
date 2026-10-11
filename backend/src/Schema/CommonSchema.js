@@ -46,3 +46,10 @@ export const weekdays = Joi.array()
 export const idParam = Joi.object({
     id: objectId.required(),
 });
+
+// Pausing a routine or habit: for how many days, and from which day (today when left out).
+// That the first day is not in the past is checked against the user's own today, by the server.
+export const pauseSchema = Joi.object({
+    from: dateString,
+    days: Joi.number().integer().min(1).max(365).required(),
+});

@@ -15,7 +15,7 @@ import {
     DayTotal,
     WeekAside,
 } from "../../components/day";
-import { ItemEditor, NewItemMenu } from "../../components/plan";
+import { ItemEditor, NewItemMenu, PauseDialog } from "../../components/plan";
 import Page from "../../components/shell/Page";
 import { Button, ConfirmDialog, EmptyState, ErrorState } from "../../components/ui";
 import useAuth from "../../hooks/useAuth";
@@ -116,8 +116,12 @@ const TodayList = ({
     onNew,
     onEdit,
     onSetAmount,
+    onPause,
 }) => {
     const { date, week, streak, bonus, owed, tomorrow, ensureTomorrow } = today;
+    // A one-off task is moved or deleted, not paused
+    const repeats = (item) =>
+        item.kind === "habit" || Boolean(today.routines.find((entry) => entry._id === item.id)?.isRecurring);
     const { isFolded, fold } = useDayFolds(day, date, memory, setMemory);
 
     // The rows from the keyboard. Ticking and stepping press the row's own controls, so they do exactly what a click does.
@@ -181,7 +185,14 @@ const TodayList = ({
                     onStep={onStep}
                     // One still on its way to the server has nothing to open yet
                     renderMenu={(item) =>
-                        item.saving ? null : <RowMenu item={item} onEdit={onEdit} onSetAmount={onSetAmount} />
+                        item.saving ? null : (
+                            <RowMenu
+                                item={item}
+                                onEdit={onEdit}
+                                onSetAmount={onSetAmount}
+                                onPause={repeats(item) ? onPause : undefined}
+                            />
+                        )
                     }
                 />
             ))}
@@ -217,6 +228,7 @@ const TodayPage = () => {
     const [reopening, setReopening] = useState(null);
     // The form a routine or a habit is made or changed in, and the question of a counted habit's amount
     const [editing, setEditing] = useState(null);
+    const [pausing, setPausing] = useState(null);
     const [counting, setCounting] = useState(null);
     // A new account's first routines and habits are being saved
     const [starting, setStarting] = useState(false);
@@ -356,7 +368,16 @@ const TodayPage = () => {
         const source = (item.kind === "routine" ? routines : habits).find((entry) => entry._id === item.id);
         if (source) setEditing({ kind: item.kind, item: source });
     };
-    const editor = <ItemEditor request={editing} onClose={() => setEditing(null)} />;
+    const onPause = (item) => {
+        const source = (item.kind === "routine" ? routines : habits).find((entry) => entry._id === item.id);
+        if (source) setPausing({ kind: item.kind, item: source });
+    };
+    const editor = (
+        <>
+            <ItemEditor request={editing} onClose={() => setEditing(null)} />
+            <PauseDialog request={pausing} onClose={() => setPausing(null)} />
+        </>
+    );
 
     /**
      * Saves the starters a new account chose.
@@ -479,6 +500,7 @@ const TodayPage = () => {
                 onNew={setEditing}
                 onEdit={onEdit}
                 onSetAmount={setCounting}
+                onPause={onPause}
             />
             {editor}
             <AmountDialog

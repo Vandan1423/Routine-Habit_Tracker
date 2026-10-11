@@ -13,6 +13,8 @@ import KnownSpendPlace from "../models/KnownSpendPlace.js";
 import TodoList from "../models/TodoList.js";
 import Todo from "../models/Todo.js";
 import Goal from "../models/Goal.js";
+import PushSubscription from "../models/PushSubscription.js";
+import ReminderLog from "../models/ReminderLog.js";
 
 // Everything that belongs to one account. Each of these names its owner in a `user` field.
 // A new model that holds a person's data has to be added here; test/unit/eraseAccount.test.js fails until it is.
@@ -31,6 +33,8 @@ export const OWNED_MODELS = [
     TodoList,
     Todo,
     Goal,
+    PushSubscription,
+    ReminderLog,
 ];
 
 /**

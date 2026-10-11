@@ -6,14 +6,24 @@ import {
     calculateBestStreak,
     calculateStreak,
 } from "../utils/streakCalculator.js";
-import { getUserToday, isHabitScheduledOn } from "../utils/dateRules.js";
+import { getUserToday, isHabitScheduledOn, isPausedOn } from "../utils/dateRules.js";
 import { addDailyXp } from "../utils/dailySummary.js";
 import { updateDailyStreak } from "../utils/dailyStreakCalculator.js";
+import {
+    archivedDayOf,
+    archiveItem,
+    ITEM_IN_PLAN_OR_ARCHIVE,
+    unarchiveItem,
+} from "../utils/itemArchive.js";
 import { buildHistory, missedDaysOf } from "../utils/itemHistory.js";
+import { pauseItem, resumeItem } from "../utils/itemPause.js";
 import { moveItemToTrash, restoreItemFromTrash } from "../utils/itemTrash.js";
 import { keyOf, saveOnce } from "../utils/saveOnce.js";
 
 // --- HELPERS ---
+
+// The days a habit was off (paused, or in Archive), which its streak steps over
+const daysOffOf = (habit) => (day) => isPausedOn(habit, day);
 
 const countCompletions = (habitId) =>
     HabitLog.countDocuments({ habit: habitId, completed: true });
@@ -23,7 +33,7 @@ const countCompletions = (habitId) =>
  * @returns {Object} - the reward, as awardXP reports it
  */
 const rewardCompletion = async (habit, userId, today) => {
-    const currentStreak = await calculateStreak(habit._id, userId, today);
+    const currentStreak = await calculateStreak(habit._id, userId, today, daysOffOf(habit));
 
     habit.currentStreak = currentStreak;
     if (currentStreak > habit.bestStreak) habit.bestStreak = currentStreak;
@@ -48,10 +58,10 @@ const rewardCompletion = async (habit, userId, today) => {
 const revokeCompletion = async (habit, userId, today, xpEarned) => {
     const streakWithToday = habit.currentStreak;
 
-    habit.currentStreak = await calculateStreak(habit._id, userId, today);
+    habit.currentStreak = await calculateStreak(habit._id, userId, today, daysOffOf(habit));
     // Today's completion can only have raised the best streak if the two stood level
     if (habit.bestStreak === streakWithToday) {
-        habit.bestStreak = await calculateBestStreak(habit._id, userId);
+        habit.bestStreak = await calculateBestStreak(habit._id, userId, daysOffOf(habit));
     }
     habit.totalCompletions = await countCompletions(habit._id);
     await habit.save();
@@ -394,7 +404,7 @@ export const updateHabit = async (req, res, next) => {
     }
 };
 
-// @desc    Move a habit to Trash. Its XP stays with the account.
+// @desc    Move a habit to Trash, from the plan or from Archive. Its XP stays with the account.
 // @route   DELETE /api/habits/:id
 export const deleteHabit = async (req, res, next) => {
     try {
@@ -437,6 +447,85 @@ export const restoreHabit = async (req, res, next) => {
     }
 };
 
+// @desc    Retire a habit: out of the plan and into Archive, history and XP kept, to be brought back any time
+// @route   POST /api/habits/:id/archive
+export const archiveHabit = async (req, res, next) => {
+    try {
+        const retired = await archiveItem(req.user, "habit", req.params.id);
+
+        if (!retired) {
+            return res
+                .status(404)
+                .json({ message: "Habit not found or unauthorized" });
+        }
+
+        res.status(200).json({
+            message: "Habit retired",
+            id: req.params.id,
+            archivedAt: retired.item.archivedAt,
+            // What tonight still charges for it: it was due today and was not done
+            owed: retired.owed,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Bring a retired habit back from Archive into the plan
+// @route   POST /api/habits/:id/unarchive
+export const unarchiveHabit = async (req, res, next) => {
+    try {
+        const back = await unarchiveItem(req.user, "habit", req.params.id);
+
+        if (!back) {
+            return res.status(404).json({ message: "Habit not found in Archive" });
+        }
+
+        res.status(200).json({ habit: back.item });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Pause a habit for a number of days: not due, not charged, its streak kept
+// @route   POST /api/habits/:id/pause
+export const pauseHabit = async (req, res, next) => {
+    try {
+        const paused = await pauseItem(req.user, "habit", req.params.id, req.body);
+
+        if (!paused) {
+            return res
+                .status(404)
+                .json({ message: "Habit not found or unauthorized" });
+        }
+        if (paused.refused) {
+            return res.status(400).json({ message: paused.refused });
+        }
+
+        res.status(200).json({ habit: paused.item });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    End a habit's pause early: it is due again from today
+// @route   DELETE /api/habits/:id/pause
+export const resumeHabit = async (req, res, next) => {
+    try {
+        const resumed = await resumeItem(req.user, "habit", req.params.id);
+
+        if (!resumed) {
+            return res
+                .status(404)
+                .json({ message: "Habit not found or unauthorized" });
+        }
+
+        res.status(200).json({ habit: resumed.item });
+    } catch (error) {
+        next(error);
+    }
+};
+
 // @desc    Put habits in a new order
 // @route   PUT /api/habits/reorder
 export const reorderHabits = async (req, res, next) => {
@@ -457,16 +546,19 @@ export const reorderHabits = async (req, res, next) => {
     }
 };
 
-// @desc    The days a habit was done, partly done or missed, with its totals and runs
+// @desc    The days a habit was done, partly done or missed, with its totals and runs.
+//          A retired habit's history can still be looked at, from Archive.
 // @route   GET /api/habits/:id/history
 export const getHabitHistory = async (req, res, next) => {
     try {
         const habit = await Habit.findOne({
             _id: req.params.id,
             user: req.user._id,
-            isActive: true,
+            ...ITEM_IN_PLAN_OR_ARCHIVE,
         });
         if (!habit) return res.status(404).json({ message: "Habit not found" });
+        // Nothing was asked of it after the day it was retired
+        const retiredOn = archivedDayOf(habit, req.user.timezone);
 
         const [logs, missed] = await Promise.all([
             HabitLog.find({ habit: habit._id, user: req.user._id }).select(
@@ -488,7 +580,7 @@ export const getHabitHistory = async (req, res, next) => {
                     quantity: log.quantity,
                 })),
             missed,
-            isDueOn: (date) => isHabitScheduledOn(habit, date),
+            isDueOn: (date) => isHabitScheduledOn(habit, date) && !(retiredOn && date > retiredOn),
         });
 
         res.status(200).json(history);

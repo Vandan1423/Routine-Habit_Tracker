@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
+import { endPausesFrom } from "../../src/utils/itemPause.js";
 import {
     addDays,
     existedOn,
@@ -9,6 +10,7 @@ import {
     getUserToday,
     getWeekday,
     isHabitScheduledOn,
+    isPausedOn,
     isRoutineScheduledOn,
     isValidTimezone,
     showSameTime,
@@ -82,6 +84,38 @@ describe("date rules", () => {
         assert.ok(isHabitScheduledOn({ frequency: "weekly", targetDays: [] }, "2026-10-08"));
         assert.ok(isHabitScheduledOn({ frequency: "weekly", targetDays: [4] }, "2026-10-08"));
         assert.ok(!isHabitScheduledOn({ frequency: "weekly", targetDays: [1, 2] }, "2026-10-08"));
+    });
+
+    it("takes a paused item off the days its pauses cover, both ends included", () => {
+        const pauses = [{ from: "2026-10-08", until: "2026-10-10" }];
+        const routine = { isRecurring: true, recurringDays: [0, 1, 2, 3, 4, 5, 6], pauses };
+        const habit = { frequency: "daily", targetDays: [], pauses };
+
+        assert.ok(isPausedOn(routine, "2026-10-08"));
+        assert.ok(isPausedOn(routine, "2026-10-10"));
+        assert.ok(!isPausedOn(routine, "2026-10-11"));
+        assert.ok(!isPausedOn({}, "2026-10-08"));
+
+        assert.ok(isRoutineScheduledOn(routine, "2026-10-07"));
+        assert.ok(!isRoutineScheduledOn(routine, "2026-10-09"));
+        assert.ok(isRoutineScheduledOn(routine, "2026-10-11"));
+        assert.ok(!isHabitScheduledOn(habit, "2026-10-09"));
+        assert.ok(isHabitScheduledOn(habit, "2026-10-11"));
+    });
+
+    it("ends pauses at a day: what ran past it stops the day before, what had not started is dropped", () => {
+        const pauses = [
+            { from: "2026-09-01", until: "2026-09-03" },
+            { from: "2026-10-05", until: "2026-10-12" },
+            { from: "2026-10-20", until: "2026-10-22" },
+        ];
+
+        assert.deepEqual(endPausesFrom(pauses, "2026-10-09"), [
+            { from: "2026-09-01", until: "2026-09-03" },
+            { from: "2026-10-05", until: "2026-10-08" },
+        ]);
+        assert.deepEqual(endPausesFrom(pauses, "2026-10-05"), [{ from: "2026-09-01", until: "2026-09-03" }]);
+        assert.deepEqual(endPausesFrom(undefined, "2026-10-05"), []);
     });
 
     it("treats an item as existing from the day it was created, in the user's timezone", () => {

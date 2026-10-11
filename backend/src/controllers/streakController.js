@@ -44,12 +44,19 @@ export const getStreakInfo = async (req, res, next) => {
             readDay(req.user, today),
         ]);
 
-        // What was moved to Trash today while it was still owed: no longer on the day's list,
-        // but tonight still counts it as missed unless it is recovered and done
+        // What was moved to Trash or retired today while it was still owed: no longer on the day's list,
+        // but tonight still counts it as missed unless it is brought back and done.
+        // archived: it was retired (it is in Archive), rather than deleted
         const owedOf = (kind, items, doneIds) =>
             items
                 .filter((item) => !item.isActive && !doneIds.has(item._id.toString()))
-                .map((item) => ({ kind, id: item._id, title: item.title, xp: missCost(kind, item) }));
+                .map((item) => ({
+                    kind,
+                    id: item._id,
+                    title: item.title,
+                    xp: missCost(kind, item),
+                    archived: Boolean(item.archivedAt) && !item.deletedAt,
+                }));
         const owed = [
             ...owedOf("routine", day.routines, day.doneRoutineIds),
             ...owedOf("habit", day.habits, day.doneHabitIds),

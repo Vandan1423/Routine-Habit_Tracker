@@ -81,6 +81,29 @@ export const getUserClockTime = (user, now = new Date()) =>
         minute: "2-digit",
     });
 
+/**
+ * Minutes from midnight of a time of day, written either "14:30" or "2:30 PM". null for no time.
+ */
+export const timeToMinutes = (timeStr) => {
+    if (!timeStr) return null;
+
+    const trimmed = String(timeStr).trim();
+    const ampmMatch = trimmed.match(/^(\d{1,2}):(\d{2})\s*([AP]M)$/i);
+    if (ampmMatch) {
+        let hour = Number(ampmMatch[1]);
+        const minutes = Number(ampmMatch[2]);
+        const meridiem = ampmMatch[3].toUpperCase();
+
+        if (meridiem === "PM" && hour !== 12) hour += 12;
+        if (meridiem === "AM" && hour === 12) hour = 0;
+
+        return hour * 60 + minutes;
+    }
+
+    const [h, m] = trimmed.split(":").map(Number);
+    return h * 60 + m;
+};
+
 const toUtcDay = (dateString) => Date.parse(`${dateString}T00:00:00Z`);
 
 // "2026-03-01" minus one day is "2026-02-28". Pure calendar arithmetic, no timezone involved.
@@ -99,15 +122,20 @@ export const getWeekday = (dateString) =>
 export const existedOn = (item, dateString, timezone) =>
     getTodayIn(timezone || DEFAULT_TIMEZONE, item.createdAt) <= dateString;
 
-// True if the habit is meant to be done on that date.
-// Weekly habits list their days; an empty list means every day.
-export const isHabitScheduledOn = (habit, dateString) =>
-    habit.frequency !== "weekly" ||
-    habit.targetDays.length === 0 ||
-    habit.targetDays.includes(getWeekday(dateString));
+// True if a routine or habit was off that day: paused, or in Archive (see utils/itemPause.js)
+export const isPausedOn = (item, dateString) =>
+    (item.pauses ?? []).some((pause) => pause.from <= dateString && dateString <= pause.until);
 
-// True if the routine is meant to be done on that date
+// True if the habit is meant to be done on that date.
+// Weekly habits list their days; an empty list means every day. A day it is paused on is not one of them.
+export const isHabitScheduledOn = (habit, dateString) =>
+    (habit.frequency !== "weekly" ||
+        habit.targetDays.length === 0 ||
+        habit.targetDays.includes(getWeekday(dateString))) &&
+    !isPausedOn(habit, dateString);
+
+// True if the routine is meant to be done on that date, and is not paused then
 export const isRoutineScheduledOn = (routine, dateString) =>
-    routine.isRecurring
+    (routine.isRecurring
         ? routine.recurringDays.includes(getWeekday(dateString))
-        : routine.date === dateString;
+        : routine.date === dateString) && !isPausedOn(routine, dateString);

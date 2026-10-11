@@ -8,9 +8,18 @@ import {
     getUserClockTime,
     getUserToday,
     getWeekday,
+    isPausedOn,
     isRoutineScheduledOn,
+    timeToMinutes,
 } from "../utils/dateRules.js";
+import {
+    archivedDayOf,
+    archiveItem,
+    ITEM_IN_PLAN_OR_ARCHIVE,
+    unarchiveItem,
+} from "../utils/itemArchive.js";
 import { buildHistory, missedDaysOf } from "../utils/itemHistory.js";
+import { pauseItem, resumeItem } from "../utils/itemPause.js";
 import { moveItemToTrash, restoreItemFromTrash } from "../utils/itemTrash.js";
 import { keyOf, saveOnce } from "../utils/saveOnce.js";
 
@@ -97,10 +106,13 @@ export const getRoutines = async (req, res, next) => {
             logMap[log.routine.toString()] = log;
         });
 
-        const routinesWithStatus = routines.map((r) => ({
-            ...r.toObject(),
-            todayLog: logMap[r._id.toString()] || null,
-        }));
+        // A routine paused that day is not due on it, and is left off the day's list
+        const routinesWithStatus = routines
+            .filter((r) => !isPausedOn(r, dateQuery))
+            .map((r) => ({
+                ...r.toObject(),
+                todayLog: logMap[r._id.toString()] || null,
+            }));
 
         res.status(200).json({ routines: routinesWithStatus });
     } catch (error) {
@@ -161,7 +173,7 @@ export const updateRoutine = async (req, res, next) => {
     }
 };
 
-// @desc    Move a routine to Trash. Its XP stays with the account.
+// @desc    Move a routine to Trash, from the plan or from Archive. Its XP stays with the account.
 // @route   DELETE /api/routines/:id
 export const deleteRoutine = async (req, res, next) => {
     try {
@@ -204,17 +216,104 @@ export const restoreRoutine = async (req, res, next) => {
     }
 };
 
-// @desc    The days a routine was done, done late or missed, with its totals and runs
+// @desc    Retire a routine: out of the plan and into Archive, history and XP kept, to be brought back any time
+// @route   POST /api/routines/:id/archive
+export const archiveRoutine = async (req, res, next) => {
+    try {
+        const retired = await archiveItem(req.user, "routine", req.params.id);
+
+        if (!retired) {
+            return res
+                .status(404)
+                .json({ message: "Routine not found or unauthorized" });
+        }
+        if (retired.refused) {
+            return res.status(400).json({ message: retired.refused });
+        }
+
+        res.status(200).json({
+            message: "Routine retired",
+            id: req.params.id,
+            archivedAt: retired.item.archivedAt,
+            // What tonight still charges for it: it was due today and was not done
+            owed: retired.owed,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Bring a retired routine back from Archive into the plan
+// @route   POST /api/routines/:id/unarchive
+export const unarchiveRoutine = async (req, res, next) => {
+    try {
+        const back = await unarchiveItem(req.user, "routine", req.params.id);
+
+        if (!back) {
+            return res
+                .status(404)
+                .json({ message: "Routine not found in Archive" });
+        }
+
+        res.status(200).json(back.item);
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Pause a routine for a number of days: not due, not charged, no run broken
+// @route   POST /api/routines/:id/pause
+export const pauseRoutine = async (req, res, next) => {
+    try {
+        const paused = await pauseItem(req.user, "routine", req.params.id, req.body);
+
+        if (!paused) {
+            return res
+                .status(404)
+                .json({ message: "Routine not found or unauthorized" });
+        }
+        if (paused.refused) {
+            return res.status(400).json({ message: paused.refused });
+        }
+
+        res.status(200).json(paused.item);
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    End a routine's pause early: it is due again from today
+// @route   DELETE /api/routines/:id/pause
+export const resumeRoutine = async (req, res, next) => {
+    try {
+        const resumed = await resumeItem(req.user, "routine", req.params.id);
+
+        if (!resumed) {
+            return res
+                .status(404)
+                .json({ message: "Routine not found or unauthorized" });
+        }
+
+        res.status(200).json(resumed.item);
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    The days a routine was done, done late or missed, with its totals and runs.
+//          A retired routine's history can still be looked at, from Archive.
 // @route   GET /api/routines/:id/history
 export const getRoutineHistory = async (req, res, next) => {
     try {
         const routine = await Routine.findOne({
             _id: req.params.id,
             user: req.user._id,
-            isActive: true,
+            ...ITEM_IN_PLAN_OR_ARCHIVE,
         });
         if (!routine)
             return res.status(404).json({ message: "Routine not found" });
+        // Nothing was asked of it after the day it was retired
+        const retiredOn = archivedDayOf(routine, req.user.timezone);
 
         const [logs, missed] = await Promise.all([
             RoutineLog.find({ routine: routine._id, user: req.user._id }).select(
@@ -234,7 +333,8 @@ export const getRoutineHistory = async (req, res, next) => {
                 xpEarned: log.xpEarned,
             })),
             missed,
-            isDueOn: (date) => isRoutineScheduledOn(routine, date),
+            isDueOn: (date) =>
+                isRoutineScheduledOn(routine, date) && !(retiredOn && date > retiredOn),
         });
 
         res.status(200).json(history);
@@ -298,6 +398,11 @@ export const completeRoutine = async (req, res, next) => {
                 message: "Routines can only be completed for the current day.",
             });
         }
+        if (isPausedOn(routine, logDate)) {
+            return res.status(400).json({
+                message: "This routine is paused today.",
+            });
+        }
         if (!isRoutineScheduledOn(routine, logDate)) {
             return res.status(400).json({
                 message: "This routine is not scheduled for that day.",
@@ -316,27 +421,6 @@ export const completeRoutine = async (req, res, next) => {
         // 2. Calculate completion time and punctuality
         // The server's clock, in the user's timezone, decides when it was done
         const completedAt = getUserClockTime(req.user);
-
-        // Parse either "14:30" or "2:30 PM" into minutes from midnight for comparison
-        const timeToMinutes = (timeStr) => {
-            if (!timeStr) return null;
-
-            const trimmed = String(timeStr).trim();
-            const ampmMatch = trimmed.match(/^(\d{1,2}):(\d{2})\s*([AP]M)$/i);
-            if (ampmMatch) {
-                let hour = Number(ampmMatch[1]);
-                const minutes = Number(ampmMatch[2]);
-                const meridiem = ampmMatch[3].toUpperCase();
-
-                if (meridiem === "PM" && hour !== 12) hour += 12;
-                if (meridiem === "AM" && hour === 12) hour = 0;
-
-                return hour * 60 + minutes;
-            }
-
-            const [h, m] = trimmed.split(":").map(Number);
-            return h * 60 + m;
-        };
 
         const currentMinutes = timeToMinutes(completedAt);
         const endMinutes = timeToMinutes(routine.endTime);

@@ -8,6 +8,7 @@ import {
     getTodayIn,
     getWeekday,
     isHabitScheduledOn,
+    isRoutineScheduledOn,
 } from "./dateRules.js";
 
 // What a day asked of its owner: the routines and habits that were due on it, and which of them got done.
@@ -17,9 +18,11 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * True if a routine or habit counts on that day.
- * One that is in the plan counts from the day it was made. One in Trash counts on a single day: the day it
- * was deleted, and only if it was made before that day. So deleting something that is still owed is not a way
- * out of a miss, while something made by mistake can be deleted the same day at no cost.
+ * One that is in the plan counts from the day it was made. One that has left it (deleted to Trash, or retired
+ * to Archive) counts on a single day: the day it left, and only if it was made before that day. So deleting or
+ * retiring something that is still owed is not a way out of a miss, while something made by mistake can be
+ * deleted the same day at no cost. One retired first and deleted later left on the day it was retired.
+ * Whether it was due at all that day (its weekdays, a pause) is the schedule's to say: see dateRules.js.
  */
 export const countsOn = (item, day, timezone) => {
     const zone = timezone || DEFAULT_TIMEZONE;
@@ -27,20 +30,22 @@ export const countsOn = (item, day, timezone) => {
     if (!existedOn(item, day, zone)) return false;
     if (item.isActive) return true;
 
+    const leftAt = item.archivedAt ?? item.deletedAt;
     return (
-        Boolean(item.deletedAt) &&
-        getTodayIn(zone, item.deletedAt) === day &&
+        Boolean(leftAt) &&
+        getTodayIn(zone, leftAt) === day &&
         getTodayIn(zone, item.createdAt) < day
     );
 };
 
-// In the plan, or deleted near enough to the day that it may still count on it (countsOn decides)
-const mayCountOn = (day) => ({
-    $or: [
-        { isActive: true },
-        { deletedAt: { $gte: new Date(Date.parse(`${day}T00:00:00Z`) - DAY_MS) } },
-    ],
-});
+// In the plan, or deleted or retired near enough to the day that it may still count on it (countsOn decides)
+const mayCountOn = (day) => {
+    const since = new Date(Date.parse(`${day}T00:00:00Z`) - DAY_MS);
+
+    return {
+        $or: [{ isActive: true }, { deletedAt: { $gte: since } }, { archivedAt: { $gte: since } }],
+    };
+};
 
 /**
  * Reads one day.
@@ -69,7 +74,10 @@ export const readDay = async (user, day) => {
     ]);
 
     return {
-        routines: routines.filter((routine) => countsOn(routine, day, user.timezone)),
+        // The query found the ones that fall on the day; a pause can still have taken it off
+        routines: routines.filter(
+            (routine) => countsOn(routine, day, user.timezone) && isRoutineScheduledOn(routine, day),
+        ),
         habits: habits.filter(
             (habit) => countsOn(habit, day, user.timezone) && isHabitScheduledOn(habit, day),
         ),

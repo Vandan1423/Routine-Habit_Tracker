@@ -1,4 +1,5 @@
 import {
+    ArchivePage,
     ExpensesPage,
     GoalsPage,
     HistoryPage,
@@ -10,7 +11,7 @@ import {
     TodoPage,
     TrashPage,
 } from "../../routes/pages";
-import { GOALS_PATH, TODO_PATH, TRASH_PATH } from "../../lib/places";
+import { ARCHIVE_PATH, GOALS_PATH, TODO_PATH, TRASH_PATH } from "../../lib/places";
 
 /**
  * The screens the navigation leads to, in the order they are shown.
@@ -69,6 +70,16 @@ export const DESTINATIONS = [
         group: 2,
         primary: false,
         preload: ExpensesPage.preload,
+    },
+    {
+        id: "archive",
+        label: "Archive",
+        path: ARCHIVE_PATH,
+        icon: "archive",
+        key: "a",
+        group: 3,
+        primary: false,
+        preload: ArchivePage.preload,
     },
     { id: "trash", label: "Trash", path: TRASH_PATH, icon: "trash", key: "r", group: 3, primary: false, preload: TrashPage.preload },
     {

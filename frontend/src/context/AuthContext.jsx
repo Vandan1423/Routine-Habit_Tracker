@@ -9,6 +9,7 @@ import {
 } from "../services/api";
 import gamificationService from "../services/gamificationService";
 import { clearFetched } from "../hooks/useFetched";
+import { releaseDevice } from "../lib/notify";
 import { adoptEarlierNames } from "../lib/remembered";
 
 const AUTH_USER_STORAGE_KEY = "nityakram.authUser";
@@ -176,6 +177,8 @@ export const AuthProvider = ({ children, fallback = null, needsSession = always 
         try {
             setAuthLoading(true);
 
+            // Reminders for this account stop coming to this device. Asked first, while the session can still ask.
+            await releaseDevice().catch(() => {});
             await authService.logout();
             clearAuthState({ byChoice: true });
 

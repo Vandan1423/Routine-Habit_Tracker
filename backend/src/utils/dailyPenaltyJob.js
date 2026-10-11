@@ -5,7 +5,7 @@ import { calculateStreak } from "./streakCalculator.js";
 import { updateDailyStreak } from "./dailyStreakCalculator.js";
 import { addDailyXp } from "./dailySummary.js";
 import { missCost, readDay } from "./dayPlan.js";
-import { addDays, getTodayIn, getUserToday } from "./dateRules.js";
+import { addDays, getTodayIn, getUserToday, isPausedOn } from "./dateRules.js";
 
 // However long someone stays away, at most this many of their most recent days are charged
 const MAX_DAYS_CHARGED = 7;
@@ -56,7 +56,9 @@ const refreshStreaks = async (user, today) => {
 
     const habits = await Habit.find({ user: user._id, isActive: true });
     for (const habit of habits) {
-        const currentStreak = await calculateStreak(habit._id, user._id, today);
+        const currentStreak = await calculateStreak(habit._id, user._id, today, (day) =>
+            isPausedOn(habit, day),
+        );
         if (currentStreak !== habit.currentStreak) {
             await Habit.updateOne({ _id: habit._id }, { currentStreak });
         }

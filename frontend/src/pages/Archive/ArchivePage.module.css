@@ -1,0 +1,67 @@
+/* Set like Trash, its neighbour: the head of a day, then one row to each thing kept */
+.header {
+    composes: header from "../Trash/TrashPage.module.css";
+}
+
+.text {
+    composes: text from "../Trash/TrashPage.module.css";
+}
+
+.eyebrow {
+    composes: eyebrow from "../Trash/TrashPage.module.css";
+}
+
+.title {
+    composes: title from "../Trash/TrashPage.module.css";
+}
+
+.state {
+    margin-top: var(--s-10);
+}
+
+.rows {
+    margin-top: var(--s-8);
+}
+
+.frame {
+    composes: frame from "../Trash/TrashPage.module.css";
+}
+
+.clipped {
+    composes: clipped from "../Trash/TrashPage.module.css";
+}
+
+/* Three lines to a row: its name, what it was, and when it was retired */
+.row {
+    composes: row from "../Trash/TrashPage.module.css";
+}
+
+.main {
+    composes: main from "../Trash/TrashPage.module.css";
+}
+
+.name {
+    composes: name from "../Trash/TrashPage.module.css";
+    display: inline-block;
+    border-radius: var(--r-1);
+}
+
+@media (hover: hover) {
+    .name:hover {
+        text-decoration: underline;
+        text-decoration-color: var(--line-strong);
+        text-underline-offset: 3px;
+    }
+}
+
+.meta {
+    composes: meta from "../Trash/TrashPage.module.css";
+}
+
+.actions {
+    composes: actions from "../Trash/TrashPage.module.css";
+}
+
+.line {
+    display: flow-root;
+}

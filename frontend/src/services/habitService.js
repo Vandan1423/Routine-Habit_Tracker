@@ -51,6 +51,58 @@ const habitService = {
         }
     },
 
+    // Retires a habit to Archive: out of the plan, history kept, to be brought back any time
+    archiveHabit: async (id) => {
+        try {
+            const response = await api.post(`/habits/${id}/archive`);
+            return response.data;
+        } catch (error) {
+            const message =
+                error.response?.data?.message ||
+                "Failed to retire habit. Please try again.";
+            throw new Error(message, { cause: error });
+        }
+    },
+
+    // Brings a retired habit back from Archive into the plan
+    unarchiveHabit: async (id) => {
+        try {
+            const response = await api.post(`/habits/${id}/unarchive`);
+            return response.data;
+        } catch (error) {
+            const message =
+                error.response?.data?.message ||
+                "Failed to bring the habit back. Please try again.";
+            throw new Error(message, { cause: error });
+        }
+    },
+
+    // Pauses a habit: { days, from } (from: "YYYY-MM-DD", today when left out)
+    pauseHabit: async (id, data) => {
+        try {
+            const response = await api.post(`/habits/${id}/pause`, data);
+            return response.data;
+        } catch (error) {
+            const message =
+                error.response?.data?.message ||
+                "Failed to pause habit. Please try again.";
+            throw new Error(message, { cause: error });
+        }
+    },
+
+    // Ends a habit's pause early: due again from today
+    resumeHabit: async (id) => {
+        try {
+            const response = await api.delete(`/habits/${id}/pause`);
+            return response.data;
+        } catch (error) {
+            const message =
+                error.response?.data?.message ||
+                "Failed to resume habit. Please try again.";
+            throw new Error(message, { cause: error });
+        }
+    },
+
     // Brings back a habit that was deleted
     restoreHabit: async (id) => {
         try {

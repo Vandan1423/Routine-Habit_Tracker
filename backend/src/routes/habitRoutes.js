@@ -11,11 +11,15 @@ import {
     restoreHabit,
     reorderHabits,
     getHabitHistory,
+    archiveHabit,
+    unarchiveHabit,
+    pauseHabit,
+    resumeHabit,
 } from "../controllers/habitController.js";
 import { protect } from "../middlewares/authMiddleware.js";
 import { settleDays } from "../middlewares/dayRolloverMiddleware.js";
 import { validate } from "../middlewares/validationMiddleware.js";
-import { idParam } from "../Schema/CommonSchema.js";
+import { idParam, pauseSchema } from "../Schema/CommonSchema.js";
 import {
     createHabitSchema,
     logHabitSchema,
@@ -50,6 +54,16 @@ router
 
 // Brings back a habit that was deleted
 router.post("/:id/restore", validate({ params: idParam }), restoreHabit);
+
+// Retires a habit to Archive, and brings it back from there
+router.post("/:id/archive", validate({ params: idParam }), archiveHabit);
+router.post("/:id/unarchive", validate({ params: idParam }), unarchiveHabit);
+
+// Pauses a habit for a number of days (POST), or ends the pause early (DELETE)
+router
+    .route("/:id/pause")
+    .post(validate({ params: idParam, body: pauseSchema }), pauseHabit)
+    .delete(validate({ params: idParam }), resumeHabit);
 
 // The days a habit was done, partly done or missed
 router.get("/:id/history", validate({ params: idParam }), getHabitHistory);

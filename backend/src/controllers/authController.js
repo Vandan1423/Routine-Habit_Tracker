@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import User, { PRIVATE_USER_FIELDS } from "../models/User.js";
+import PushSubscription from "../models/PushSubscription.js";
 import ExpressError from "../utils/ExpressError.js";
 import sendEmail from "../utils/sendEmail.js";
 import eraseAccount from "../utils/eraseAccount.js";
@@ -336,6 +337,8 @@ export const logoutAll = async (req, res) => {
         // Wipe the array to log out everywhere
         user.refreshTokens = [];
         await user.save({ validateBeforeSave: false });
+        // A device that is signed out gets no reminders; each one asks again once it is signed back in
+        await PushSubscription.deleteMany({ user: user._id });
 
         res.clearCookie("refreshToken", getCookieOptions()).status(200).json({
             success: true,
@@ -459,13 +462,15 @@ export const getMe = async (req, res) => {
 // What an account's owner may change here: the name it goes by, and how long Trash keeps what they delete
 export const updateProfile = async (req, res, next) => {
     try {
-        const { name, trashDays } = req.body;
+        const { name, trashDays, reminderLead, remindHabits } = req.body;
 
         const user = await User.findByIdAndUpdate(
             req.user._id,
             {
                 ...(name !== undefined ? { name } : {}),
                 ...(trashDays !== undefined ? { trashDays } : {}),
+                ...(reminderLead !== undefined ? { reminderLead } : {}),
+                ...(remindHabits !== undefined ? { remindHabits } : {}),
             },
             { returnDocument: "after" },
         ).select(PRIVATE_USER_FIELDS);

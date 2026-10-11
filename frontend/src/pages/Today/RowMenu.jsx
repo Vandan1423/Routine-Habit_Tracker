@@ -18,8 +18,9 @@ const refocus = (key) => {
  * A habit has no time of its own, so this is where it is given a part of the day to sit in,
  * and where a counted habit can be given an exact amount instead of being stepped there.
  * onEdit(item): open the form on it. onSetAmount(item): ask for today's amount.
+ * onPause(item): ask how long to pause it for; left out for something that does not repeat.
  */
-const RowMenu = ({ item, onEdit, onSetAmount }) => {
+const RowMenu = ({ item, onEdit, onSetAmount, onPause }) => {
     const navigate = useNavigate();
     const { moveHabit } = useToday();
 
@@ -56,6 +57,11 @@ const RowMenu = ({ item, onEdit, onSetAmount }) => {
             <Menu.Item icon="edit" onSelect={() => onEdit(item)}>
                 Edit
             </Menu.Item>
+            {onPause && (
+                <Menu.Item icon="pause" onSelect={() => onPause(item)}>
+                    Pause…
+                </Menu.Item>
+            )}
             <Menu.Item icon="arrow-right" onSelect={() => navigate(`/plan/${item.kind}/${item.id}`)}>
                 History
             </Menu.Item>
