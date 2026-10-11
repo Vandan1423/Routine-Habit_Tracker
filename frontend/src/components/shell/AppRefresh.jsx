@@ -1,24 +1,16 @@
-import { useEffect, useState } from "react";
-import Icon from "../ui/Icon";
-import useMediaQuery from "../../hooks/useMediaQuery";
-import styles from "./AppRefresh.module.css";
+import { useEffect } from "react";
+import useStandaloneApp, { reloadApp } from "../../hooks/useStandaloneApp";
 
 // Away this long, the app opened from the Home Screen starts afresh instead of showing what it held
 const STALE_AFTER_MS = 5 * 60 * 1000;
 
-const reload = () => window.location.reload();
-
 /**
- * For the app opened from a phone's Home Screen, which has no browser around it: no reload button, and
- * no pull-down to reload. A button of its own, in the top corner, loads the app again from the server.
- * Coming back to it after a while does the same by itself, so it never opens on old information.
- * Draws nothing in a browser tab.
+ * For the app opened from the Home Screen: coming back to it after a while, or iOS bringing back a copy it
+ * froze in memory, loads it again, so it never opens on old information. The button that does the same by
+ * hand sits with the navigation (TabBar on a phone, Sidebar wider). Draws nothing.
  */
 const AppRefresh = () => {
-    const standalone =
-        useMediaQuery("(display-mode: standalone)") ||
-        (typeof navigator !== "undefined" && navigator.standalone === true);
-    const [busy, setBusy] = useState(false);
+    const standalone = useStandaloneApp();
 
     useEffect(() => {
         if (!standalone) return undefined;
@@ -28,12 +20,11 @@ const AppRefresh = () => {
             if (document.visibilityState === "hidden") {
                 hiddenAt = Date.now();
             } else if (hiddenAt && Date.now() - hiddenAt >= STALE_AFTER_MS) {
-                reload();
+                reloadApp();
             }
         };
-        // iOS can bring back a page frozen in memory: that copy is as old as when it was left
         const onPageShow = (event) => {
-            if (event.persisted) reload();
+            if (event.persisted) reloadApp();
         };
 
         document.addEventListener("visibilitychange", onVisibility);
@@ -44,22 +35,7 @@ const AppRefresh = () => {
         };
     }, [standalone]);
 
-    if (!standalone) return null;
-
-    return (
-        <button
-            type="button"
-            className={styles.button}
-            aria-label="Refresh"
-            data-busy={busy ? "" : undefined}
-            onClick={() => {
-                setBusy(true);
-                reload();
-            }}
-        >
-            <Icon name="refresh" size={18} />
-        </button>
-    );
+    return null;
 };
 
 export default AppRefresh;

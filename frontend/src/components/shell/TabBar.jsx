@@ -3,6 +3,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { DESTINATIONS, destinationFor } from "./navigation";
 import Icon from "../ui/Icon";
 import useAppearance from "../../hooks/useAppearance";
+import useStandaloneApp, { reloadApp } from "../../hooks/useStandaloneApp";
 import { cx } from "../../lib/cx";
 import styles from "./TabBar.module.css";
 
@@ -19,6 +20,9 @@ const TabBar = () => {
     const [moreOpen, setMoreOpen] = useState(false);
     // Once it has been opened it stays, so it can be seen closing
     const [moreWanted, setMoreWanted] = useState(false);
+    // Opened from the Home Screen there is no browser to reload with: the bar offers it
+    const standalone = useStandaloneApp();
+    const [reloading, setReloading] = useState(false);
 
     const current = destinationFor(pathname);
     const underMore = Boolean(current && !current.primary);
@@ -46,6 +50,19 @@ const TabBar = () => {
                         <span>{destination.label}</span>
                     </NavLink>
                 ))}
+                {standalone && (
+                    <button
+                        type="button"
+                        className={cx(styles.tab, reloading && styles.reloading)}
+                        onClick={() => {
+                            setReloading(true);
+                            reloadApp();
+                        }}
+                    >
+                        <Icon name="refresh" size={20} />
+                        <span>Refresh</span>
+                    </button>
+                )}
                 <button
                     type="button"
                     className={cx(styles.tab, (underMore || moreOpen) && styles.current)}

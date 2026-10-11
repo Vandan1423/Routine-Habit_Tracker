@@ -107,6 +107,8 @@ button.jump:active {
 .nav .item {
     position: relative;
     display: flex;
+    /* Refresh is a button among links: as wide as they are */
+    width: 100%;
     align-items: center;
     gap: var(--s-2);
     height: var(--control-md);

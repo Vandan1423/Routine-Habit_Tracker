@@ -44,3 +44,14 @@
 .tabs .tab:focus-visible {
     outline-offset: -4px;
 }
+
+/* Refresh, pressed: its arrow turns until the app has loaded again */
+.reloading svg {
+    animation: turn 0.8s linear infinite;
+}
+
+@keyframes turn {
+    to {
+        transform: rotate(360deg);
+    }
+}

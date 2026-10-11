@@ -10,6 +10,7 @@ import Tooltip from "../ui/Tooltip";
 import useAuth from "../../hooks/useAuth";
 import useCommands from "../../hooks/useCommands";
 import useMediaQuery from "../../hooks/useMediaQuery";
+import useStandaloneApp, { reloadApp } from "../../hooks/useStandaloneApp";
 import { APP_NAME } from "../../lib/app";
 import { cx } from "../../lib/cx";
 import { KEYS } from "../../lib/shortcuts";
@@ -32,6 +33,8 @@ const Sidebar = ({ folded = false, onFold }) => {
     const isRail = isTablet || folded;
     const { levelInfo, levelLoaded } = useAuth();
     const { openMenu, preloadMenu } = useCommands();
+    // Opened from the Home Screen there is no browser to reload with: the sidebar offers it
+    const standalone = useStandaloneApp();
 
     const fold = onFold && (
         <Tooltip label={folded ? "Unfold sidebar" : "Fold sidebar"} shortcut={KEYS.sidebar} side={isRail ? "right" : "bottom"}>
@@ -97,6 +100,18 @@ const Sidebar = ({ folded = false, onFold }) => {
                         ))}
                     </ul>
                 ))}
+                {standalone && (
+                    <ul className={styles.group}>
+                        <li>
+                            <Tooltip label="Refresh" side="right" disabled={!isRail}>
+                                <button type="button" className={styles.item} onClick={reloadApp}>
+                                    <Icon name="refresh" size={isRail ? 20 : 16} />
+                                    <span className={isRail ? "visually-hidden" : undefined}>Refresh</span>
+                                </button>
+                            </Tooltip>
+                        </li>
+                    </ul>
+                )}
             </nav>
 
             <LevelIndicator
