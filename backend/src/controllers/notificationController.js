@@ -1,5 +1,6 @@
 import PushSubscription from "../models/PushSubscription.js";
 import { publicPushKey } from "../config/push.js";
+import { moneyRemindersDueFor } from "../utils/moneyReminders.js";
 import { pushToUser } from "../utils/reminders.js";
 
 // The devices an account gets reminders on. Which reminders, and how early, is the account's own setting
@@ -60,6 +61,17 @@ export const sendTest = async (req, res, next) => {
         }
 
         res.status(200).json({ sent });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    The money reminders that stand right now (subscriptions due, limits running out), for the app to show
+//          while it is open. The same ones, under the same keys, are pushed while it is closed.
+// @route   GET /api/notifications/money
+export const getMoneyReminders = async (req, res, next) => {
+    try {
+        res.status(200).json({ reminders: await moneyRemindersDueFor(req.user) });
     } catch (error) {
         next(error);
     }

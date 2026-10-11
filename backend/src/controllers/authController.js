@@ -462,7 +462,7 @@ export const getMe = async (req, res) => {
 // What an account's owner may change here: the name it goes by, and how long Trash keeps what they delete
 export const updateProfile = async (req, res, next) => {
     try {
-        const { name, trashDays, reminderLead, remindHabits } = req.body;
+        const { name, trashDays, reminderLead, endReminderLead, remindHabits, remindMoney } = req.body;
 
         const user = await User.findByIdAndUpdate(
             req.user._id,
@@ -470,7 +470,9 @@ export const updateProfile = async (req, res, next) => {
                 ...(name !== undefined ? { name } : {}),
                 ...(trashDays !== undefined ? { trashDays } : {}),
                 ...(reminderLead !== undefined ? { reminderLead } : {}),
+                ...(endReminderLead !== undefined ? { endReminderLead } : {}),
                 ...(remindHabits !== undefined ? { remindHabits } : {}),
+                ...(remindMoney !== undefined ? { remindMoney } : {}),
             },
             { returnDocument: "after" },
         ).select(PRIVATE_USER_FIELDS);

@@ -80,8 +80,9 @@ const PrivacyPage = () => {
                             </li>
                             <li>
                                 To remind you of what is coming up, on the devices where you have turned
-                                reminders on. A reminder carries the name of the routine or habit, and passes
-                                through your browser’s own push service (Google, Apple or Mozilla) to reach you.
+                                reminders on. A reminder carries the name of the routine or habit, or of a
+                                subscription or spending category with its amount, and passes through your
+                                browser’s own push service (Google, Apple or Mozilla) to reach you.
                             </li>
                             <li>
                                 To protect the app from abuse: the network address a request comes from is

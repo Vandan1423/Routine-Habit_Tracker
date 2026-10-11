@@ -8,6 +8,7 @@ import {
     CATEGORIES,
     emptySubscription,
     FREQUENCIES,
+    REMIND_DAYS_OPTIONS,
     sameAnswers,
     subscriptionFormOf,
     subscriptionPayload,
@@ -175,6 +176,19 @@ const SubscriptionEditor = ({ request, accounts, today, currency, onSave, onDele
                         onChange={set("category")}
                     />
                 </div>
+
+                {/* A day that is not one of the usual ones (set before this choice existed) is kept as it is */}
+                <Select
+                    label="Remind me"
+                    options={
+                        REMIND_DAYS_OPTIONS.some((option) => option.value === form.remindDays)
+                            ? REMIND_DAYS_OPTIONS
+                            : [...REMIND_DAYS_OPTIONS, { value: form.remindDays, label: `${form.remindDays} days before` }]
+                    }
+                    value={form.remindDays}
+                    hint="On a device with reminders on (Settings)."
+                    onChange={set("remindDays")}
+                />
 
                 {accounts.length > 1 && (
                     <AccountField

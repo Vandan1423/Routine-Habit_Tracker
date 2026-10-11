@@ -130,6 +130,53 @@ describe("notifications", { skip: skipWithoutDatabase }, () => {
         assert.equal(again.sent.filter((entry) => entry.endpoint === phone.endpoint).length, 0);
     });
 
+    it("reminds before a routine ends when the account asks for it", async () => {
+        const { client } = await setup();
+        const phone = device();
+        await client.post("/notifications/subscriptions", { subscription: phone });
+        await client.put("/auth/me", { endReminderLead: 15 });
+        const study = (await client.post("/routines", { title: "Study", startTime: "16:00", endTime: "20:00", isRecurring: true, recurringDays: EVERY_DAY })).body;
+
+        const { sent, send } = recorder();
+        await sendDueReminders({ now: todayAt("19:50"), send });
+        const mine = sent.filter((entry) => entry.endpoint === phone.endpoint);
+        assert.deepEqual(mine.map((entry) => entry.payload.tag), [`routine-end:${study._id}:${today}`]);
+        assert.equal(mine[0].payload.body, "Ends in 10 minutes, and it isn’t ticked off yet.");
+    });
+
+    it("reminds of a subscription coming due and a spending limit running out, in the daytime only", async () => {
+        const { client } = await setup();
+        const phone = device();
+        await client.post("/notifications/subscriptions", { subscription: phone });
+        const { accounts } = (await client.get("/expenses/accounts")).body;
+        const dueOn = new Date(Date.parse(`${today}T00:00:00Z`) + 2 * 86400000).toISOString().slice(0, 10);
+        await client.post("/expenses/subscriptions", { name: "Netflix", amount: 649, accountId: accounts[0]._id, nextDueDate: dueOn, reminderDays: 3 });
+        await client.post("/expenses/budgets", { category: "Food & Dining", monthlyLimit: 1000, alertThreshold: 0.8 });
+        await client.post("/expenses/transactions", { type: "expense", amount: 900, accountId: accounts[0]._id, category: "Food & Dining", transactionDate: today });
+
+        const listed = (await client.get("/notifications/money")).body.reminders.map((entry) => entry.title).sort();
+        // The route answers by the real clock: in the daytime both stand, at night neither
+        const hour = Number(new Date().toLocaleTimeString("en-GB", { timeZone: TZ, hour: "2-digit", hourCycle: "h23" }));
+        if (hour >= 9 && hour < 21) {
+            assert.deepEqual(listed, ["Food & Dining is at 90% of its limit", "Netflix is due in 2 days"]);
+        } else {
+            assert.deepEqual(listed, []);
+        }
+
+        const night = recorder();
+        await sendDueReminders({ now: todayAt("22:00"), send: night.send });
+        assert.equal(night.sent.filter((entry) => entry.endpoint === phone.endpoint).length, 0);
+
+        const morning = recorder();
+        await sendDueReminders({ now: todayAt("09:00"), send: morning.send });
+        const titles = morning.sent.filter((entry) => entry.endpoint === phone.endpoint).map((entry) => entry.payload.title).sort();
+        assert.deepEqual(titles, ["Food & Dining is at 90% of its limit", "Netflix is due in 2 days"]);
+
+        // Turned off, nothing more is said about money
+        await client.put("/auth/me", { remindMoney: false });
+        assert.deepEqual((await client.get("/notifications/money")).body.reminders, []);
+    });
+
     it("drops a device the push service says is gone", async () => {
         const { client } = await setup();
         const phone = device();

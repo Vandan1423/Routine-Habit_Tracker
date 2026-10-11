@@ -17,6 +17,16 @@ export const REMINDER_LEAD_OPTIONS = [
     { value: 60, label: "1 hour before" },
 ];
 
+// A second reminder before a routine ends, if it is still not ticked off: off unless the account asks for it
+export const END_REMINDER_OPTIONS = [
+    { value: "off", label: "Off" },
+    { value: 5, label: "5 minutes before" },
+    { value: 10, label: "10 minutes before" },
+    { value: 15, label: "15 minutes before" },
+    { value: 30, label: "30 minutes before" },
+    { value: 60, label: "1 hour before" },
+];
+
 // A reminder that "starts now" stays worth showing this long after its moment; one ahead of a start, until it
 // starts; a habit nudge, for an hour. Opened within that time, the app shows it at once.
 const AT_START_WINDOW = 5;
@@ -55,11 +65,20 @@ const minutesInto = (date, now) => Math.floor((now - momentOf(date, 0)) / 60000)
  * @param {Array} options.habits - every habit, as GET /habits sends them (dueToday, todayLog)
  * @param {Date} options.now
  * @param {Number} [options.lead] - minutes before a routine starts
+ * @param {Number|null} [options.endLead] - minutes before a routine ends it is reminded of again; null for never
  * @param {Boolean} [options.habitsOn] - whether open habits are nudged about
  * @returns {Array} - each { key, at, title, body, url }; key is the same one the server tags its push with.
  *   `at` is never before `now`: one already due is due now.
  */
-export const remindersAhead = ({ date, routines = [], habits = [], now, lead = DEFAULT_REMINDER_LEAD, habitsOn = true }) => {
+export const remindersAhead = ({
+    date,
+    routines = [],
+    habits = [],
+    now,
+    lead = DEFAULT_REMINDER_LEAD,
+    endLead = null,
+    habitsOn = true,
+}) => {
     if (!date) return [];
     const ahead = [];
     const clock = minutesInto(date, now);
@@ -73,16 +92,32 @@ export const remindersAhead = ({ date, routines = [], habits = [], now, lead = D
         const startMinutes = toMinutes(start);
         const due = Math.max(startMinutes - lead, 0);
         const until = lead === 0 ? startMinutes + AT_START_WINDOW : startMinutes;
-        if (clock >= until) continue;
+        if (clock < until) {
+            const left = startMinutes - Math.max(due, clock);
+            ahead.push({
+                key: `routine:${routine._id}:${date}`,
+                at: clock >= due ? now : momentOf(date, due),
+                title: routine.title,
+                body: left > 0 ? `Starts in ${minutesWords(left)}.` : "Starting now.",
+                url: "/today",
+            });
+        }
 
-        const left = startMinutes - Math.max(due, clock);
-        ahead.push({
-            key: `routine:${routine._id}:${date}`,
-            at: clock >= due ? now : momentOf(date, due),
-            title: routine.title,
-            body: left > 0 ? `Starts in ${minutesWords(left)}.` : "Starting now.",
-            url: "/today",
-        });
+        // Before it ends, if it is still not ticked off. Not for one too short for it.
+        const end = endLead && routine.endTime ? parseTime(routine.endTime) : null;
+        if (end !== null) {
+            const endMinutes = toMinutes(end);
+            const endDue = endMinutes - endLead;
+            if (endDue > startMinutes && clock < endMinutes) {
+                ahead.push({
+                    key: `routine-end:${routine._id}:${date}`,
+                    at: clock >= endDue ? now : momentOf(date, endDue),
+                    title: routine.title,
+                    body: `Ends in ${minutesWords(endMinutes - Math.max(endDue, clock))}, and it isn’t ticked off yet.`,
+                    url: "/today",
+                });
+            }
+        }
     }
 
     if (habitsOn) {

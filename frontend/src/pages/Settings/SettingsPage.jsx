@@ -30,7 +30,7 @@ import {
     turnOffHere,
     turnOnHere,
 } from "../../lib/notify";
-import { DEFAULT_REMINDER_LEAD, REMINDER_LEAD_OPTIONS } from "../../lib/reminders";
+import { DEFAULT_REMINDER_LEAD, END_REMINDER_OPTIONS, REMINDER_LEAD_OPTIONS } from "../../lib/reminders";
 import { KEYS } from "../../lib/shortcuts";
 import { timezoneWords } from "../../lib/timezone";
 import { TRASH_DAYS_NOTE } from "../../lib/trashWords";
@@ -158,6 +158,10 @@ const ReminderRows = () => {
 
     const lead = chosen.reminderLead ?? user?.reminderLead ?? DEFAULT_REMINDER_LEAD;
     const habitsOn = chosen.remindHabits ?? user?.remindHabits ?? true;
+    const moneyOn = chosen.remindMoney ?? user?.remindMoney ?? true;
+    // null on the account is "off" in the list
+    const endLead =
+        "endReminderLead" in chosen ? chosen.endReminderLead : (user?.endReminderLead ?? null);
 
     const toggle = async (wanted) => {
         setBusy(true);
@@ -225,6 +229,18 @@ const ReminderRows = () => {
                 />
             </Row>
             <Row
+                name="Before a routine ends"
+                note="Another reminder if it isn’t ticked off yet, before its end time passes."
+                stack
+            >
+                <Select
+                    aria-label="Before a routine ends"
+                    options={END_REMINDER_OPTIONS}
+                    value={endLead ?? "off"}
+                    onChange={(value) => save("endReminderLead", value === "off" ? null : value)}
+                />
+            </Row>
+            <Row
                 name="Habits still open"
                 note="A nudge in the morning, afternoon and evening for the habits of that part of the day not yet done, and one at 8 pm for the rest."
             >
@@ -232,6 +248,16 @@ const ReminderRows = () => {
                     aria-label="Habits still open"
                     checked={habitsOn}
                     onChange={(event) => save("remindHabits", event.target.checked)}
+                />
+            </Row>
+            <Row
+                name="Money due"
+                note="Before a subscription is due (as many days ahead as each one asks), on its day, and if it is overdue; and when a spending limit nears or passes its line. In the daytime only."
+            >
+                <Switch
+                    aria-label="Money due"
+                    checked={moneyOn}
+                    onChange={(event) => save("remindMoney", event.target.checked)}
                 />
             </Row>
             <Row name="Try it" note="Sends a reminder now, to see how it looks here." stack>

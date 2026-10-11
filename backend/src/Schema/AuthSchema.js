@@ -1,6 +1,6 @@
 import Joi from "joi";
 import { TRASH_DAYS } from "../utils/trash.js";
-import { REMINDER_LEADS } from "../utils/reminderLeads.js";
+import { END_REMINDER_LEADS, REMINDER_LEADS } from "../utils/reminderLeads.js";
 
 export const registerSchema = Joi.object({
     name: Joi.string().min(2).max(50).required().trim().messages({
@@ -82,7 +82,9 @@ export const updateProfileSchema = Joi.object({
     trashDays: Joi.number().valid(...TRASH_DAYS),
     // Reminders: how many minutes before a routine, and whether open habits are nudged about
     reminderLead: Joi.number().valid(...REMINDER_LEADS),
+    endReminderLead: Joi.number().valid(...END_REMINDER_LEADS).allow(null),
     remindHabits: Joi.boolean(),
+    remindMoney: Joi.boolean(),
 })
     .min(1)
     .messages({ "object.min": "No valid fields to update." });

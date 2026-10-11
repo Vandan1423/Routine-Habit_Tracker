@@ -3,6 +3,7 @@ const router = express.Router();
 
 import {
     getConfig,
+    getMoneyReminders,
     sendTest,
     subscribe,
     unsubscribe,
@@ -22,5 +23,6 @@ router
     .post(validate({ body: subscribeSchema }), subscribe)
     .delete(validate({ body: unsubscribeSchema }), unsubscribe);
 router.post("/test", sendTest);
+router.get("/money", getMoneyReminders);
 
 export default router;

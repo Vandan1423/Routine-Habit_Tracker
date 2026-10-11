@@ -3,6 +3,7 @@ import "../helpers/env.js";
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
+import { moneyRemindersOn } from "../../src/utils/moneyReminders.js";
 import { remindersAt } from "../../src/utils/reminders.js";
 
 // Which reminders are due at a moment of the day, worked out from the day as readDay reads it
@@ -78,8 +79,75 @@ describe("reminders", () => {
         assert.deepEqual(due("08:00", false), []);
     });
 
+    it("reminds again before a routine ends, only when asked to and only while it is not done", () => {
+        const study = item("r1", { title: "Study", startTime: "16:00", endTime: "20:00" });
+        const due = (time, endLead, done = []) =>
+            remindersAt({ today: TODAY, clock: at(time), day: dayOf({ routines: [study], doneRoutines: done }), endLead, habits: false });
+
+        assert.deepEqual(due("19:50", null), []);
+        assert.deepEqual(due("19:49", 10), []);
+        assert.deepEqual(due("19:50", 10), [
+            {
+                key: `routine-end:r1:${TODAY}`,
+                title: "Study",
+                body: "Ends in 10 minutes, and it isn’t ticked off yet.",
+                url: "/today",
+            },
+        ]);
+        assert.equal(due("19:59", 10).length, 1);
+        assert.deepEqual(due("20:00", 10), []);
+        assert.deepEqual(due("19:55", 10, ["r1"]), []);
+    });
+
+    it("says nothing before the end of a routine too short for it", () => {
+        const quick = item("r1", { title: "Stretch", startTime: "07:00", endTime: "07:10" });
+        const day = dayOf({ routines: [quick] });
+
+        assert.deepEqual(remindersAt({ today: TODAY, clock: at("06:55"), day, lead: 0, endLead: 15, habits: false }), []);
+    });
+
     it("says nothing for a part of the day whose habits are all done", () => {
         const day = dayOf({ habits: [item("h1", { title: "Water", timeOfDay: "morning" })], doneHabits: ["h1"] });
         assert.deepEqual(remindersAt({ today: TODAY, clock: at("08:00"), day }), []);
+    });
+});
+
+describe("money reminders", () => {
+    const sub = (fields) => ({ _id: "s1", name: "Netflix", amount: 649, reminderDays: 3, ...fields });
+    const on = (subscription) => moneyRemindersOn({ today: TODAY, subscriptions: [subscription] });
+
+    it("reminds of a subscription as many days ahead as it asks, on its day, and once it is overdue", () => {
+        assert.deepEqual(on(sub({ nextDueDate: "2026-10-15T00:00:00.000Z" })), []);
+        assert.deepEqual(on(sub({ nextDueDate: "2026-10-14T00:00:00.000Z" })), [
+            {
+                key: "subscription:s1:2026-10-14:ahead",
+                title: "Netflix is due in 3 days",
+                body: "₹649, due Wed 14 Oct.",
+                url: "/expenses",
+            },
+        ]);
+        assert.equal(on(sub({ nextDueDate: "2026-10-12T00:00:00.000Z" }))[0].title, "Netflix is due tomorrow");
+        assert.deepEqual(on(sub({ nextDueDate: "2026-10-11T00:00:00.000Z" }))[0].key, "subscription:s1:2026-10-11:today");
+        assert.deepEqual(on(sub({ nextDueDate: "2026-10-09T00:00:00.000Z" }))[0].key, "subscription:s1:2026-10-09:overdue");
+        assert.deepEqual(on(sub({ nextDueDate: "2026-10-01T00:00:00.000Z" })), []);
+        // One that asks for no warning ahead hears only on its day
+        assert.deepEqual(on(sub({ reminderDays: 0, nextDueDate: "2026-10-12T00:00:00.000Z" })), []);
+    });
+
+    it("warns once a spending limit passes its share, and again once it is over", () => {
+        const budgets = [{ _id: "b1", category: "Food", monthlyLimit: 5000, alertThreshold: 0.8 }];
+        const spending = (amount) =>
+            moneyRemindersOn({ today: TODAY, budgets, spent: new Map([["Food", amount]]) });
+
+        assert.deepEqual(spending(3999), []);
+        assert.deepEqual(spending(4200), [
+            {
+                key: "budget:b1:2026-10:near",
+                title: "Food is at 84% of its limit",
+                body: "₹4,200 of ₹5,000 spent this month, ₹800 left.",
+                url: "/expenses",
+            },
+        ]);
+        assert.deepEqual(spending(5600)[0].key, "budget:b1:2026-10:over");
     });
 });

@@ -5,9 +5,11 @@ import { isPushConfigured, sendPush } from "../config/push.js";
 import { getUserClockTime, getUserToday, timeToMinutes } from "./dateRules.js";
 import { readDay } from "./dayPlan.js";
 import { DEFAULT_REMINDER_LEAD, REMINDER_LEADS } from "./reminderLeads.js";
+import { moneyRemindersDueFor } from "./moneyReminders.js";
 
-// Reminders: a nudge before each routine (and one-off task) that is still to do today, and one for the habits
-// of each part of the day that are still open. Worked out from the same reading of the day that charges for
+// Reminders: a nudge before each routine (and one-off task) that is still to do today, another before it ends
+// if it is still not ticked off (when the account asks for one), and one for the habits of each part of the
+// day that are still open. Money that is due has reminders of its own (moneyReminders.js), sent by the same job. Worked out from the same reading of the day that charges for
 // misses (readDay), so nothing paused, retired or deleted is ever reminded of.
 // Sent by Web Push to every device the account has agreed on (config/push.js); the app itself shows the same
 // reminders while it is open, under the same tags, so a device that gets both shows one.
@@ -20,6 +22,7 @@ const AT_START_WINDOW = 5;
 // When the habits of each part of the day are nudged about, if any of them is still open, and for how long after
 const HABIT_NUDGES = { morning: "08:00", afternoon: "13:00", evening: "18:00", anytime: "20:00" };
 const HABIT_WINDOW = 60;
+const MONEY_EVERY_MINUTES = 5;
 const HABIT_HEADINGS = {
     morning: "This morning’s habits",
     afternoon: "This afternoon’s habits",
@@ -42,10 +45,12 @@ const minutesWords = (minutes) =>
  * @param {Number} options.clock - minutes since the user's midnight
  * @param {Object} options.day - from readDay: routines, habits, doneRoutineIds, doneHabitIds
  * @param {Number} [options.lead] - minutes before a routine starts
+ * @param {Number|null} [options.endLead] - minutes before a routine ends that it is reminded of again, if it is
+ *   still not done; null for no such reminder
  * @param {Boolean} [options.habits] - whether open habits are nudged about
  * @returns {Array} - each { key, title, body, url }: key is the reminder's own, and its tag on the device
  */
-export const remindersAt = ({ today, clock, day, lead = DEFAULT_REMINDER_LEAD, habits = true }) => {
+export const remindersAt = ({ today, clock, day, lead = DEFAULT_REMINDER_LEAD, endLead = null, habits = true }) => {
     const due = [];
 
     // Something deleted or retired today may still count for today (see countsOn), but is not reminded of
@@ -57,15 +62,28 @@ export const remindersAt = ({ today, clock, day, lead = DEFAULT_REMINDER_LEAD, h
 
         const at = start - lead;
         const until = lead === 0 ? start + AT_START_WINDOW : start;
-        if (clock < at || clock >= until) continue;
+        if (clock >= at && clock < until) {
+            const left = start - clock;
+            due.push({
+                key: `routine:${routine._id}:${today}`,
+                title: routine.title,
+                body: left > 0 ? `Starts in ${minutesWords(left)}.` : "Starting now.",
+                url: "/today",
+            });
+        }
 
-        const left = start - clock;
-        due.push({
-            key: `routine:${routine._id}:${today}`,
-            title: routine.title,
-            body: left > 0 ? `Starts in ${minutesWords(left)}.` : "Starting now.",
-            url: "/today",
-        });
+        // Before it ends. Not for one too short for it: the reminder as it starts says the same.
+        const end = timeToMinutes(routine.endTime);
+        if (endLead && end !== null && !Number.isNaN(end) && end - endLead > start) {
+            if (clock >= end - endLead && clock < end) {
+                due.push({
+                    key: `routine-end:${routine._id}:${today}`,
+                    title: routine.title,
+                    body: `Ends in ${minutesWords(end - clock)}, and it isn’t ticked off yet.`,
+                    url: "/today",
+                });
+            }
+        }
     }
 
     if (habits) {
@@ -107,6 +125,7 @@ export const remindersDueFor = async (user, now = new Date()) => {
         clock,
         day,
         lead: user.reminderLead ?? DEFAULT_REMINDER_LEAD,
+        endLead: user.endReminderLead ?? null,
         habits: user.remindHabits ?? true,
     });
 };
@@ -148,11 +167,16 @@ export const sendDueReminders = async ({ now = new Date(), send = sendPush } = {
     let sent = 0;
     try {
         const userIds = await PushSubscription.distinct("user");
-        const users = await User.find({ _id: { $in: userIds } }).select("timezone reminderLead remindHabits");
+        const users = await User.find({ _id: { $in: userIds } }).select(
+            "timezone reminderLead endReminderLead remindHabits remindMoney",
+        );
 
         for (const user of users) {
             try {
-                for (const reminder of await remindersDueFor(user, now)) {
+                // Money moves slowly: it is looked at every few minutes, not every minute
+                const money = now.getUTCMinutes() % MONEY_EVERY_MINUTES === 0 ? await moneyRemindersDueFor(user, now) : [];
+                const due = [...(await remindersDueFor(user, now)), ...money];
+                for (const reminder of due) {
                     // Claimed before it is sent, so two runs at once can't both send it
                     try {
                         await ReminderLog.create({ user: user._id, key: reminder.key });

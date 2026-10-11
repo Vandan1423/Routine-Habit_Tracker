@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { DEFAULT_TRASH_DAYS, TRASH_DAYS } from "../utils/trash.js";
-import { DEFAULT_REMINDER_LEAD, REMINDER_LEADS } from "../utils/reminderLeads.js";
+import { DEFAULT_REMINDER_LEAD, END_REMINDER_LEADS, REMINDER_LEADS } from "../utils/reminderLeads.js";
 
 const userSchema = new mongoose.Schema({
     name: {
@@ -69,9 +69,18 @@ const userSchema = new mongoose.Schema({
         enum: REMINDER_LEADS,
         default: DEFAULT_REMINDER_LEAD, // How many minutes before a routine starts its reminder goes
     },
+    endReminderLead: {
+        type: Number,
+        enum: [...END_REMINDER_LEADS, null],
+        default: null, // How many minutes before a routine ends it is reminded of again, if not done. null: never
+    },
     remindHabits: {
         type: Boolean,
         default: true, // Whether the habits still open in each part of the day are nudged about
+    },
+    remindMoney: {
+        type: Boolean,
+        default: true, // Whether subscriptions coming due and spending limits running out are reminded of
     },
     // One entry per device that is signed in. The refresh token itself is never kept, only its hash,
     // so a copy of the database can't be turned into working sessions (see authController.js).

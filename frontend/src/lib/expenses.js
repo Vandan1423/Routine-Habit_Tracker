@@ -456,6 +456,7 @@ export const draftSubscription = (payload, { id, accounts = [], existing = null 
         frequency: payload.frequency,
         category: payload.category,
         description: payload.description,
+        reminderDays: payload.reminderDays,
         nextDueDate: `${payload.nextDueDate}T00:00:00.000Z`,
         isActive: existing?.isActive ?? true,
         account: account ? { _id: account.id, name: account.name, type: account.type } : null,
@@ -598,7 +599,16 @@ export const emptySubscription = ({ today = "", accounts = [] } = {}) => ({
     accountId: accounts[0]?.id ?? "",
     category: "Bills & Utilities",
     description: "",
+    remindDays: 3,
 });
+
+// How many days before it falls due a subscription is reminded of (as well as on its day)
+export const REMIND_DAYS_OPTIONS = [
+    { value: 0, label: "On the day" },
+    { value: 1, label: "1 day before" },
+    { value: 3, label: "3 days before" },
+    { value: 7, label: "1 week before" },
+];
 
 export const subscriptionFormOf = (subscription) => ({
     name: subscription.name ?? "",
@@ -608,6 +618,7 @@ export const subscriptionFormOf = (subscription) => ({
     accountId: idOf(subscription.account),
     category: subscription.category || UNCATEGORISED,
     description: subscription.description ?? "",
+    remindDays: subscription.reminderDays ?? 3,
 });
 
 export const validateSubscription = (form) => {
@@ -630,6 +641,7 @@ export const subscriptionPayload = (form) => ({
     accountId: form.accountId,
     category: form.category,
     description: form.description.trim(),
+    reminderDays: form.remindDays,
 });
 
 /**

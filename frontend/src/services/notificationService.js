@@ -21,6 +21,9 @@ const notificationService = {
     unsubscribe: (endpoint) =>
         call(() => api.delete("/notifications/subscriptions", { data: { endpoint } }), "Reminders couldn’t be turned off."),
 
+    // { reminders }: the money reminders that stand now (subscriptions due, limits running out)
+    money: () => call(() => api.get("/notifications/money"), "Couldn’t reach the server."),
+
     // A reminder sent now to every device of the account
     test: () => call(() => api.post("/notifications/test"), "The test reminder wasn’t sent."),
 };
