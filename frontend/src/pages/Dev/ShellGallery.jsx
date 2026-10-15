@@ -85,7 +85,7 @@ const ShellGallery = () => {
 
             <Section
                 title="Waiting"
-                note="A screen on its way is a skeleton. A first request that is slow says why, and counts the half minute."
+                note="A screen on its way is a skeleton. A first request that is slow writes the name out over the wait, and says why."
             >
                 <Row label="Screen">
                     <div className={styles.stage}>

@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loader ideas</title>
+<!--
+  Five ideas for the screen shown while the app waits for its server (2026-10-15), to choose one from.
+  All five draw the same estimated progress, and in all five the clock never finishes the drawing:
+  the last piece is placed only when the server answers, so the picture never claims more than is known.
+  Nothing here is app code. Open through `node design/serve.mjs`, then /loader-ideas.html.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400..600&family=Tiro+Devanagari+Hindi&display=swap">
+<style>
+/* The colours are the app's own, from frontend/src/styles/tokens.css */
+[data-theme="light"] {
+    color-scheme: light;
+    --paper: #faf8f4; --side: #f3f0ea; --raised: #fffefc;
+    --ink: #1f1d1a; --ink-2: #6b665e; --ink-3: #736d64;
+    --line: #e7e3db; --line-strong: #d3cec3; --fill: #f0ece5; --fill-strong: #dedad0;
+    --now: #a85800;
+}
+[data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #1b1a18; --side: #161514; --raised: #252320;
+    --ink: #ece8e1; --ink-2: #a69f94; --ink-3: #918b80;
+    --line: #2d2a27; --line-strong: #403c37; --fill: #262422; --fill-strong: #3a3733;
+    --now: #efa43a;
+}
+
+* { box-sizing: border-box; margin: 0; }
+body { background: var(--side); color: var(--ink); font: 15px/1.5 "Hanken Grotesk", Arial, system-ui, sans-serif; padding: 32px 16px 64px; }
+main { max-width: 1120px; margin: 0 auto; }
+
+header { display: grid; gap: 16px; margin-bottom: 24px; }
+h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.022em; }
+.lede { color: var(--ink-2); max-width: 64ch; margin-top: 4px; text-wrap: pretty; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.seg { display: inline-flex; background: var(--fill); border-radius: 7px; padding: 2px; }
+.seg button { font: inherit; font-size: 13px; color: var(--ink-2); background: none; border: 0; border-radius: 5px; padding: 6px 10px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--raised); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / 0.08); }
+.replay { font: inherit; font-size: 13px; font-weight: 500; color: var(--paper); background: var(--ink); border: 0; border-radius: 7px; padding: 7px 14px; cursor: pointer; }
+.status { font-size: 13px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); gap: 16px; }
+.card { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.stage { position: relative; aspect-ratio: 16 / 10; border-bottom: 1px solid var(--line); }
+.stage svg { display: block; width: 100%; height: 100%; }
+.pct { position: absolute; inset: auto 0 10px; text-align: center; font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+[data-pct="off"] .pct { display: none; }
+.about { padding: 14px 16px 16px; }
+.name { display: flex; align-items: baseline; gap: 8px; font-weight: 600; letter-spacing: -0.01em; }
+.name [lang] { font-family: "Tiro Devanagari Hindi", serif; font-weight: 400; font-size: 18px; letter-spacing: 0; }
+.about p { margin-top: 4px; color: var(--ink-2); font-size: 14px; text-wrap: pretty; }
+.about .end { margin-top: 8px; font-size: 13px; color: var(--ink-3); }
+</style>
+</head>
+<body>
+<main data-pct="off">
+    <header>
+        <div>
+            <h1>Loader ideas</h1>
+            <p class="lede">Each one plays the same wait. The clock moves the drawing along but never finishes it; the last piece is placed when the server answers. Try a sleeping server and an awake one to see both ends.</p>
+        </div>
+        <div class="controls">
+            <span class="seg" data-control="wake">
+                <button data-value="30" aria-pressed="true">Server asleep, 30 s</button>
+                <button data-value="60" aria-pressed="false">Asleep, slow, 60 s</button>
+                <button data-value="0.4" aria-pressed="false">Awake, 0.4 s</button>
+            </span>
+            <span class="seg" data-control="speed">
+                <button data-value="5" aria-pressed="true">5× faster</button>
+                <button data-value="1" aria-pressed="false">Real time</button>
+            </span>
+            <span class="seg" data-control="pct">
+                <button data-value="off" aria-pressed="true">No percentage</button>
+                <button data-value="on" aria-pressed="false">Percentage</button>
+            </span>
+            <span class="seg" data-control="theme">
+                <button data-value="light" aria-pressed="true">Light</button>
+                <button data-value="dark" aria-pressed="false">Dark</button>
+            </span>
+            <button class="replay" type="button">Play again</button>
+            <span class="status" aria-live="off"></span>
+        </div>
+    </header>
+
+    <div class="grid">
+        <article class="card">
+            <div class="stage">
+                <svg id="sunrise" viewBox="0 0 320 200" aria-hidden="true">
+                    <defs><clipPath id="sky"><rect x="0" y="0" width="320" height="122" /></clipPath></defs>
+                    <g clip-path="url(#sky)">
+                        <g class="rays" stroke="var(--now)" stroke-width="2" stroke-linecap="round"></g>
+                        <circle class="disc" cx="160" cy="160" r="26" fill="var(--now)" />
+                    </g>
+                    <g class="strip"></g>
+                </svg>
+                <span class="pct"></span>
+            </div>
+            <div class="about">
+                <h2 class="name"><span lang="hi">उदय</span> Sunrise</h2>
+                <p>The app wakes the way a day does. A saffron sun climbs from behind the horizon, and the horizon is the Day Strip, filling as the sun rises.</p>
+                <p class="end">When the server answers, the sun clears the horizon and the last segment fills.</p>
+            </div>
+        </article>
+
+        <article class="card">
+            <div class="stage">
+                <svg id="headline" viewBox="0 0 320 200" aria-hidden="true">
+                    <defs>
+                        <clipPath id="letters"></clipPath>
+                        <clipPath id="line"><rect x="-20" y="-60" width="0" height="404" /></clipPath>
+                    </defs>
+                    <g transform="translate(40 64) scale(0.0765)">
+                        <path class="ghost" fill="var(--line)" />
+                        <path class="ink" fill="var(--ink)" stroke="var(--ink)" stroke-width="14" stroke-linejoin="round" clip-path="url(#letters)" />
+                        <path class="ink" fill="var(--ink)" stroke="var(--ink)" stroke-width="14" stroke-linejoin="round" clip-path="url(#line)" />
+                        <circle class="nib" r="40" fill="var(--now)" />
+                    </g>
+                </svg>
+                <span class="pct"></span>
+            </div>
+            <div class="about">
+                <h2 class="name"><span lang="hi">शिरोरेखा</span> The headline</h2>
+                <p>नित्यक्रम is written one letter at a time while the server wakes. In Devanagari the line along the top, the shirorekha, is what joins separate letters into one word.</p>
+                <p class="end">When the server answers, the headline is drawn in one stroke and the name is whole.</p>
+            </div>
+        </article>
+
+        <article class="card">
+            <div class="stage">
+                <svg id="kolam" viewBox="0 0 320 200" aria-hidden="true">
+                    <g class="dots" fill="var(--ink-3)"></g>
+                    <path class="loop" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" pathLength="1000" />
+                    <circle class="pen" r="3.5" fill="var(--now)" />
+                </svg>
+                <span class="pct"></span>
+            </div>
+            <div class="about">
+                <h2 class="name"><span lang="ta">கோலம்</span> Kolam</h2>
+                <p>The pattern drawn at the doorstep every dawn in South India: the dots first, then one unbroken line around them. A daily ritual, which is what the app is for.</p>
+                <p class="end">When the server answers, the line closes on the point where it began.</p>
+            </div>
+        </article>
+
+        <article class="card">
+            <div class="stage">
+                <svg id="ghatika" viewBox="0 0 320 200" aria-hidden="true">
+                    <defs><clipPath id="bowl-inside"><path class="bowl-shape" /></clipPath></defs>
+                    <rect x="71" y="106" width="178" height="58" fill="var(--fill)" />
+                    <path class="bowl" fill="var(--paper)" stroke="var(--now)" stroke-width="2" stroke-linejoin="round" />
+                    <rect class="bowl-water" x="100" width="120" height="80" fill="var(--fill-strong)" clip-path="url(#bowl-inside)" />
+                    <path class="bowl-rim" fill="none" stroke="var(--now)" stroke-width="2" />
+                    <rect x="71" y="106" width="178" height="58" fill="var(--fill)" opacity="0.45" />
+                    <g class="ripples" fill="none" stroke="var(--ink-3)" stroke-width="1"></g>
+                    <line x1="71" x2="249" y1="106" y2="106" stroke="var(--line-strong)" stroke-width="1.5" />
+                    <path d="M70 80 V148 Q70 165 87 165 H233 Q250 165 250 148 V80" fill="none" stroke="var(--ink-3)" stroke-width="1.5" />
+                </svg>
+                <span class="pct"></span>
+            </div>
+            <div class="about">
+                <h2 class="name"><span lang="sa">घटिका</span> Water clock</h2>
+                <p>India’s old clock: a copper bowl with a pinhole floats in water, fills and sinks once every 24 minutes. घड़ी, the everyday word for a clock, comes from it.</p>
+                <p class="end">When the server answers, the bowl goes under and a ripple spreads. The closest of the five to the water site you saw.</p>
+            </div>
+        </article>
+
+        <article class="card">
+            <div class="stage">
+                <svg id="breath" viewBox="0 0 320 200" aria-hidden="true">
+                    <circle class="ring" cx="160" cy="84" r="22" fill="var(--fill)" stroke="var(--ink)" stroke-width="1.5" />
+                    <text class="word" x="160" y="158" text-anchor="middle" fill="var(--ink-2)" font-size="13"></text>
+                    <g class="count"></g>
+                </svg>
+                <span class="pct"></span>
+            </div>
+            <div class="about">
+                <h2 class="name"><span lang="sa">श्वास</span> Breath</h2>
+                <p>The wait becomes something to do: breathe in for four seconds, out for four. A sleeping server takes about four breaths, which suits an app about keeping a routine.</p>
+                <p class="end">When the server answers, the breath ends on the way out and the circle settles.</p>
+            </div>
+        </article>
+    </div>
+</main>
+
+<script>
+// The name as drawn letters, the same outline as frontend/src/components/shell/Brand.jsx
+const WORDMARK = "M208 895L206 335L323 335L323 325L289 260L183 260C172 238 166 219 166 197C166 136 209 77 316 77C436 77 552 150 658 239L685 208C522 58 403 0 285 0C154 0 93 72 93 151C93 186 104 223 127 260L0 260L0 270L34 335L122 335L118 843L198 895ZM893 335L893 325L859 260L267 260L267 270L301 335L692 335L690 514C577 511 464 509 427 509C375 509 343 513 343 550C343 612 422 691 479 691C510 691 514 664 514 587L690 587L688 838L768 890L778 890L776 335ZM1441 744C1477 744 1518 734 1558 708L1557 838L1637 890L1647 890L1645 335L1762 335L1762 325L1728 260L837 260L837 270L871 335L1314 335C1335 366 1343 394 1343 411C1343 451 1307 477 1227 500C1159 464 1115 452 1070 452C967 452 913 513 913 587C913 672 983 768 1078 890L1088 890L1131 855C1024 732 990 691 990 636C990 583 1020 525 1108 525C1139 525 1166 532 1201 547C1237 660 1334 744 1441 744ZM1559 610C1499 659 1447 681 1402 681C1334 681 1281 630 1279 570C1376 543 1415 505 1415 454C1415 423 1400 382 1369 335L1561 335ZM2379 812C2424 750 2450 699 2450 637C2450 517 2353 455 2305 455C2272 455 2223 484 2186 512L2185 335L2525 335L2525 325L2491 260L1706 260L1706 270L1740 335L2103 335L2101 515C2061 465 2005 425 1937 425C1858 425 1779 478 1779 564C1779 634 1826 702 1907 723L1787 806L1845 864L2100 676L2098 836L2178 890L2188 890L2187 612C2244 569 2296 530 2338 530C2363 530 2386 549 2386 583C2386 627 2348 698 2302 753L2371 812ZM2100 577C2040 624 1970 678 1918 678C1882 678 1851 654 1851 603C1851 538 1906 502 1963 502C2016 502 2066 533 2101 570ZM2575 570C2557 570 2550 581 2550 593C2550 644 2650 742 2691 742C2706 742 2714 734 2714 717L2714 645L2933 645L2932 838L3012 890L3022 890L3020 335L3137 335L3137 325L3103 260L2469 260L2469 270L2503 335L2630 335L2629 570ZM2713 570L2712 335L2936 335L2934 570Z";
+
+const NS = "http://www.w3.org/2000/svg";
+const clamp = (value, low = 0, high = 1) => Math.min(high, Math.max(low, value));
+const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+const draw = (tag, attributes, parent) => {
+    const element = document.createElementNS(NS, tag);
+    for (const name in attributes) element.setAttribute(name, attributes[name]);
+    parent.appendChild(element);
+    return element;
+};
+
+// ── The shared progress ─────────────────────────────────────────────
+// `clock` is what the waiting alone has earned, 0 to just under 1: fast at first, slowing as it goes,
+// about 0.93 after 30 seconds. `answer` runs 0 to 1 over the moment after the server replies.
+const clockAt = (seconds) => 1 - Math.exp(-seconds / 11);
+const FINISH = 0.9; // seconds the drawing takes to complete after the answer, always in real time
+
+// ── उदय ──
+const sunrise = (() => {
+    const svg = document.getElementById("sunrise");
+    const disc = svg.querySelector(".disc");
+    const rays = svg.querySelector(".rays");
+    const strip = svg.querySelector(".strip");
+    const COUNT = 8, LEFT = 60, WIDTH = 200, GAP = 4;
+    const size = (WIDTH - GAP * (COUNT - 1)) / COUNT;
+    const fills = [];
+    for (let i = 0; i < COUNT; i++) {
+        const x = LEFT + i * (size + GAP);
+        draw("rect", { x, y: 124, width: size, height: 5, rx: 1.5, fill: "var(--fill-strong)" }, strip);
+        fills.push(draw("rect", { x, y: 124, width: 0, height: 5, rx: 1.5, fill: "var(--ink)" }, strip));
+    }
+    for (let i = 0; i < 12; i++) {
+        const angle = (i / 12) * Math.PI * 2;
+        draw("line", { x1: Math.cos(angle) * 36, y1: Math.sin(angle) * 36, x2: Math.cos(angle) * 44, y2: Math.sin(angle) * 44 }, rays);
+    }
+    return ({ clock, answer, time }) => {
+        const height = 0.85 * clock + (1 - 0.85 * clock) * answer;
+        const cy = 158 - 84 * height;
+        disc.setAttribute("cy", cy);
+        rays.setAttribute("transform", `translate(160 ${cy}) rotate(${time * 6})`);
+        rays.setAttribute("opacity", clamp((height - 0.35) / 0.4));
+        // Seven segments are the clock's; the eighth is the answer's
+        const filled = clock * (COUNT - 1) + answer * (COUNT - clock * (COUNT - 1));
+        fills.forEach((fill, i) => fill.setAttribute("width", size * clamp(filled - i)));
+    };
+})();
+
+// ── शिरोरेखा ──
+const headline = (() => {
+    const svg = document.getElementById("headline");
+    svg.querySelectorAll("path").forEach((path) => path.setAttribute("d", WORDMARK));
+    const nib = svg.querySelector(".nib");
+    const line = svg.querySelector("#line rect");
+    const letters = svg.querySelector("#letters");
+    // The four letter groups नि त्य क्र म, by their place in the drawing (its units); each hangs from the headline
+    const groups = [[-20, 900], [830, 1770], [1700, 2530], [2460, 3160]];
+    const TOP = 344, DEPTH = 562; // below the headline and the hair of stroke around it
+    const drops = groups.map(([from, to]) => draw("rect", { x: from, y: TOP, width: to - from, height: 0 }, letters));
+    return ({ clock, answer, time }) => {
+        let written = clamp(clock / 0.9);
+        written += (1 - written) * clamp(answer / 0.45);
+        const joined = easeInOut(clamp((answer - 0.35) / 0.65));
+        drops.forEach((drop, i) => drop.setAttribute("height", DEPTH * easeInOut(clamp(written * groups.length - i))));
+        line.setAttribute("width", 3200 * joined);
+        // The saffron nib: where ink is going now; it waits at the start of the headline for the answer
+        if (written < 1 && answer === 0) {
+            const i = Math.min(groups.length - 1, Math.floor(written * groups.length));
+            const local = easeInOut(clamp(written * groups.length - i));
+            nib.setAttribute("cx", (groups[i][0] + groups[i][1]) / 2);
+            nib.setAttribute("cy", TOP + DEPTH * local);
+            nib.setAttribute("opacity", 1);
+        } else {
+            nib.setAttribute("cx", 3137 * joined);
+            nib.setAttribute("cy", 297);
+            const waiting = answer === 0 ? 0.55 + 0.45 * Math.cos(time * 3) : 1;
+            nib.setAttribute("opacity", waiting * (1 - clamp((joined - 0.85) / 0.15)));
+        }
+    };
+})();
+
+// ── கோலம் ──
+const kolam = (() => {
+    const svg = document.getElementById("kolam");
+    const loop = svg.querySelector(".loop");
+    const pen = svg.querySelector(".pen");
+    const dotLayer = svg.querySelector(".dots");
+    // One unbroken line: an epitrochoid with four inward loops and four outer petals
+    const CX = 160, CY = 96, SCALE = 9.6, D = 2.6;
+    const at = (t) => [CX + SCALE * (5 * Math.cos(t) - D * Math.cos(5 * t)), CY + SCALE * (5 * Math.sin(t) - D * Math.sin(5 * t))];
+    const STEPS = 480;
+    let d = "";
+    for (let i = 0; i <= STEPS; i++) {
+        const [x, y] = at((i / STEPS) * Math.PI * 2 - Math.PI / 4);
+        d += (i ? "L" : "M") + x.toFixed(2) + " " + y.toFixed(2);
+    }
+    loop.setAttribute("d", d);
+    const length = loop.getTotalLength();
+    // A dot in the middle, one in each inward loop, one in each petal
+    const spots = [[0, 0]];
+    for (let i = 0; i < 4; i++) {
+        const axis = (i * Math.PI) / 2, diagonal = axis + Math.PI / 4;
+        spots.push([4.35 * Math.cos(axis), 4.35 * Math.sin(axis)]);
+        spots.push([5.75 * Math.cos(diagonal), 5.75 * Math.sin(diagonal)]);
+    }
+    const dots = spots.map(([x, y]) => draw("circle", { cx: CX + SCALE * x, cy: CY + SCALE * y, r: 2.6, opacity: 0 }, dotLayer));
+    return ({ clock, answer }) => {
+        const placed = Math.max(clock / 0.25, answer / 0.3);
+        dots.forEach((dot, i) => dot.setAttribute("opacity", clamp(placed * dots.length - i)));
+        const drawn = 0.94 * clock + (1 - 0.94 * clock) * answer;
+        loop.setAttribute("stroke-dasharray", `${drawn * 1000} 1000`);
+        const point = loop.getPointAtLength(drawn * length);
+        pen.setAttribute("cx", point.x);
+        pen.setAttribute("cy", point.y);
+        pen.setAttribute("opacity", drawn > 0.002 ? 1 - clamp((answer - 0.8) / 0.2) : 0);
+    };
+})();
+
+// ── घटिका ──
+const ghatika = (() => {
+    const svg = document.getElementById("ghatika");
+    const bowl = svg.querySelector(".bowl");
+    const shape = svg.querySelector(".bowl-shape");
+    const rim = svg.querySelector(".bowl-rim");
+    const water = svg.querySelector(".bowl-water");
+    const ripples = svg.querySelector(".ripples");
+    const rings = [0, 1].map(() => draw("ellipse", { cx: 160, cy: 106, rx: 0, ry: 0, opacity: 0 }, ripples));
+    const HALF = 36, DEPTH = 30;
+    return ({ clock, answer }) => {
+        // Floats with a third of itself under; the clock brings the rim down to the water; the answer takes it under
+        const rimY = 86 + 18 * clock + 26 * easeInOut(answer);
+        const outline = `M${160 - HALF} ${rimY} A${HALF} ${DEPTH} 0 0 0 ${160 + HALF} ${rimY} Z`;
+        bowl.setAttribute("d", outline);
+        shape.setAttribute("d", outline);
+        rim.setAttribute("d", `M${160 - HALF} ${rimY} H${160 + HALF}`);
+        const inside = DEPTH * (0.08 + 0.8 * clock + 0.12 * answer);
+        water.setAttribute("y", rimY + DEPTH - inside);
+        rings.forEach((ring, i) => {
+            const spread = clamp((answer - i * 0.25) / 0.75);
+            ring.setAttribute("rx", 40 + 50 * easeOut(spread));
+            ring.setAttribute("ry", 4 + 4 * easeOut(spread));
+            ring.setAttribute("opacity", spread > 0 ? 1 - spread : 0);
+        });
+    };
+})();
+
+// ── श्वास ──
+const breath = (() => {
+    const svg = document.getElementById("breath");
+    const ring = svg.querySelector(".ring");
+    const word = svg.querySelector(".word");
+    const count = svg.querySelector(".count");
+    const BREATHS = 4, SIZE = 22, GAP = 4;
+    const left = 160 - (BREATHS * SIZE + (BREATHS - 1) * GAP) / 2;
+    const fills = [];
+    for (let i = 0; i < BREATHS; i++) {
+        const x = left + i * (SIZE + GAP);
+        draw("rect", { x, y: 172, width: SIZE, height: 4, rx: 1.5, fill: "var(--fill-strong)" }, count);
+        fills.push(draw("rect", { x, y: 172, width: 0, height: 4, rx: 1.5, fill: "var(--ink)" }, count));
+    }
+    const PERIOD = 8; // seconds: four in, four out. Real time whatever the demo speed, or it would be a pant.
+    let heldAt = null;
+    return ({ clock, answer, time }) => {
+        const phase = (time % PERIOD) / PERIOD;
+        let size = 0.5 - 0.5 * Math.cos(phase * Math.PI * 2);
+        if (answer > 0) {
+            heldAt ??= size;
+            size = heldAt * (1 - easeInOut(answer));
+        } else {
+            heldAt = null;
+        }
+        ring.setAttribute("r", 22 + 24 * size);
+        const breathingIn = phase < 0.5;
+        word.textContent = answer > 0 ? "" : breathingIn ? "Breathe in" : "Breathe out";
+        word.setAttribute("opacity", clamp(Math.min(phase % 0.5, 0.5 - (phase % 0.5)) * 10));
+        const filled = clock * (BREATHS - 1) + answer * (BREATHS - clock * (BREATHS - 1));
+        fills.forEach((fill, i) => fill.setAttribute("width", SIZE * clamp(filled - i)));
+    };
+})();
+
+// ── The demo ───────────────────────────────────────────────────────
+const main = document.querySelector("main");
+const status = document.querySelector(".status");
+const percents = document.querySelectorAll(".pct");
+const settings = { wake: 30, speed: 5 };
+let started = performance.now();
+let answeredAt = null;
+let frozen = null; // set by showAt() to hold one moment, for screenshots
+
+const render = ({ waited, answer, time }) => {
+    const clock = clockAt(Math.min(waited, settings.wake)) / clockAt(Infinity);
+    const moment = { clock, answer: easeInOut(answer), time };
+    [sunrise, headline, kolam, ghatika, breath].forEach((paint) => paint(moment));
+    const shown = clock * 0.9 + (1 - clock * 0.9) * moment.answer;
+    percents.forEach((element) => (element.textContent = `${Math.round(shown * 100)}%`));
+    status.textContent = answer > 0
+        ? `Answered after ${settings.wake} s`
+        : `Waiting for the server · ${Math.floor(waited)} s`;
+};
+
+const frame = (now) => {
+    if (!frozen) {
+        const time = (now - started) / 1000;
+        const waited = time * settings.speed;
+        if (answeredAt === null && waited >= settings.wake) answeredAt = now;
+        const answer = answeredAt === null ? 0 : clamp((now - answeredAt) / 1000 / FINISH);
+        render({ waited, answer, time });
+    }
+    requestAnimationFrame(frame);
+};
+
+const replay = () => {
+    frozen = null;
+    started = performance.now();
+    answeredAt = null;
+};
+
+// For looking at one moment: showAt(12) is 12 s into the wait, showAt(30, 1) is just after the answer
+window.showAt = (waited, answer = 0) => {
+    frozen = { waited, answer, time: waited / settings.speed };
+    render(frozen);
+};
+
+document.querySelectorAll(".seg").forEach((group) => {
+    group.addEventListener("click", (event) => {
+        const button = event.target.closest("button");
+        if (!button) return;
+        group.querySelectorAll("button").forEach((other) => other.setAttribute("aria-pressed", String(other === button)));
+        const value = button.dataset.value;
+        const control = group.dataset.control;
+        if (control === "theme") document.documentElement.dataset.theme = value;
+        else if (control === "pct") main.dataset.pct = value;
+        else {
+            settings[control] = Number(value);
+            replay();
+        }
+    });
+});
+document.querySelector(".replay").addEventListener("click", replay);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

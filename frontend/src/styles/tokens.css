@@ -139,6 +139,8 @@
     --z-popover: 120;
     --z-toast: 130;
     --z-tooltip: 140;
+    /* The opening screen, over all of it until the app is ready */
+    --z-launch: 200;
 
     /* ── Overlays ── */
     --dialog-sm: 360px; /* a question */
@@ -147,6 +149,8 @@
     --menu-min: 184px;
     --menu-max: 320px;
     --toast-max: 440px;
+    /* The name on the opening screen. index.html's first frame draws it at the same width. */
+    --name-written: min(240px, 64vw);
 
     /* ── Shell: the navigation around every screen ── */
     --side-w: 232px; /* the sidebar, desktop */

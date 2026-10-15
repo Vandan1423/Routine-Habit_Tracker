@@ -1,5 +1,13 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { WORDMARK } from './src/lib/wordmark.js'
+
+// The opening screen's first frame in index.html draws the name before any code has arrived.
+// Its outline is kept once, in src/lib/wordmark.js, and written into the page here.
+const wordmark = {
+  name: 'wordmark',
+  transformIndexHtml: (html) => html.replace('__WORDMARK__', WORDMARK),
+}
 
 // `vite --mode sandbox` talks to the throwaway API started by backend/scripts/sandbox.js
 // instead of the real one, and keeps its own cache so both can run side by side.
@@ -14,7 +22,7 @@ export default defineConfig(({ mode }) => {
   const slot = sandboxSlot(mode)
 
   return {
-    plugins: [react()],
+    plugins: [react(), wordmark],
     cacheDir: slot === null ? 'node_modules/.vite' : `node_modules/.vite-sandbox${slot || ''}`,
     server: {
       proxy: {

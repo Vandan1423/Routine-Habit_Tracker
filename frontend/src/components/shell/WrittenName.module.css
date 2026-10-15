@@ -1,0 +1,26 @@
+/* The size is shared with the opening screen's first frame in index.html: change one, change the other */
+.name {
+    display: block;
+    width: var(--name-written);
+    height: auto;
+    aspect-ratio: 3137 / 895;
+    overflow: visible;
+}
+
+/* The name still to be written, as faint as a pencilled guide */
+.ghost {
+    fill: var(--fill-strong);
+}
+
+/* A hair of stroke, as on the logo, so the thin strokes keep their weight */
+.ink {
+    fill: var(--ink);
+    stroke: var(--ink);
+    stroke-width: 14;
+    stroke-linejoin: round;
+}
+
+/* Where the ink is going now */
+.nib {
+    fill: var(--now);
+}

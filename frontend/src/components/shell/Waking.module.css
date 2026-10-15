@@ -1,83 +1,46 @@
 .waking {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    max-width: 44ch;
-}
-
-/* The Day Strip, used as a clock */
-.strip {
-    display: flex;
-    gap: 3px;
-    width: 100%;
-    max-width: 220px;
-    margin-bottom: var(--s-4);
-}
-
-.strip i {
     position: relative;
-    flex: 1;
-    height: 6px;
-    overflow: hidden;
-    border-radius: var(--r-mark);
-    background: var(--fill-strong);
+    display: grid;
+    justify-items: center;
+    text-align: center;
 }
 
-.strip i::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: var(--accent);
-    transform: scaleX(0);
-    transform-origin: left;
+/* Inside a page, the name stands clear of the page's top */
+.waking:not(.centred) {
+    padding-block: var(--s-12);
 }
 
-.strip .done::after {
-    transform: none;
-}
-
-/* Fills over the seconds it stands for */
-.strip .current::after {
-    animation: fill var(--segment-time) linear both;
-}
-
-/* The last one waits rather than fills */
-.strip .current:last-child::after {
-    transform: none;
-    animation: wait calc(var(--t-slow) * 5) ease-in-out infinite;
-}
-
-@keyframes fill {
-    to {
-        transform: none;
-    }
-}
-
-@keyframes wait {
-    0%,
-    100% {
-        opacity: 0.2;
-    }
-    50% {
-        opacity: 0.55;
-    }
-}
-
-.title {
-    font-size: var(--fs-heading);
-    line-height: var(--lh-heading);
-    font-weight: var(--fw-semibold);
-    letter-spacing: var(--track-heading);
-}
-
-.text {
-    margin-top: var(--s-1);
+.words {
+    display: grid;
+    justify-items: center;
+    gap: var(--s-4);
+    max-width: 36ch;
+    margin-top: var(--s-8);
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
     color: var(--ink-2);
+    text-wrap: balance;
+    animation: appear var(--t-slow) var(--ease) both;
+}
+
+/* Hung below the name, so the name never moves when the words arrive */
+.centred .words {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    translate: -50% 0;
+    width: max-content;
+    max-width: min(36ch, calc(100vw - 2 * var(--s-4)));
 }
 
 .slow {
     display: grid;
-    justify-items: start;
+    justify-items: center;
     gap: var(--s-3);
-    margin-top: var(--s-4);
+}
+
+@keyframes appear {
+    from {
+        opacity: 0;
+    }
 }

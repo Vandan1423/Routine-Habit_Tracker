@@ -9,6 +9,7 @@ import { PlanProvider } from "./context/PlanContext";
 import { TodayProvider } from "./context/TodayContext";
 import { TodoProvider } from "./context/TodoContext";
 import ErrorBoundary from "./components/shell/ErrorBoundary";
+import Launch from "./components/shell/Launch";
 import { needsSession } from "./components/shell/navigation";
 import Page from "./components/shell/Page";
 import ScreenError from "./components/shell/ScreenError";
@@ -42,6 +43,8 @@ createRoot(document.getElementById("root")).render(
                             </AuthProvider>
                         </ErrorBoundary>
                     </BrowserRouter>
+                    {/* Over all of it while the app opens */}
+                    <Launch />
                 </ToastProvider>
             </TooltipProvider>
         </AppearanceProvider>

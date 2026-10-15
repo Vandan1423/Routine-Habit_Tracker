@@ -46,10 +46,19 @@
           .setAttribute("content", theme === "dark" ? "#1b1a18" : "#faf8f4");
       })();
     </script>
+    <!-- The opening screen's first frame (src/components/shell/Launch): the name, not yet written, drawn before the
+         app's code arrives, in the place and at the width WrittenName gives it (--name-written in tokens.css).
+         The colours are --paper and --fill-strong. The app replaces it with the same picture and writes the name in. -->
+    <style>
+      .boot { position: fixed; inset: 0; display: grid; place-items: center; background: #faf8f4; }
+      .boot svg { display: block; width: min(240px, 64vw); aspect-ratio: 3137 / 895; overflow: visible; fill: #dedad0; }
+      [data-theme="dark"] .boot { background: #1b1a18; }
+      [data-theme="dark"] .boot svg { fill: #3a3733; }
+    </style>
     <title>नित्यक्रम</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div class="boot" aria-hidden="true"><svg viewBox="0 0 3137 895"><path d="__WORDMARK__" /></svg></div></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

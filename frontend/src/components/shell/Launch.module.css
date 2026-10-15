@@ -1,0 +1,15 @@
+/* Over everything, the app included. The name sits at the very centre, where index.html first drew it. */
+.launch {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-launch);
+    display: grid;
+    place-items: center;
+    background: var(--paper);
+    transition: opacity var(--t-base) var(--ease);
+}
+
+.leaving {
+    opacity: 0;
+    pointer-events: none;
+}
