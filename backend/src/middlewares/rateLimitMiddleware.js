@@ -1,12 +1,17 @@
 import { isIP } from "node:net";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 
+import { DatabaseStore } from "../utils/rateLimitStore.js";
+
 // The address a request came from.
 // Behind a hosting platform's proxy, req.ip is the proxy itself, so every visitor would share one limit.
 // CLIENT_IP_HEADER names the header in which the platform passes the real address (on Render: cf-connecting-ip).
 // Only set it to a header the platform itself overwrites, otherwise a caller could send a made-up address.
+// On Vercel it need not be set: Vercel writes the address in x-vercel-forwarded-for and overwrites any sent.
 const clientAddress = (req) => {
-    const header = process.env.CLIENT_IP_HEADER?.toLowerCase();
+    const header = (
+        process.env.CLIENT_IP_HEADER || (process.env.VERCEL ? "x-vercel-forwarded-for" : "")
+    ).toLowerCase();
     const forwarded = header ? req.headers[header] : undefined;
 
     return ipKeyGenerator(
@@ -41,8 +46,14 @@ const accountKey = (req) =>
         ? `account:${req.body.email}`
         : clientAddress(req);
 
+// Where a limit keeps its counts. On Vercel the app runs as several copies at once, each with a memory of its own,
+// so the counts go in the database and every copy counts against the same budget. Anywhere else (one server,
+// the tests) they stay in memory. name: this limit's own prefix in the database
+const countedIn = (name) => (process.env.VERCEL ? { store: new DatabaseStore(name) } : {});
+
 // Rate limiting middleware to limit repeated requests to public APIs and endpoints
 const rateLimitMiddleware = rateLimit({
+    ...countedIn("general"),
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 20, // Limit each IP to 20 requests per `window` (here, per 15 minutes)
     message: {
@@ -65,6 +76,7 @@ const AUTH_LIMIT_MESSAGE = {
 // Everything one address may send to the public auth endpoints, whoever it says it is sending for.
 // Ten visitors' worth: room for the people who reach us through the same server of the website's host.
 const authAddressRateLimit = rateLimit({
+    ...countedIn("auth-address"),
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 300,
     keyGenerator: clientAddress,
@@ -74,6 +86,7 @@ const authAddressRateLimit = rateLimit({
 });
 
 const authVisitorRateLimit = rateLimit({
+    ...countedIn("auth-visitor"),
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 30,
     keyGenerator: visitorKey,
@@ -89,6 +102,7 @@ export const authRateLimit = [authAddressRateLimit, authVisitorRateLimit];
 
 // At most 5 failed logins per account per 15 minutes. Must run after the body is validated.
 export const loginAccountRateLimit = rateLimit({
+    ...countedIn("login"),
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 5,
     keyGenerator: accountKey,
@@ -106,6 +120,7 @@ export const loginAccountRateLimit = rateLimit({
 // password again (changing it, deleting the account). Without this, a borrowed session could be used to guess it.
 // Must run after `protect`.
 export const passwordCheckRateLimit = rateLimit({
+    ...countedIn("password-check"),
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 5,
     keyGenerator: (req) => `password-check:${req.user._id}`,
@@ -122,6 +137,7 @@ export const passwordCheckRateLimit = rateLimit({
 // At most 3 confirmation emails per address per hour, counting sign-up and "send it again" together.
 // Must run after the body is validated.
 export const verificationEmailRateLimit = rateLimit({
+    ...countedIn("verification-email"),
     windowMs: 60 * 60 * 1000, // 1 hour
     max: 3,
     keyGenerator: accountKey,
@@ -137,6 +153,7 @@ export const verificationEmailRateLimit = rateLimit({
 
 // At most 3 reset emails per account per hour. Must run after the body is validated.
 export const passwordResetRateLimit = rateLimit({
+    ...countedIn("password-reset"),
     windowMs: 60 * 60 * 1000, // 1 hour
     max: 3,
     keyGenerator: accountKey,

@@ -23,6 +23,8 @@ if (isEmailVerificationRequired() && usesTestSender()) {
 }
 
 // --- BACKGROUND JOBS ---
+// For a server that keeps running (locally, on Render). On Vercel nothing runs between requests, so the same
+// jobs are started by schedulers through /api/jobs instead (see src/controllers/jobController.js).
 // Twice an hour, close the day for every user whose midnight has just passed
 // (timezones sit on the hour or the half hour, so this is at most a few minutes late for nearly everyone).
 // It doesn't have to run: a user's own next request settles their days as well.

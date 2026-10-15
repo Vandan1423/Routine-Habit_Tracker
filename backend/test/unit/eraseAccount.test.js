@@ -30,9 +30,11 @@ describe("erasing an account", () => {
     it("leaves no model without an owner unaccounted for", () => {
         const unowned = Object.values(mongoose.models)
             .filter((model) => !model.schema.path("user"))
-            .map((model) => model.modelName);
+            .map((model) => model.modelName)
+            .sort();
 
-        // The account itself is removed by eraseAccount after what it owns
-        assert.deepEqual(unowned, ["User"]);
+        // The account itself is removed by eraseAccount after what it owns. Rate limit counts belong to no
+        // account (some are keyed by an email address) and delete themselves when their window ends, an hour at most.
+        assert.deepEqual(unowned, ["RateLimitHit", "User"]);
     });
 });

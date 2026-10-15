@@ -1,0 +1,35 @@
+{
+    "$schema": "https://openapi.vercel.sh/vercel.json",
+    "regions": ["bom1"],
+    "services": {
+        "web": {
+            "root": "frontend/",
+            "framework": "vite",
+            "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
+            "headers": [
+                {
+                    "source": "/sw.js",
+                    "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+                },
+                {
+                    "source": "/index.html",
+                    "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+                },
+                {
+                    "source": "/",
+                    "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+                }
+            ]
+        },
+        "api": {
+            "root": "backend/",
+            "framework": "express",
+            "entrypoint": "app.js"
+        }
+    },
+    "rewrites": [
+        { "source": "/api/(.*)", "destination": { "service": "api" } },
+        { "source": "/(.*)", "destination": { "service": "web" } }
+    ],
+    "crons": [{ "path": "/api/jobs/daily", "schedule": "0 19 * * *" }]
+}

@@ -57,7 +57,11 @@ const startEmailVerification = (user) => {
 
 // Built per request, so it doesn't rely on .env already being loaded when this module is imported
 const getCookieOptions = () => {
-    const isProduction = process.env.NODE_ENV === "production";
+    // On Vercel, NODE_ENV is not something to set by hand (it would stop the website's build tools installing),
+    // so a deployment there is recognised by the environment Vercel names
+    const isProduction =
+        process.env.NODE_ENV === "production" ||
+        ["production", "preview"].includes(process.env.VERCEL_ENV);
 
     return {
         httpOnly: true,

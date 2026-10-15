@@ -20,9 +20,14 @@ import goalRoutes from "./src/routes/goalRoutes.js";
 import trashRoutes from "./src/routes/trashRoutes.js";
 import archiveRoutes from "./src/routes/archiveRoutes.js";
 import notificationRoutes from "./src/routes/notificationRoutes.js";
+import jobRoutes from "./src/routes/jobRoutes.js";
 
-// The Express app on its own: no database connection, no background jobs, no port.
-// server.js adds those to run it for real; the tests import this file and run it against a test database.
+import { databaseReady } from "./src/middlewares/databaseMiddleware.js";
+
+// The Express app on its own: no background jobs, no port.
+// server.js adds those to run it as a server (locally, on Render); Vercel runs this file itself as a function,
+// with the jobs called through /api/jobs (see vercel.json at the repository root). The tests import this file
+// and run it against a test database.
 const app = express();
 
 app.use(
@@ -39,6 +44,8 @@ app.use(cookieParser());
 app.get("/", (req, res) => {
     res.send("Welcome to the Life Management API");
 });
+// The database is connected before any request that needs it (see databaseMiddleware.js)
+app.use("/api", databaseReady);
 app.use("/api/auth", authRoutes);
 app.use("/api/routines", routineRoutes);
 app.use("/api/habits", habitRoutes);
@@ -51,6 +58,7 @@ app.use("/api/goals", goalRoutes);
 app.use("/api/trash", trashRoutes);
 app.use("/api/archive", archiveRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/jobs", jobRoutes);
 
 // 404 Handler - Must be after all routes
 app.use((req, res, next) => {
