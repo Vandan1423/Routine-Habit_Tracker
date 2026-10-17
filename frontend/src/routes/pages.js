@@ -7,6 +7,7 @@ export const TodayPage = lazyPage(() => import("../pages/Today/TodayPage"));
 export const PlanPage = lazyPage(() => import("../pages/Plan/PlanPage"));
 export const ItemPage = lazyPage(() => import("../pages/Plan/ItemPage"));
 export const TodoPage = lazyPage(() => import("../pages/Todo/TodoPage"));
+export const WeekPage = lazyPage(() => import("../pages/Week/WeekPage"));
 export const GoalsPage = lazyPage(() => import("../pages/Goals/GoalsPage"));
 export const InsightsPage = lazyPage(() => import("../pages/Insights/InsightsPage"));
 export const HistoryPage = lazyPage(() => import("../pages/History/HistoryPage"));

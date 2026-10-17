@@ -16,6 +16,7 @@ import usePlan from "../../hooks/usePlan";
 import useToday from "../../hooks/useToday";
 import { cx } from "../../lib/cx";
 import { localDay } from "../../lib/dates";
+import { fromMinutes, toMinutes } from "../../lib/time";
 import { BLOCKS } from "../../lib/day";
 import {
     CATEGORIES,
@@ -51,6 +52,8 @@ const DIFFICULTY = [
     { value: "medium", label: "Medium" },
     { value: "hard", label: "Hard" },
 ];
+const addMinutes = (time, count) => fromMinutes(toMinutes(time) + count);
+
 const PARTS_OF_DAY = BLOCKS.map((block) => ({ value: block.id, label: block.label }));
 
 const INTRO = {
@@ -91,6 +94,7 @@ const DaysField = ({ value, error, onChange }) => (
  *   { kind: "routine" | "habit", item?, block?, once? }
  *   item: the routine or habit to change, as the API sent it. Without one, a new one is made.
  *   block: the part of the day a new habit starts out in. once: a new routine starts out as a one-off task.
+ *   start, end, days: a new routine's times and days to start from (from a press on Plan's calendar)
  * onClose(): it wants to close
  * onSaved(item, { created }): it was saved. onDeleted(item): "Delete" was chosen, and the item is on its way out.
  */
@@ -121,7 +125,14 @@ const ItemEditor = ({ request, onClose, onSaved, onDeleted }) => {
         if (request) {
             const start = request.item
                 ? formOf(request.kind, request.item, { today })
-                : emptyForm(request.kind, { today, block: request.block, once: request.once });
+                : emptyForm(request.kind, {
+                      today,
+                      block: request.block,
+                      once: request.once,
+                      start: request.start,
+                      end: request.end,
+                      days: request.days,
+                  });
 
             setForm(start);
             setInitial(start);
@@ -236,6 +247,9 @@ const ItemEditor = ({ request, onClose, onSaved, onDeleted }) => {
                             <TimePicker
                                 label="Ends"
                                 placeholder="No end"
+                                clearable
+                                // With nothing set yet, the dial starts an hour after the start
+                                openAt={form.startTime ? addMinutes(form.startTime, 60) : undefined}
                                 value={form.endTime}
                                 error={errors.endTime}
                                 onChange={set("endTime")}

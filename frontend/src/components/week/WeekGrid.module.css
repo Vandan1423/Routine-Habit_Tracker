@@ -1,0 +1,295 @@
+/* Hours down the side, a column for each day. --hour comes from WeekGrid.jsx. */
+.grid {
+    --gutter: 3.5rem;
+    display: grid;
+    min-width: 0;
+}
+
+.head,
+.bands,
+.body {
+    display: grid;
+    grid-template-columns: var(--gutter) repeat(var(--days), minmax(0, 1fr));
+}
+
+/* The days' names stay in view while the hours scroll under them */
+.head {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-sticky);
+    border-bottom: 1px solid var(--line);
+    background: var(--paper);
+}
+
+.dayHead {
+    min-width: 0;
+    padding: var(--s-2) var(--s-2) var(--s-2);
+    border-inline-start: 1px solid var(--line);
+    color: var(--ink-2);
+}
+
+.today {
+    color: var(--ink);
+}
+
+/* ── What has no time: a band for each day, over the hours ── */
+
+.bands {
+    border-bottom: 1px solid var(--line-strong);
+}
+
+.bandLabel {
+    padding: 7px var(--s-2) 0 0;
+    color: var(--ink-3);
+    font-size: var(--fs-micro);
+    line-height: var(--lh-micro);
+    text-align: right;
+}
+
+.band {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    min-height: var(--control-md);
+    padding: var(--s-1);
+    border-inline-start: 1px solid var(--line);
+}
+
+.todayBand,
+.todayColumn {
+    background-color: color-mix(in srgb, var(--fill) 50%, transparent);
+}
+
+/* ── The hours ── */
+
+.body {
+    position: relative;
+}
+
+.times {
+    position: relative;
+    height: calc(var(--hours) * var(--hour));
+}
+
+.times span {
+    position: absolute;
+    top: calc(var(--at) * var(--hour));
+    right: var(--s-2);
+    translate: 0 -50%;
+    color: var(--ink-3);
+    font-size: var(--fs-micro);
+    line-height: var(--lh-micro);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+/* A line at each hour, drawn under the column rather than as elements of their own */
+.column {
+    position: relative;
+    min-width: 0;
+    height: calc(var(--hours) * var(--hour));
+    border-inline-start: 1px solid var(--line);
+    background-image: linear-gradient(to bottom, var(--line) 1px, transparent 1px);
+    background-size: 100% var(--hour);
+    transition: background-color var(--t-fast) var(--ease);
+}
+
+@media (hover: hover) {
+    .creates:hover {
+        cursor: cell;
+    }
+}
+
+/* A day a carried block would land on */
+.over {
+    background-color: var(--hover);
+}
+
+/* ── A thing with a time ── */
+
+.block {
+    position: absolute;
+    top: calc(var(--top) / 60 * var(--hour) + 1px);
+    left: calc(var(--lane) * (100% - 4px) / var(--lanes) + 2px);
+    display: flex;
+    flex-direction: column;
+    width: calc((100% - 4px) / var(--lanes) - 2px);
+    height: calc(var(--length) / 60 * var(--hour) - 2px);
+    padding: 3px 6px;
+    overflow: hidden;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-1);
+    background: var(--raised);
+    color: var(--ink);
+    font-size: var(--fs-caption);
+    line-height: var(--lh-caption);
+    text-align: start;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    transition:
+        border-color var(--t-fast) var(--ease),
+        background-color var(--t-fast) var(--ease);
+}
+
+.blockTitle {
+    display: -webkit-box;
+    overflow: hidden;
+    font-weight: var(--fw-medium);
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+}
+
+.blockTime {
+    overflow: hidden;
+    color: var(--ink-2);
+    font-variant-numeric: tabular-nums;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Too short for two lines: the name and the time side by side, the time giving way first */
+.short {
+    flex-direction: row;
+    align-items: baseline;
+    gap: var(--s-1);
+    padding-block: 1px;
+}
+
+.short .blockTitle {
+    flex: 0 1 auto;
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+}
+
+.short .blockTime {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+@media (hover: hover) {
+    .block:hover {
+        border-color: var(--ink-3);
+    }
+}
+
+.block:focus-visible {
+    z-index: 1;
+    outline: 2px solid var(--focus);
+    outline-offset: 1px;
+}
+
+/* Done: filled with ink, as a ticked box is */
+.done {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--on-accent);
+}
+
+.done .blockTime,
+.late .blockTime {
+    color: inherit;
+    opacity: 0.8;
+}
+
+.late {
+    border-color: var(--late);
+    background: var(--late);
+    color: var(--on-accent);
+}
+
+@media (hover: hover) {
+    .done:hover,
+    .late:hover {
+        border-color: var(--ink-3);
+    }
+}
+
+/* Over, and left undone: outlined in the colour of a loss */
+.missed {
+    border: 1.5px solid var(--loss);
+    background: transparent;
+    color: var(--ink-2);
+}
+
+/* Due today and not done yet: the outline of a box still to tick */
+.open {
+    border-color: var(--box-line);
+}
+
+/* A to-do, told from a routine by its line */
+.todo {
+    border-style: dashed;
+}
+
+.todo.done {
+    border-style: solid;
+}
+
+/* Held by the pointer: lifted off the page and following it */
+.carried {
+    z-index: 2;
+    translate: var(--dx) var(--dy);
+    box-shadow: var(--shadow-float);
+    pointer-events: none;
+    transition: none;
+}
+
+:global(html[data-carrying]),
+:global(html[data-carrying] *) {
+    cursor: grabbing;
+    user-select: none;
+}
+
+/* The time it is now, across today's column: saffron, as "now" is everywhere */
+.now {
+    position: absolute;
+    inset-inline: -1px 0;
+    top: calc(var(--top) / 60 * var(--hour));
+    z-index: 1;
+    height: 2px;
+    background: var(--now);
+    pointer-events: none;
+}
+
+.now::before {
+    content: "";
+    position: absolute;
+    top: -3px;
+    left: -4px;
+    width: 8px;
+    height: 8px;
+    border-radius: var(--r-full);
+    background: var(--now);
+}
+
+/* More of the day, or back to the hours that are used */
+.extent {
+    justify-self: start;
+    min-height: var(--hit);
+    margin-inline-start: var(--gutter);
+    padding-inline: var(--s-2);
+    border-radius: var(--r-1);
+    color: var(--ink-2);
+    font-size: var(--fs-meta);
+    text-decoration: underline;
+    text-decoration-color: var(--line-strong);
+    text-underline-offset: 3px;
+    transition: color var(--t-fast) var(--ease);
+}
+
+@media (hover: hover) {
+    .extent:hover {
+        color: var(--ink);
+    }
+}
+
+/* bp: phone */
+@media (max-width: 699.98px) {
+    .grid {
+        --gutter: 2.75rem;
+    }
+}

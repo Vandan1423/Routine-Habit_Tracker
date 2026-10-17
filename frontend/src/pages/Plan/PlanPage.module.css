@@ -26,6 +26,28 @@
     margin-top: var(--s-10);
 }
 
+/* The way the plan is shown, and New, at the far end of the head */
+.tools {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+}
+
+/* ── The calendar takes the screen's whole width: a reading column is too narrow for seven days ── */
+
+.wide {
+    max-width: 82rem;
+    margin-inline: auto;
+}
+
+.tally {
+    margin-top: var(--s-2);
+    color: var(--ink-2);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+    text-wrap: pretty;
+}
+
 /* ── The week: beside the list where there is room, above it where there is not ── */
 
 .above {
@@ -102,5 +124,9 @@
 @media (max-width: 699.98px) {
     .header {
         align-items: center;
+    }
+
+    .tools {
+        gap: var(--s-1);
     }
 }

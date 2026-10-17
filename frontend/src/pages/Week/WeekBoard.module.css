@@ -1,0 +1,319 @@
+/* ── The days side by side, ruled apart like the pages of a planner ── */
+
+.frame {
+    container-type: inline-size;
+}
+
+.board {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+    border-top: 1px solid var(--line-strong);
+}
+
+/* Room for all seven in a row */
+@container (min-width: 1000px) {
+    .board {
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+}
+
+.day {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 14rem;
+    padding: var(--s-3) var(--s-2) var(--s-4);
+    border-bottom: 1px solid var(--line);
+    border-inline-end: 1px solid var(--line);
+    transition: background-color var(--t-fast) var(--ease);
+}
+
+.today {
+    background: color-mix(in srgb, var(--fill) 55%, transparent);
+}
+
+/* A day a carried to-do would land on */
+.over {
+    background: var(--hover);
+    box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+.dayHead {
+    padding-inline: var(--s-1);
+    margin-bottom: var(--s-2);
+}
+
+.dayName {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--s-2);
+}
+
+.weekday {
+    color: var(--ink-2);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+    font-weight: var(--fw-medium);
+}
+
+.number {
+    font-size: var(--fs-figure);
+    line-height: var(--lh-figure);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--track-title);
+    font-variant-numeric: tabular-nums;
+}
+
+.today .number {
+    color: var(--now);
+}
+
+.past .number,
+.past .weekday {
+    color: var(--ink-3);
+}
+
+/* What the plan asks of the day, and how it went */
+.standing {
+    display: grid;
+    gap: 4px;
+    margin-top: 6px;
+    border-radius: var(--r-1);
+    color: var(--ink-3);
+    font-size: var(--fs-caption);
+    line-height: var(--lh-caption);
+}
+
+a.standing {
+    transition: color var(--t-fast) var(--ease);
+}
+
+@media (hover: hover) {
+    a.standing:hover {
+        color: var(--ink);
+    }
+}
+
+.cards {
+    display: grid;
+    gap: 2px;
+}
+
+.quiet {
+    padding: var(--s-2) var(--s-1);
+    color: var(--ink-3);
+    font-size: var(--fs-caption);
+    line-height: var(--lh-caption);
+}
+
+/* The line to write on, sized for a narrow column */
+.add {
+    margin-top: var(--s-1);
+}
+
+.add input {
+    height: var(--control-lg);
+    font-size: var(--fs-body);
+}
+
+.add > div {
+    min-height: var(--control-lg);
+    margin-inline: 0;
+    padding-inline: var(--s-1);
+}
+
+/* ── A to-do on the week ── */
+
+.card {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: var(--s-2);
+    min-width: 0;
+    padding: 7px var(--s-1) 7px;
+    border-radius: var(--r-2);
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    transition: background-color var(--t-fast) var(--ease);
+}
+
+@media (hover: hover) {
+    .card:hover {
+        background: var(--hover);
+        cursor: grab;
+    }
+}
+
+.check {
+    display: flex;
+    flex: none;
+    padding-top: 1px;
+}
+
+/* The words, the time over them: pressing either opens it in full */
+.cardMain {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 0;
+    border-radius: var(--r-1);
+    text-align: start;
+}
+
+.cardTime {
+    color: var(--ink-3);
+    font-size: var(--fs-caption);
+    line-height: var(--lh-caption);
+    font-variant-numeric: tabular-nums;
+}
+
+.cardTitle {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    font-weight: var(--fw-medium);
+    /* Words break at their spaces; only one too long for the column is cut inside */
+    overflow-wrap: break-word;
+    hyphens: auto;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+}
+
+.done .cardTitle {
+    color: var(--ink-3);
+    text-decoration: line-through;
+    text-decoration-color: var(--line-strong);
+}
+
+/* Planned for a day gone by, and not done: said plainly, in the colour of something late */
+.cardLeft {
+    color: var(--late);
+    font-size: var(--fs-caption);
+    line-height: var(--lh-caption);
+}
+
+/* Its menu waits out of sight in the card's corner until the card is pointed at or reached, so the words
+   have the column's whole width */
+.cardMenu {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    border-radius: var(--r-1);
+    background: var(--hover);
+    opacity: 0;
+    transition: opacity var(--t-fast) var(--ease);
+}
+
+.card:has(:focus-visible) .cardMenu,
+.cardMenu:has([data-popup-open]) {
+    opacity: 1;
+}
+
+@media (hover: hover) {
+    .card:hover .cardMenu {
+        opacity: 1;
+    }
+}
+
+/* Nothing to point with: always there, and the words keep clear of it */
+@media (hover: none) {
+    .card {
+        padding-inline-end: var(--control-md);
+    }
+
+    .cardMenu {
+        background: none;
+        opacity: 1;
+    }
+}
+
+/* Held by the pointer: lifted off the page, following it */
+.carried {
+    z-index: 5;
+    translate: var(--dx) var(--dy);
+    background: var(--raised);
+    box-shadow: var(--shadow-float);
+    pointer-events: none;
+    transition: none;
+}
+
+/* ── With no day yet: a tray under the week, its to-dos in a flowing grid ── */
+
+.tray {
+    margin-top: var(--s-10);
+    padding: var(--s-3) var(--s-2) var(--s-2);
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--r-3);
+    transition: background-color var(--t-fast) var(--ease);
+}
+
+.tray.over {
+    background: var(--hover);
+}
+
+.trayHead {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--s-3);
+    padding-inline: var(--s-1);
+    margin-bottom: var(--s-2);
+}
+
+.trayTitle {
+    color: var(--ink-2);
+    font-size: var(--fs-label);
+    line-height: var(--lh-body);
+    font-weight: var(--fw-semibold);
+}
+
+.trayNote {
+    color: var(--ink-3);
+    font-size: var(--fs-caption);
+    line-height: var(--lh-caption);
+    text-align: right;
+}
+
+.trayCards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+    gap: 2px var(--s-2);
+}
+
+.trayMore {
+    margin-top: var(--s-2);
+    margin-inline-start: var(--s-1);
+}
+
+/* bp: phone. One day under another, as a list: the number beside the name, not over it */
+@media (max-width: 699.98px) {
+    .board {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .day {
+        min-height: 0;
+        padding-inline: 0;
+        border-inline-end: 0;
+    }
+
+    .today {
+        margin-inline: calc(var(--s-2) * -1);
+        padding-inline: var(--s-2);
+        border-radius: var(--r-2);
+    }
+
+    .number {
+        font-size: var(--fs-heading);
+        line-height: var(--lh-heading);
+    }
+
+    .dayName {
+        justify-content: flex-start;
+    }
+}

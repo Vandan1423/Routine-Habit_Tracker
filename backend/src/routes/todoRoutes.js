@@ -7,6 +7,7 @@ import {
     createTodo,
     deleteList,
     deleteTodo,
+    getPlanned,
     getTodos,
     updateList,
     updateTodo,
@@ -14,6 +15,7 @@ import {
 import { protect } from "../middlewares/authMiddleware.js";
 import { validate } from "../middlewares/validationMiddleware.js";
 import { idParam } from "../Schema/CommonSchema.js";
+import { dayRangeQuerySchema } from "../Schema/HistorySchema.js";
 import {
     createListSchema,
     createTodoSchema,
@@ -31,6 +33,9 @@ router
     .route("/")
     .get(getTodos)
     .post(validate({ body: createTodoSchema }), createTodo);
+
+// What was planned for a stretch of days, for a week further back than the lists carry
+router.get("/planned", validate({ query: dayRangeQuerySchema }), getPlanned);
 
 // Before "/:id", which would otherwise take "lists" for an id
 router.post("/lists", validate({ body: createListSchema }), createList);

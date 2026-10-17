@@ -44,7 +44,7 @@ const clamp = (day, min, max) => {
  *                 Both work when picking too: the day is then a button with its mark inside.
  * full: the month is the page itself, not something in a field's popover: each day takes its whole cell,
  *       with its number at the top and room for its mark under it
- * strongDay(day): true for a day whose number is set in full ink, to pick some days out (with `full`)
+ * strongDay(day): true for a day whose number is set in full ink, to pick some days out (with `full`), whether picking or reading
  * label: what the calendar is of, for screen readers
  */
 const Calendar = ({
@@ -199,6 +199,7 @@ const Calendar = ({
                                         styles.shown,
                                         isToday && styles.today,
                                         outside && styles.outside,
+                                        !outside && strongDay?.(day) && styles.strong,
                                     )}
                                     aria-current={isToday ? "date" : undefined}
                                 >

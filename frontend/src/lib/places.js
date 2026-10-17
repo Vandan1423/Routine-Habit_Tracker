@@ -6,5 +6,9 @@ export const TODO_PATH = "/todo";
 export const GOALS_PATH = "/goals";
 export const TRASH_PATH = "/trash";
 export const ARCHIVE_PATH = "/archive";
+export const WEEK_PATH = "/week";
+
+// One week on Week, by its first day ("YYYY-MM-DD")
+export const weekPath = (start) => `${WEEK_PATH}/${start}`;
 
 export const NEW_GOAL = { add: "goal" };

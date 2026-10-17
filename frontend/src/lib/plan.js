@@ -2,7 +2,7 @@
 // a day is (Morning, Afternoon, Evening, Anytime). Like lib/day.js it is worked out from its arguments
 // alone: the same lists give the same plan.
 
-import { BLOCKS, blockAt } from "./day";
+import { BLOCKS, blockAt, tallyOf } from "./day";
 import { isDraftId, rowKeyOf } from "./drafts";
 import { localDay, weekdayOf, weekOf } from "./dates";
 import { isPausedOn, pauseAhead } from "./pauses";
@@ -110,8 +110,8 @@ const byDateThenTime = (a, b) =>
  *   and `habits`: how many of them are habits (the ones that can be put in another order). Each item carries
  *   `pause`: the pause that covers today or is still to come ({ from, until }), or null;
  *   upcoming: the one-off tasks still to come, soonest first (with one day shown, the ones dated that day);
- *   week: for each day of the week today is in, in reading order, { date, day, total, worth, once }:
- *   how much that day asks, one-off tasks included, and how many of those there are;
+ *   week: for each day of the week today is in, in reading order, { date, day, total, worth, once, items }:
+ *   how much that day asks, one-off tasks included, how many of those there are, and the items themselves;
  *   total: how many repeating items there are; empty: nothing repeats and nothing is still to come.
  */
 export const buildPlan = ({ routines = [], habits = [], today = localDay(), day = null, firstDay } = {}) => {
@@ -154,12 +154,55 @@ export const buildPlan = ({ routines = [], habits = [], today = localDay(), day 
                 total: due.length,
                 worth: due.reduce((sum, item) => sum + item.worth, 0),
                 once: tasks.length,
+                // What the day asks, in the order a day is read: for the calendar
+                items: [...due].sort(inPlanOrder),
             };
         }),
         total: repeating.length,
         empty: repeating.length === 0 && ahead.length === 0,
     };
 };
+
+/**
+ * This week's days with how each has gone so far: a day that has ended by what was recorded for it,
+ * today as it stands on screen, and a day still to come by what the plan asks of it.
+ * @param {Array} week - buildPlan's week
+ * @param {Object} standing
+ * @param {Array} [standing.summaries] - the recent daily summaries from the API (date, totals, completions)
+ * @param {Object} standing.today - { date, total, done } as it stands right now, which no stored summary can know
+ * @returns {Object} - days: each entry of the week with `when` ("past", "today" or "ahead") and, for a past
+ *   day and today, `total`, `done` and `missed` as they really were (a past day with no record asked nothing);
+ *   done, due: how much was done of what has been asked so far (today included), missed: what ended undone,
+ *   open: what today still holds, ahead: what the days still to come ask
+ */
+export const weekStanding = (week, { summaries = [], today }) => {
+    const days = week.map((entry) => {
+        if (entry.date === today.date) {
+            return { ...entry, when: "today", total: today.total, done: today.done, missed: 0 };
+        }
+        if (entry.date > today.date) return { ...entry, when: "ahead", done: 0, missed: 0 };
+
+        const tally = tallyOf(summaries.find((summary) => summary.date === entry.date));
+        const total = tally?.total ?? 0;
+        const done = tally?.done ?? 0;
+        return { ...entry, when: "past", total, done, missed: total - done };
+    });
+    const sum = (list, field) => list.reduce((total, day) => total + day[field], 0);
+    const sofar = days.filter((day) => day.when !== "ahead");
+    const now = days.find((day) => day.when === "today");
+
+    return {
+        days,
+        done: sum(sofar, "done"),
+        due: sum(sofar, "total"),
+        missed: sum(sofar, "missed"),
+        open: now ? now.total - now.done : 0,
+        ahead: sum(days.filter((day) => day.when === "ahead"), "total"),
+    };
+};
+
+// Every routine and habit given, as the plan lays each one out (the same shape buildPlan's items have)
+export const planItems = ({ routines = [], habits = [] }) => [...routines.map(routineItem), ...habits.map(habitItem)];
 
 // One item of the plan by its key ("habit:…"), or null
 export const findPlanItem = ({ routines = [], habits = [] }, kind, id) => {

@@ -4,7 +4,7 @@
 import { addDays, formatDayBrief, weekdayOf } from "./dates";
 import { countWord } from "./dayMessage";
 import { LATE_GRACE_MINUTES, lateWorth, missCost } from "./stakes";
-import { formatTimeRange } from "./time";
+import { formatTime, formatTimeRange } from "./time";
 import { weekdayName, weekOrder } from "./week";
 
 const NBSP = " ";
@@ -131,6 +131,12 @@ export const dayStatusWords = (day, { unit = "" } = {}) => {
     return `${amountFormat.format(day.quantity ?? 0)}${unit ? `${NBSP}${unit}` : ""}, short of the target`;
 };
 
+// One day of the week on an item's page: "5 of 6, 1 late"
+export const weekdayRecordWords = (row) => {
+    const kept = `${numberFormat.format(row.done)} of ${numberFormat.format(row.due)}`;
+    return row.late > 0 ? `${kept}, ${numberFormat.format(row.late)} late` : kept;
+};
+
 const counted = (count, one, many) =>
     `${countWord(count).toLowerCase()} ${count === 1 ? one : many}`;
 const listed = (parts) =>
@@ -170,6 +176,72 @@ export const planWords = (plan, day = null, today = null) => {
 
     return `${sentence(listed(parts))}.`;
 };
+
+/**
+ * Under the week beside the plan: how the week has gone so far, and what it still asks.
+ * standing: from weekStanding
+ */
+export const weekStandingWords = (standing) => {
+    const lines = [];
+
+    if (standing.due > 0) {
+        const missed = standing.missed > 0 ? ` ${countWord(standing.missed)} missed.` : "";
+        lines.push(`${numberFormat.format(standing.done)} of ${numberFormat.format(standing.due)} done so far.${missed}`);
+    }
+    const left = standing.open + standing.ahead;
+    if (left > 0) {
+        lines.push(
+            standing.open > 0 && standing.ahead > 0
+                ? `${countWord(standing.open)} still open today, ${numberFormat.format(standing.ahead)} on the days ahead.`
+                : standing.open > 0
+                  ? `${countWord(standing.open)} still open today.`
+                  : `${numberFormat.format(standing.ahead)} on the days ahead.`,
+        );
+    }
+
+    return lines;
+};
+
+// One day of the week beside the plan, to a screen reader: "8 of 10 done, 2 missed", or "10 planned"
+export const weekDayWords = (day) => {
+    if (day.when === "ahead") return day.total > 0 ? `${numberFormat.format(day.total)} planned` : "nothing planned";
+    if (day.total === 0) return "nothing was due";
+
+    const done = `${numberFormat.format(day.done)} of ${numberFormat.format(day.total)} done`;
+    return day.missed > 0 ? `${done}, ${numberFormat.format(day.missed)} missed` : done;
+};
+
+/**
+ * Under Plan's calendar: the routines whose hours run into each other, said once for each pair with the
+ * days they meet on ("Workout and Long walk overlap on Sundays."). Null when nothing overlaps.
+ * overlaps: [{ day (0 to 6), first, second }] (the titles)
+ */
+export const overlapWords = (overlaps) => {
+    if (overlaps.length === 0) return null;
+
+    const pairs = new Map();
+    for (const { day, first, second } of overlaps) {
+        const key = `${first}\n${second}`;
+        if (!pairs.has(key)) pairs.set(key, { first, second, days: [] });
+        if (!pairs.get(key).days.includes(day)) pairs.get(key).days.push(day);
+    }
+
+    return [...pairs.values()].map(({ first, second, days }) => `${first} and ${second} overlap ${whenWords(days)}.`).join(" ");
+};
+
+// The days something happens on, inside a sentence: "every day", "on weekdays", "on Mon, Wed, Fri"
+const whenWords = (days) => {
+    const words = daysWords(days);
+    if (words === "Every day") return "every day";
+    if (words === "Weekdays") return "on weekdays";
+    if (words === "Weekends") return "at weekends";
+    if (words.startsWith("Every day")) return `e${words.slice(1)}`;
+    return `on ${words}`;
+};
+
+// After a routine was carried to another time on Plan's calendar
+export const retimedWords = (title, start, once = false) =>
+    `“${title}” now starts at ${formatTime(start)}${once ? "" : " on every day it falls on"}`;
 
 // Said to a screen reader when a habit is moved up or down its part of the day
 export const movedWords = (title, position, total) =>

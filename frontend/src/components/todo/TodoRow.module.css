@@ -54,6 +54,16 @@
     composes: menu from "../day/DayRow.module.css";
 }
 
+/* The day and time it is planned for, beside its words */
+.meta {
+    composes: meta from "../day/DayRow.module.css";
+}
+
+/* Planned for a day that has gone by, and still not done. Two classes, to outweigh the composed meta's colour. */
+.meta.late {
+    color: var(--late);
+}
+
 /* bp: phone */
 @media (max-width: 699.98px) {
     .field {

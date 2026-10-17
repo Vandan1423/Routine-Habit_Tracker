@@ -62,6 +62,22 @@
     margin-top: var(--s-1);
 }
 
+/* What was left from earlier days, said once over those rows, with the way to bring them all here */
+.earlier {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-3);
+    margin-top: var(--s-2);
+    color: var(--late);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+}
+
+.earlier button {
+    margin-inline-end: -9px;
+}
+
 .more {
     margin-top: var(--s-2);
     padding-left: calc(var(--check) + var(--s-3));

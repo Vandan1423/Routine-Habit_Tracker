@@ -27,10 +27,16 @@ const todoService = {
     // Moves a list's finished to-dos to Trash; answers with their ids
     clearDone: (id) => call(() => write("post", `/todos/lists/${id}/clear`), NOT_DELETED),
 
-    // listId left out puts it on the general list
-    createTodo: async (title, listId, key) =>
-        (await call(() => write("post", "/todos", listId ? { title, listId } : { title }, { key }), NOT_SAVED)).todo,
-    // title, done and listId are what can be changed
+    // The to-dos planned for a stretch of days ("YYYY-MM-DD", both included), finished or not: for a week
+    // further back than the lists carry
+    getPlanned: async (from, to) =>
+        (await call(() => api.get("/todos/planned", { params: { from, to } }), "Failed to fetch the planned to-dos.")).todos ?? [],
+
+    // listId left out puts it on the general list. planned: { date, time, endTime }, any of them, for one
+    // planned for a day
+    createTodo: async (title, listId, key, planned = {}) =>
+        (await call(() => write("post", "/todos", { title, ...(listId ? { listId } : {}), ...planned }, { key }), NOT_SAVED)).todo,
+    // title, done, listId, date, time and endTime are what can be changed
     updateTodo: async (id, data) => (await call(() => write("put", `/todos/${id}`, data), NOT_SAVED)).todo,
     deleteTodo: (id) => call(() => write("delete", `/todos/${id}`), NOT_DELETED),
 };

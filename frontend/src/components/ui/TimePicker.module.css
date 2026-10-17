@@ -1,40 +1,140 @@
-/* The field itself is drawn by Field.module.css, exactly as an Input is */
-.positioner {
-    composes: positioner from "./Floating.module.css";
+/* The field's own box, as a button. Stronger than Field's .control, which it shares an element with. */
+button.trigger {
+    width: 100%;
+    cursor: default;
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    text-align: start;
+}
+
+button.trigger[data-popup-open] {
+    border-color: var(--accent);
+}
+
+.value {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.placeholder {
+    color: var(--ink-3);
 }
 
 .popup {
-    composes: surface from "./Floating.module.css";
-    min-width: var(--anchor-width);
+    width: 16.5rem;
+    max-width: calc(100vw - var(--s-4));
 }
 
-/* Shorter than a menu: about seven times show, with the saved one in the middle */
-.list {
-    composes: list from "./Floating.module.css";
-    position: relative;
-    min-width: 0;
-    max-height: min(var(--available-height, 100vh), 15rem);
+/* ── The hour and the minute, in figures large enough to read across the room ── */
+
+.readout {
+    display: flex;
+    align-items: center;
+    gap: var(--s-1);
+    margin-bottom: var(--s-4);
 }
 
-.row {
-    composes: row from "./Floating.module.css";
-}
-
-.rowText {
-    composes: rowText from "./Floating.module.css";
-}
-
-.rowEnd {
-    composes: rowEnd from "./Floating.module.css";
-}
-
-.tick {
+.box {
+    width: 3.5rem;
+    height: 3rem;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: var(--r-2);
+    background: var(--fill);
+    appearance: none;
     color: var(--ink);
+    font-size: var(--fs-figure);
+    line-height: 1;
+    font-weight: var(--fw-medium);
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    caret-color: transparent;
+    transition:
+        border-color var(--t-fast) var(--ease),
+        background-color var(--t-fast) var(--ease);
 }
 
-.empty {
-    padding: var(--s-2) var(--s-3);
+/* The one the dial is showing */
+.current {
+    border-color: var(--accent);
+    background: var(--raised);
+}
+
+.box:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+    outline-offset: 0;
+}
+
+.box::selection {
+    background: transparent;
+}
+
+.colon {
+    color: var(--ink-2);
+    font-size: var(--fs-figure);
+    line-height: 1;
+}
+
+/* am and pm, side by side, the one in force filled with ink */
+.halves {
+    display: flex;
+    margin-inline-start: auto;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-2);
+    overflow: hidden;
+}
+
+.half {
+    min-width: 2.5rem;
+    min-height: 3rem;
     color: var(--ink-2);
     font-size: var(--fs-meta);
-    line-height: var(--lh-meta);
+    font-weight: var(--fw-medium);
+    transition:
+        background-color var(--t-fast) var(--ease),
+        color var(--t-fast) var(--ease);
+}
+
+.half + .half {
+    border-inline-start: 1px solid var(--line-strong);
+}
+
+.half[aria-pressed="true"] {
+    background: var(--accent);
+    color: var(--on-accent);
+}
+
+@media (hover: hover) {
+    .half:not([aria-pressed="true"]):hover {
+        background: var(--hover);
+        color: var(--ink);
+    }
+}
+
+.actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--s-2);
+    margin-top: var(--s-4);
+}
+
+/* "Clear" keeps to the far side, away from the two that close the panel */
+.actions .clear {
+    margin-inline-end: auto;
+    margin-inline-start: -9px;
+}
+
+@media (pointer: coarse) {
+    .popup {
+        width: 17.5rem;
+    }
+
+    /* 16px or more, or iOS zooms the page when a box is focused; these are far larger already */
+    .box {
+        height: 3.25rem;
+    }
 }

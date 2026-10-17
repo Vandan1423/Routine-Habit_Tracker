@@ -213,6 +213,54 @@ export const getItems = async (req, res, next) => {
     }
 };
 
+// @desc    How each routine and habit stood on each day of a stretch: done, done late, partly done or missed.
+//          A day it was not due on, or that has nothing on record for it, is left out.
+// @route   GET /api/history/marks?from=YYYY-MM-DD&to=YYYY-MM-DD
+export const getMarks = async (req, res, next) => {
+    try {
+        const userId = req.user._id;
+        const { from, to } = req.query;
+        const range = { $gte: from, $lte: to };
+
+        const [routineLogs, habitLogs, penalties] = await Promise.all([
+            RoutineLog.find({ user: userId, date: range }).select("routine date wasOnTime"),
+            HabitLog.find({ user: userId, date: range }).select("habit date completed quantity"),
+            missedEntriesIn(userId, from, to),
+        ]);
+
+        const marks = new Map();
+        const mark = (date, kind, id, fields) => {
+            const key = `${date}|${kind}|${id}`;
+            if (!marks.has(key)) marks.set(key, { date, kind, id, ...fields });
+        };
+
+        for (const log of routineLogs) {
+            mark(log.date, "routine", log.routine.toString(), { status: log.wasOnTime === false ? "late" : "done" });
+        }
+        for (const log of habitLogs) {
+            if (log.completed) mark(log.date, "habit", log.habit.toString(), { status: "done" });
+            // Counted, and short of the target
+            else if ((log.quantity ?? 0) > 0) {
+                mark(log.date, "habit", log.habit.toString(), { status: "partial", quantity: log.quantity });
+            }
+        }
+        // A day charged as missed, with nothing done on it at all. Something logged for it is what happened.
+        for (const entry of penalties) {
+            const id = itemIdOf(entry);
+            if (id) mark(entry.metadata.date, MISSED_REASONS[entry.reason], id, { status: "missed" });
+        }
+
+        res.status(200).json({
+            today: getUserToday(req.user),
+            from,
+            to,
+            marks: [...marks.values()].sort((a, b) => a.date.localeCompare(b.date)),
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 const cursorOf = (entry) => `${entry.createdAt.getTime()}_${entry._id}`;
 
 // @desc    The XP ledger, newest first, a page at a time: every gain and loss, with the item it was for

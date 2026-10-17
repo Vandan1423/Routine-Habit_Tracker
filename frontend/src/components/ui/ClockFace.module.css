@@ -1,0 +1,73 @@
+/* A round face on a quiet fill, its numbers set round the edge */
+.face {
+    position: relative;
+    width: 14rem;
+    max-width: 100%;
+    aspect-ratio: 1;
+    margin-inline: auto;
+    border-radius: var(--r-full);
+    background: var(--fill);
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: pointer;
+}
+
+/* The hand from the middle to the knob that sits behind the chosen number */
+.hand {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.hand line {
+    stroke: var(--accent);
+    stroke-width: 0.8;
+    stroke-linecap: round;
+}
+
+.pivot,
+.knob {
+    fill: var(--accent);
+}
+
+.dot {
+    fill: var(--on-accent);
+}
+
+.number {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    /* Its middle on its place round the dial */
+    translate: -50% -50%;
+    color: var(--ink);
+    font-size: var(--fs-body);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;
+}
+
+/* A 24-hour clock's inner ring: the afternoon and the evening, set smaller and quieter */
+.inner {
+    width: 1.75rem;
+    height: 1.75rem;
+    color: var(--ink-2);
+    font-size: var(--fs-caption);
+}
+
+.chosen {
+    color: var(--on-accent);
+    font-weight: var(--fw-semibold);
+}
+
+@media (pointer: coarse) {
+    .face {
+        width: 15rem;
+    }
+}

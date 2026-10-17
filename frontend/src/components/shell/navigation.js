@@ -10,8 +10,9 @@ import {
     TodayPage,
     TodoPage,
     TrashPage,
+    WeekPage,
 } from "../../routes/pages";
-import { ARCHIVE_PATH, GOALS_PATH, TODO_PATH, TRASH_PATH } from "../../lib/places";
+import { ARCHIVE_PATH, GOALS_PATH, TODO_PATH, TRASH_PATH, WEEK_PATH } from "../../lib/places";
 
 /**
  * The screens the navigation leads to, in the order they are shown.
@@ -26,6 +27,8 @@ import { ARCHIVE_PATH, GOALS_PATH, TODO_PATH, TRASH_PATH } from "../../lib/place
  */
 export const DESTINATIONS = [
     { id: "today", label: "Today", path: "/today", icon: "today", key: "t", group: 1, primary: true, preload: TodayPage.preload },
+    { id: "todo", label: "To-do", path: TODO_PATH, icon: "todo", key: "d", group: 1, primary: true, preload: TodoPage.preload },
+    { id: "goals", label: "Goals", path: GOALS_PATH, icon: "goal", key: "g", group: 1, primary: false, preload: GoalsPage.preload },
     {
         id: "plan",
         label: "Plan",
@@ -33,14 +36,13 @@ export const DESTINATIONS = [
         icon: "plan",
         key: "p",
         group: 1,
-        primary: true,
+        primary: false,
         preload: () => {
             PlanPage.preload();
             ItemPage.preload();
         },
     },
-    { id: "todo", label: "To-do", path: TODO_PATH, icon: "todo", key: "d", group: 1, primary: true, preload: TodoPage.preload },
-    { id: "goals", label: "Goals", path: GOALS_PATH, icon: "goal", key: "g", group: 1, primary: false, preload: GoalsPage.preload },
+    { id: "week", label: "Week", path: WEEK_PATH, icon: "calendar", key: "w", group: 1, primary: false, preload: WeekPage.preload },
     {
         id: "insights",
         label: "Insights",
@@ -68,7 +70,7 @@ export const DESTINATIONS = [
         icon: "expenses",
         key: "e",
         group: 2,
-        primary: false,
+        primary: true,
         preload: ExpensesPage.preload,
     },
     {

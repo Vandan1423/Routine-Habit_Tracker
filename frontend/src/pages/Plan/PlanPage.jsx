@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence } from "motion/react";
+import PlanCalendar from "./PlanCalendar";
 import PlanItemMenu from "./PlanItemMenu";
 import PlanRow from "./PlanRow";
 import PlanSkeleton from "./PlanSkeleton";
@@ -9,17 +10,26 @@ import { Link } from "react-router-dom";
 import { DayLayout } from "../../components/day";
 import { ItemEditor, NewItemMenu, PauseDialog } from "../../components/plan";
 import Page from "../../components/shell/Page";
-import { Button, EmptyState, ErrorState, SectionHeader } from "../../components/ui";
+import { Button, EmptyState, ErrorState, SectionHeader, SegmentedControl } from "../../components/ui";
+import useAuth from "../../hooks/useAuth";
+import useFetched from "../../hooks/useFetched";
 import useListKeys, { focusRow } from "../../hooks/useListKeys";
+import useMediaQuery from "../../hooks/useMediaQuery";
+import useNow from "../../hooks/useNow";
 import usePlan from "../../hooks/usePlan";
+import useRemembered from "../../hooks/useRemembered";
 import useToday from "../../hooks/useToday";
 import { cx } from "../../lib/cx";
-import { localDay, weekdayOf } from "../../lib/dates";
-import { movedWords, planWords } from "../../lib/itemWords";
-import { buildPlan, findPlanItem, moveWithin } from "../../lib/plan";
+import { addDays, localDay, weekdayOf } from "../../lib/dates";
+import { movedWords, planWords, retimedWords, weekStandingWords } from "../../lib/itemWords";
+import { buildDay } from "../../lib/day";
+import { buildPlan, findPlanItem, moveWithin, weekStanding } from "../../lib/plan";
 import { ARCHIVE_PATH } from "../../lib/places";
 import { KEYS } from "../../lib/shortcuts";
+import { fromMinutes, toMinutes } from "../../lib/time";
+import { toast } from "../../lib/toast";
 import { firstDayOfWeek, weekdayName } from "../../lib/week";
+import historyService from "../../services/historyService";
 import styles from "./PlanPage.module.css";
 
 /**
@@ -107,10 +117,21 @@ const PlanBlock = ({
  * Things are made, changed, put in order and deleted here; ticking them off belongs to Today.
  * The lists come from PlanContext (routines) and TodayContext (habits); lib/plan.js lays them out.
  */
+// The two ways the plan is shown: the week as a calendar, or a list by part of the day
+const VIEWS = [
+    { value: "calendar", label: "Calendar", icon: "calendar" },
+    { value: "list", label: "List", icon: "plan" },
+];
+
 const PlanPage = () => {
     const plan = usePlan();
     const today = useToday();
-    const { ensure, retry, reorderHabits, deleteItem, retireItem, resumeItem } = plan;
+    const { user } = useAuth();
+    const now = useNow();
+    const { ensure, retry, reorderHabits, deleteItem, retireItem, resumeItem, updateItem } = plan;
+    const account = user?._id ?? user?.id ?? user?.email ?? "account";
+    const [view, setView] = useRemembered(`plan.view.${account}`, "calendar");
+    const isPhone = useMediaQuery("(max-width: 699.98px)"); // bp: phone
 
     const [firstDay] = useState(firstDayOfWeek);
     // One day of this week picked out ("YYYY-MM-DD"), or the whole plan
@@ -130,6 +151,28 @@ const PlanPage = () => {
         () => buildPlan({ routines, habits, today: date, firstDay }),
         [routines, habits, date, firstDay],
     );
+    // How the week has gone: the days that have ended by their record, today as it stands on Today
+    const live = useMemo(
+        () => buildDay({ routines: today.routines, habits, pending: today.pending }),
+        [today.routines, habits, today.pending],
+    );
+    const standing = useMemo(
+        () => weekStanding(whole.week, { summaries: today.week, today: { date, total: live.total, done: live.done } }),
+        [whole.week, today.week, date, live.total, live.done],
+    );
+    // How each routine and habit stood on the days of this week that have ended, for the calendar
+    const weekStart = whole.week[0]?.date ?? date;
+    const yesterday = addDays(date, -1);
+    const marked = useFetched(
+        view === "calendar" && weekStart <= yesterday ? `marks:${account}:${weekStart}:${yesterday}` : null,
+        () => historyService.getMarks(weekStart, yesterday),
+    );
+    const marks = useMemo(
+        () => new Map((marked.data?.marks ?? []).map((mark) => [`${mark.date}|${mark.kind}|${mark.id}`, mark])),
+        [marked.data],
+    );
+    const liveByKey = useMemo(() => new Map(live.items.map((item) => [item.key, item])), [live.items]);
+
     // A day picked out last week is no longer one of this week's
     const picked = whole.week.some((entry) => entry.date === pickedDay) ? pickedDay : null;
     const shown = useMemo(
@@ -162,16 +205,29 @@ const PlanPage = () => {
         ready && !whole.empty,
     );
 
+    const calendar = view === "calendar";
     const header = (
         <header className={styles.header}>
             <div className={styles.text}>
                 {/* With nothing planned, the page below says so itself */}
                 <p className={styles.eyebrow}>
-                    {ready && !whole.empty ? planWords(whole, picked, date) : " "}
+                    {ready && !whole.empty ? planWords(whole, calendar ? null : picked, date) : " "}
                 </p>
                 <h1 className={styles.title}>Plan</h1>
             </div>
-            {ready && !whole.empty && <NewItemMenu onNew={setEditing} />}
+            {ready && !whole.empty && (
+                <div className={styles.tools}>
+                    <SegmentedControl
+                        label="Show the plan as"
+                        options={VIEWS}
+                        value={view}
+                        onChange={setView}
+                        // The two words would crowd the title on a phone: the icons, the words kept for screen readers
+                        iconOnly={isPhone}
+                    />
+                    <NewItemMenu onNew={setEditing} />
+                </div>
+            )}
         </header>
     );
     const editor = (
@@ -250,14 +306,53 @@ const PlanPage = () => {
     };
 
     const week = (layout) => (
-        <PlanWeek
-            layout={layout}
-            week={whole.week}
-            selected={picked}
-            onSelect={setPickedDay}
-            today={date}
-        />
+        <PlanWeek layout={layout} standing={standing} selected={picked} onSelect={setPickedDay} />
     );
+    // An empty hour on the calendar: a new routine there, on that day of the week, an hour long
+    const createAt = (day, time) =>
+        setEditing({
+            kind: "routine",
+            start: time,
+            end: fromMinutes(Math.min(toMinutes(time) + 60, 23 * 60 + 45)),
+            days: [weekdayOf(day)],
+        });
+
+    // A routine carried to another time keeps its length, and moves on every day it falls on
+    const retime = (item, { start, end }) => {
+        const was = { startTime: item.source.startTime, endTime: item.source.endTime ?? "" };
+        updateItem("routine", item.id, { startTime: start, endTime: end ?? "" }).then(
+            () =>
+                toast(retimedWords(item.title, start, Boolean(item.once)), {
+                    id: `plan-retimed-${item.id}`,
+                    action: { label: "Undo", onClick: () => updateItem("routine", item.id, was).catch(() => {}) },
+                }),
+            () => toast.error(`“${item.title}” didn’t move. Check your connection and try again.`),
+        );
+    };
+
+    if (calendar) {
+        const tally = weekStandingWords(standing);
+
+        return (
+            <Page>
+                <div className={styles.wide}>
+                    {header}
+                    {tally.length > 0 && <p className={styles.tally}>{tally.join(" ")}</p>}
+                    <PlanCalendar
+                        standing={standing}
+                        marks={marks}
+                        live={liveByKey}
+                        now={now}
+                        onCreate={createAt}
+                        onMove={retime}
+                    />
+                    {archiveNote}
+                </div>
+                {editor}
+            </Page>
+        );
+    }
+
     const rowProps = {
         today: date,
         firstDay,

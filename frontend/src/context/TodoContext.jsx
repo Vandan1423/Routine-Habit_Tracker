@@ -21,6 +21,7 @@ import {
     listGoneWords,
     listNotMadeWords,
     NOT_DELETED_WORDS,
+    NOT_PLANNED_WORDS,
     NOT_RESTORED_WORDS,
     NOT_SAVED_WORDS,
     todoGoneWords,
@@ -186,24 +187,25 @@ export const TodoProvider = ({ children }) => {
      * server's reason once it has been taken off the list again, for whoever asked to say so.
      * @param {String} title
      * @param {String} [listId] - the general list when left out
+     * @param {Object} [planned] - { date, time, endTime }, any of them, for one planned for a day (Week)
      */
     const addTodo = useCallback(
-        (title, listId) => {
+        (title, listId, planned = {}) => {
             const home = latest.current.state.lists.find((list) => (listId ? list._id === listId : list.isDefault));
 
             // The lists are not here yet, so there is nowhere to show it: this one waits for the server
             if (!home) {
-                return todoService.createTodo(title, listId).then((todo) => {
+                return todoService.createTodo(title, listId, undefined, planned).then((todo) => {
                     change((lists) => withTodo(lists, todo));
                     return todo;
                 });
             }
 
             drafted.current += 1;
-            const draft = draftTodo(`draft:${drafted.current}`, title, home);
+            const draft = draftTodo(`draft:${drafted.current}`, title, home, new Date(), planned);
             change((lists) => withTodo(lists, draft));
 
-            const again = `${home._id}\n${title}`;
+            const again = `${home._id}\n${title}\n${planned.date ?? ""}`;
             const key = unanswered.current.get(again) ?? newKey();
             unanswered.current.delete(again);
 
@@ -212,7 +214,7 @@ export const TodoProvider = ({ children }) => {
                 const list = listId ? await onceSaved({ _id: listId }) : null;
                 if (listId && !list) throw new Error(NOT_SAVED_WORDS);
 
-                return todoService.createTodo(title, list?._id, key);
+                return todoService.createTodo(title, list?._id, key, planned);
             });
             line.current = created.catch(() => {});
 
@@ -280,6 +282,25 @@ export const TodoProvider = ({ children }) => {
         (todo, listId) =>
             alter(todo, { list: listId }, async () => ({ listId: (await onceSaved({ _id: listId }))?._id })),
         [alter, onceSaved],
+    );
+
+    /**
+     * Plans one for a day, moves it to another, gives it a time, or takes it off its day: any of
+     * { date, time, endTime }, null for none. Taking away the day takes the time with it, as the server does.
+     * Shown at once, put back if the server refuses (it refuses a day that has passed).
+     */
+    const planTodo = useCallback(
+        (todo, planned) => {
+            const fields = { ...planned };
+            if (fields.date === null) Object.assign(fields, { time: null, endTime: null });
+            if (fields.time === null) fields.endTime = null;
+
+            return alter(todo, fields, () => fields, {
+                words: NOT_PLANNED_WORDS,
+                retry: () => latest.current.planTodo(todo, planned),
+            });
+        },
+        [alter],
     );
 
     // Brings back what a delete here sent to Trash, then reads the lists again: only the server knows how they stand
@@ -437,7 +458,7 @@ export const TodoProvider = ({ children }) => {
     );
 
     useEffect(() => {
-        latest.current = { state, setDone, deleteTodo, addList };
+        latest.current = { state, setDone, deleteTodo, addList, planTodo };
     });
 
     // Signing out, or signing in as someone else, starts from nothing
@@ -461,6 +482,7 @@ export const TodoProvider = ({ children }) => {
             setDone,
             renameTodo,
             moveTodo,
+            planTodo,
             deleteTodo,
             clearDone,
             addList,
@@ -477,6 +499,7 @@ export const TodoProvider = ({ children }) => {
             setDone,
             renameTodo,
             moveTodo,
+            planTodo,
             deleteTodo,
             clearDone,
             addList,

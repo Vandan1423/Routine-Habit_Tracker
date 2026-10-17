@@ -1,9 +1,10 @@
 // Days that have ended, shaped for the screens that look back at them. Everything here is worked out
 // from its arguments: what the API answers (services/historyService.js) goes in, what a screen draws comes out.
 
-import { addDays, firstDayOf, lastDayOf } from "./dates";
+import { addDays, firstDayOf, lastDayOf, weekdayOf } from "./dates";
 import { BLOCKS, blockAt, inDayOrder, tallyOf } from "./day";
 import { parseTime, toMinutes } from "./time";
+import { firstDayOfWeek, weekOrder } from "./week";
 
 const BLOCK_IDS = new Set(BLOCKS.map((block) => block.id));
 
@@ -171,3 +172,30 @@ export const buildMonth = ({ month, days = [], today, live }) => {
 
     return { month, marks, stats: { ...sumDays(ended), longestRun: longestRunIn(ended) } };
 };
+
+/**
+ * How one routine or habit has gone on each day of the week, over the days on its record: what was
+ * done (late included), and what was not. What was "due" is what was done and what was not, as on every
+ * screen that looks back.
+ * @param {Array} days - its days, as its history sends them: { date, status } ("done", "late", "partial", "missed")
+ * @param {Number} [firstDay] - the day the reader's week starts on
+ * @returns {Array} - in reading order, the days of the week it has a record on: { day, done, late, short, due }
+ */
+export const byWeekday = (days = [], firstDay = firstDayOfWeek()) => {
+    const rows = new Map();
+
+    for (const entry of days) {
+        if (!["done", "late", "partial", "missed"].includes(entry.status)) continue;
+
+        const day = weekdayOf(entry.date);
+        const row = rows.get(day) ?? { day, done: 0, late: 0, short: 0, due: 0 };
+        row.due += 1;
+        if (entry.status === "done" || entry.status === "late") row.done += 1;
+        if (entry.status === "late") row.late += 1;
+        if (entry.status === "partial" || entry.status === "missed") row.short += 1;
+        rows.set(day, row);
+    }
+
+    return weekOrder(firstDay).filter((day) => rows.has(day)).map((day) => rows.get(day));
+};
+

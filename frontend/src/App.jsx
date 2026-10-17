@@ -24,6 +24,8 @@ import {
     SignUpPage,
     TodayPage,
     TodoPage,
+
+    WeekPage,
     TrashPage,
     VerifyEmailPage,
 } from "./routes/pages";
@@ -87,6 +89,7 @@ function App() {
                         <Route path="/plan/habit/:id" element={<ItemPage kind="habit" />} />
                         {/* One list by its id; the general list without one */}
                         <Route path="/todo/:listId?" element={<TodoPage />} />
+                        <Route path="/week/:start?" element={<WeekPage />} />
                         <Route path="/goals" element={<GoalsPage />} />
                         <Route path="/insights" element={<InsightsPage />} />
                         {/* A month ("2026-10") or one day of it ("2026-10-03"); the month today is in without either */}

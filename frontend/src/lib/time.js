@@ -54,9 +54,6 @@ export const formatTimeRange = (start, end, { hour12 = uses12HourClock() } = {})
 // "am", "p", "p.m." and the like, or nothing
 const HALF = String.raw`(?:([ap])\.?(?:m\.?)?)?`;
 const TIME_PATTERN = new RegExp(String.raw`^(\d{1,2})(?:[:.\s]?(\d{2}))?\s*${HALF}$`);
-// A time that is still being typed: with a separator ("7:", "7:3"), or digits alone ("73")
-const SEPARATED_START = new RegExp(String.raw`^(\d{1,2})[:.\s](\d{0,2})\s*${HALF}$`);
-const DIGITS_START = new RegExp(String.raw`^(\d{1,4})\s*${HALF}$`);
 
 /**
  * Reads a time the way people type one, and returns it as "HH:MM", or null if it is not a time.
@@ -85,81 +82,4 @@ export const parseTime = (text) => {
     }
 
     return fromMinutes(hours * 60 + minutes);
-};
-
-// Every time of day, `step` minutes apart, from midnight
-export const timesOfDay = (step = 30) =>
-    Array.from({ length: Math.floor(MINUTES_IN_DAY / step) }, (_, index) =>
-        fromMinutes(index * step),
-    );
-
-// The ways the start of a typed time can be read, each as [hour, start of the minutes].
-// "7" is hour 7. "73" can only be 7:3_. "100" may be 1:00 or the start of 10:0_. Anything else has no reading.
-const readStart = (typed) => {
-    const separated = SEPARATED_START.exec(typed);
-    if (separated) return [[Number(separated[1]), separated[2]]];
-
-    const digits = DIGITS_START.exec(typed)?.[1] ?? "";
-    const readings = [1, 2]
-        .filter((cut) => digits.length >= cut)
-        .map((cut) => [Number(digits.slice(0, cut)), digits.slice(cut)])
-        .filter(([hour, minutes]) => hour <= 23 && minutes.length <= 2 && !(minutes[0] > 5));
-
-    // Digits that are a whole hour on their own ("10") are read as that hour and nothing else
-    const wholeHour = readings.find(([, minutes]) => minutes === "");
-    return wholeHour ? [wholeHour] : readings;
-};
-
-/**
- * The times to offer for what has been typed so far, in clock order.
- * Nothing typed: every `step` minutes of the day.
- * "715" on a 12-hour clock: 7:15 am and 7:15 pm, so the half of the day can be picked without typing it.
- * "7": 7:00 and 7:30, morning and evening. "7p": the evening ones only.
- */
-export const suggestTimes = (text, { step = 30, hour12 = uses12HourClock() } = {}) => {
-    const typed = String(text).trim().toLowerCase().replaceAll(NBSP, " ");
-    const grid = timesOfDay(step);
-    if (!typed) return grid;
-
-    const half = /\d\s*([ap])/.exec(typed)?.[1];
-    const found = new Set();
-    const exact = parseTime(typed);
-
-    if (exact) {
-        found.add(exact);
-        // An hour from 1 to 12 does not say which half of the day: offer the same time in the other half too
-        const minutes = toMinutes(exact);
-        if (hour12 && /^\d/.test(typed) && !half && minutes >= 60 && minutes < 13 * 60) {
-            found.add(fromMinutes(minutes + 12 * 60));
-        }
-    }
-
-    // What was typed may be the start of a longer time: offer the ones on the list that begin the same way
-    const readings = readStart(typed);
-    for (const time of grid) {
-        const [hours, minutes] = time.split(":");
-        const hours24 = Number(hours);
-        const inHalf = !half || (half === "p") === hours24 >= 12;
-
-        const begins = readings.some(
-            ([hour, minuteStart]) =>
-                (hour === hours24 || (hour12 && hour === (hours24 % 12 || 12))) &&
-                minutes.startsWith(minuteStart),
-        );
-        if (inHalf && begins) found.add(time);
-    }
-
-    return [...found].sort();
-};
-
-// The time on the list nearest to `time`, for scrolling a long list to where the reader is
-export const nearestTime = (time, times) => {
-    if (times.length === 0) return null;
-
-    const target = toMinutes(time);
-    return times.reduce((best, candidate) =>
-        Math.abs(toMinutes(candidate) - target) < Math.abs(toMinutes(best) - target)
-            ? candidate
-            : best,
-    );
 };

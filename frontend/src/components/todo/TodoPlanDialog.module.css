@@ -1,0 +1,48 @@
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-5);
+}
+
+.pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s-3);
+    align-items: start;
+}
+
+/* The day, and the way to take it away again under it */
+.day {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.form .noDay {
+    align-self: flex-start;
+    margin-top: var(--s-1);
+    margin-inline-start: -9px;
+}
+
+.note {
+    padding-top: var(--s-4);
+    border-top: 1px solid var(--line);
+    color: var(--ink-2);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-body);
+    text-wrap: pretty;
+}
+
+/* "Delete" keeps to the far side, away from the two that close the form */
+.dialog .delete {
+    margin-inline-end: auto;
+    color: var(--loss);
+}
+
+/* bp: phone */
+@media (max-width: 699.98px) {
+    .dialog .delete {
+        flex: 0 1 auto;
+        margin-inline-end: 0;
+    }
+}

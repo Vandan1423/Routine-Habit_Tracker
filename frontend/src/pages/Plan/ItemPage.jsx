@@ -14,6 +14,7 @@ import {
     IconButton,
     Kbd,
     Menu,
+    ProgressBar,
     Skeleton,
 } from "../../components/ui";
 import useAuth from "../../hooks/useAuth";
@@ -24,6 +25,7 @@ import useToday from "../../hooks/useToday";
 import { cx } from "../../lib/cx";
 import { formatDayBrief, localDay, monthOf } from "../../lib/dates";
 import { BLOCKS } from "../../lib/day";
+import { byWeekday } from "../../lib/history";
 import { CATEGORIES } from "../../lib/itemForm";
 import {
     dayStatusWords,
@@ -33,11 +35,13 @@ import {
     patternWords,
     pauseWords,
     stakesWords,
+    weekdayRecordWords,
 } from "../../lib/itemWords";
 import { isPausedOn, pauseAhead } from "../../lib/pauses";
 import { ARCHIVE_PATH } from "../../lib/places";
 import { findPlanItem } from "../../lib/plan";
 import { KEYS } from "../../lib/shortcuts";
+import { weekdayName } from "../../lib/week";
 import archiveService from "../../services/archiveService";
 import habitService from "../../services/habitService";
 import routineService from "../../services/routineService";
@@ -209,6 +213,8 @@ const ItemPage = ({ kind }) => {
     const pause = planned && !item.once ? pauseAhead(source, date) : null;
     // A day it was off, and has nothing else to show for
     const isOff = (day) => !days.has(day) && isPausedOn(source, day);
+    // Which days of the week it is kept on and which it slips on, over its whole record
+    const weekdays = history.data && !item.once ? byWeekday(history.data.days) : [];
     const legend = LEGEND.filter(([status]) =>
         status === "off"
             ? (source.pauses ?? []).some((entry) => entry.from <= date)
@@ -333,6 +339,7 @@ const ItemPage = ({ kind }) => {
                             )}
                         </p>
                         <Calendar
+                            full
                             className={styles.calendar}
                             label={`${item.title}, day by day`}
                             month={month ?? monthOf(date)}
@@ -340,6 +347,8 @@ const ItemPage = ({ kind }) => {
                             today={date}
                             min={history.data?.since}
                             max={date}
+                            // A day it has a record for is set in full ink; the rest stay quiet
+                            strongDay={(day) => days.has(day)}
                             describeDay={(day) =>
                                 isOff(day) && day <= date ? "Off" : dayStatusWords(days.get(day), { unit: item.unit })
                             }
@@ -364,6 +373,27 @@ const ItemPage = ({ kind }) => {
                                     </li>
                                 ))}
                             </ul>
+                        )}
+                        {weekdays.length > 1 && (
+                            <section className={styles.weekdays} aria-labelledby="by-weekday">
+                                <h2 id="by-weekday" className={styles.heading}>
+                                    By day of the week
+                                </h2>
+                                <ul>
+                                    {weekdays.map((row) => (
+                                        <li key={row.day} className={styles.weekday}>
+                                            <span>{weekdayName(row.day)}</span>
+                                            <ProgressBar
+                                                size="md"
+                                                value={row.done}
+                                                max={row.due}
+                                                label={`${weekdayName(row.day)}: ${weekdayRecordWords(row)}`}
+                                            />
+                                            <span className={styles.kept}>{weekdayRecordWords(row)}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </section>
                         )}
                     </>
                 )}

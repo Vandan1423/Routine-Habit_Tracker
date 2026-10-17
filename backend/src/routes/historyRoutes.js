@@ -6,6 +6,7 @@ import {
     getDays,
     getItems,
     getLedger,
+    getMarks,
 } from "../controllers/historyController.js";
 import { protect } from "../middlewares/authMiddleware.js";
 import { settleDays } from "../middlewares/dayRolloverMiddleware.js";
@@ -30,6 +31,9 @@ router.get("/days/:date", validate({ params: dayParam }), getDay);
 
 // @route   GET /api/history/items
 router.get("/items", validate({ query: dayRangeQuerySchema }), getItems);
+
+// @route   GET /api/history/marks
+router.get("/marks", validate({ query: dayRangeQuerySchema }), getMarks);
 
 // @route   GET /api/history/ledger
 router.get("/ledger", validate({ query: ledgerQuerySchema }), getLedger);

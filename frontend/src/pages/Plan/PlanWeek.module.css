@@ -17,6 +17,11 @@
     font-weight: var(--fw-medium);
 }
 
+/* A day still to come: its count is what it will ask, not what it got, so it is said more quietly */
+.ahead .count {
+    color: var(--ink-3);
+}
+
 .count {
     font-variant-numeric: tabular-nums;
 }
@@ -32,7 +37,7 @@
 /* Wider than the column by its own padding, so the tint has room around the words */
 .column .day {
     display: grid;
-    grid-template-columns: 4ch minmax(0, 1fr) 3ch;
+    grid-template-columns: 4ch minmax(0, 1fr) 5ch;
     align-items: center;
     gap: var(--s-2);
     width: calc(100% + var(--s-4));
@@ -55,6 +60,19 @@
 
 .column .count {
     text-align: right;
+}
+
+/* Under the days: the week so far, and what it still asks */
+.tally {
+    display: grid;
+    gap: 2px;
+    margin-top: var(--s-4);
+    padding-top: var(--s-3);
+    border-top: 1px solid var(--line);
+    color: var(--ink-2);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+    text-wrap: pretty;
 }
 
 .column .day[aria-pressed="true"] {
@@ -101,6 +119,10 @@
 
 .row .today .count {
     color: var(--ink);
+}
+
+.row .ahead .count {
+    color: var(--ink-3);
 }
 
 /* The chosen day is filled with ink, like a weekday that is on in the form */

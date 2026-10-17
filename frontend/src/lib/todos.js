@@ -35,30 +35,66 @@ export const layoutList = (list) => {
 export const pickList = (lists, id) =>
     lists.find((list) => list._id === id) ?? lists.find((list) => list.isDefault) ?? lists[0] ?? null;
 
+// Planned for a day: the ones with a time first, by the clock, then the rest in the order they were written
+export const byPlannedTime = (a, b) => {
+    if (a.time && b.time) return a.time.localeCompare(b.time) || byMade(a, b);
+    if (a.time) return -1;
+    if (b.time) return 1;
+    return byMade(a, b);
+};
+
+const allTodos = (lists) => lists.flatMap((list) => list.todos.map((todo) => ({ ...todo, listLabel: listLabel(list) })));
+
+// Every to-do planned for a day, on any list, each with the name of its list, in the order the day is read
+export const plannedOn = (lists, date) =>
+    allTodos(lists)
+        .filter((todo) => todo.date === date)
+        .sort(byPlannedTime);
+
+// What is still to do and has no day: what can be planned for one
+export const unplanned = (lists) =>
+    allTodos(lists)
+        .filter((todo) => !todo.date && !todo.done)
+        .sort(byMade);
+
+// What was planned for a day before `date` and is still not done, the oldest day first
+export const leftOver = (lists, date) =>
+    allTodos(lists)
+        .filter((todo) => todo.date && todo.date < date && !todo.done)
+        .sort((a, b) => a.date.localeCompare(b.date) || byPlannedTime(a, b));
+
 /**
- * What Today shows of the general list: what is still open, and what was ticked today, each in the place
- * it was written, so ticking one does not move it. At most `limit` of them; `more` says how many open ones
- * that left out.
+ * What Today shows of the to-dos, in three runs, each in the place it was written so ticking one does
+ * not move it:
+ * earlier: what was planned for a day that has passed and is still not done (nothing moves it but the person);
+ * planned: what is planned for today, on any list, those with a time first;
+ * rows: the general list's own to-dos with no day, still open or ticked today, at most `limit` of them.
+ * `more` says how many open ones on the general list that left out; `open`, how many are open in all three.
  * @param {Array} lists - as GET /todos returns them
  * @param {Object} [options]
  * @param {Date} [options.now]
+ * @param {String} [options.today] - the account's own day, "YYYY-MM-DD"; this device's day when left out
  * @param {Number} [options.limit]
  */
-export const todayTodos = (lists, { now = new Date(), limit = 6 } = {}) => {
+export const todayTodos = (lists, { now = new Date(), today = localDay(now), limit = 6 } = {}) => {
     const general = lists.find((list) => list.isDefault);
-    if (!general) return { listId: null, rows: [], open: 0, more: 0 };
+    if (!general) return { listId: null, earlier: [], planned: [], rows: [], open: 0, more: 0 };
 
-    const today = localDay(now);
-    const open = general.todos.filter((todo) => !todo.done);
+    const tickedToday = (todo) => todo.doneAt && localDay(new Date(todo.doneAt)) === localDay(now);
+    const open = general.todos.filter((todo) => !todo.done && !todo.date);
     const relevant = general.todos
-        .filter((todo) => !todo.done || (todo.doneAt && localDay(new Date(todo.doneAt)) === today))
+        .filter((todo) => !todo.date && (!todo.done || tickedToday(todo)))
         .sort(byMade);
     const rows = relevant.slice(0, limit);
+    const earlier = leftOver(lists, today);
+    const planned = plannedOn(lists, today);
 
     return {
         listId: general._id,
+        earlier,
+        planned,
         rows,
-        open: open.length,
+        open: open.length + earlier.length + planned.filter((todo) => !todo.done).length,
         more: open.filter((todo) => !rows.includes(todo)).length,
     };
 };
@@ -136,7 +172,7 @@ export const withListAt = (lists, list, index) =>
  * @param {String} id - told apart from a saved one's by whoever makes it
  * @param {Object} list - the list it is written on, with its to-dos
  */
-export const draftTodo = (id, title, list, now = new Date()) => {
+export const draftTodo = (id, title, list, now = new Date(), planned = {}) => {
     const last = list.todos.reduce((latest, todo) => Math.max(latest, Date.parse(todo.createdAt) || 0), 0);
 
     return {
@@ -145,6 +181,9 @@ export const draftTodo = (id, title, list, now = new Date()) => {
         title,
         done: false,
         doneAt: null,
+        date: planned.date ?? null,
+        time: planned.date ? (planned.time ?? null) : null,
+        endTime: planned.date && planned.time ? (planned.endTime ?? null) : null,
         createdAt: new Date(Math.max(now.getTime(), last + 1)).toISOString(),
     };
 };

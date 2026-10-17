@@ -23,14 +23,17 @@ export const CATEGORIES = [
  * @param {Object} [start] - today: the day a one-off task starts out on; block: the part of the day a habit
  *   starts out in; once: a routine that starts out as a one-off task
  */
-export const emptyForm = (kind, { today = "", block = "anytime", once = false } = {}) =>
+export const emptyForm = (
+    kind,
+    { today = "", block = "anytime", once = false, start = "", end = "", days = EVERY_DAY } = {},
+) =>
     kind === "routine"
         ? {
               title: "",
-              startTime: "",
-              endTime: "",
+              startTime: start,
+              endTime: end,
               repeats: once ? "once" : "weekly",
-              days: EVERY_DAY,
+              days,
               date: today,
               category: "personal",
               description: "",

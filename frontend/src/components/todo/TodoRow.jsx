@@ -18,9 +18,22 @@ import styles from "./TodoRow.module.css";
  * todo: as the API sends it
  * lists: every list, for "Move to". With fewer than two there is nowhere to move it.
  * onCheck(todo, done), onRename(todo, title), onMove(todo, listId), onDelete(todo)
+ * meta: a few words beside its own, such as the day and time it is planned for. metaTone: "late" for a day gone by.
+ * actions: more that can be done with it, first in its menu: [{ label, icon, onSelect }]
  * still: drawn without the arriving and leaving (for a list that is replaced whole)
  */
-const TodoRow = ({ todo, lists = [], onCheck, onRename, onMove, onDelete, still = false }) => {
+const TodoRow = ({
+    todo,
+    lists = [],
+    onCheck,
+    onRename,
+    onMove,
+    onDelete,
+    meta,
+    metaTone,
+    actions = [],
+    still = false,
+}) => {
     const isPresent = useIsPresent();
     // Clipped while it grows in or shrinks away, so its words do not spill out of a row too short to hold them
     const [resizing, setResizing] = useState(false);
@@ -87,12 +100,19 @@ const TodoRow = ({ todo, lists = [], onCheck, onRename, onMove, onDelete, still 
                             {todo.title}
                         </button>
                     )}
+                    {meta && !editing && <span className={cx(styles.meta, metaTone && styles[metaTone])}>{meta}</span>}
                 </div>
                 <span className={styles.menu}>
                     <Menu
                         align="end"
                         trigger={<IconButton icon="more" size="sm" label={`Options for ${todo.title}`} />}
                     >
+                        {actions.map((action) => (
+                            <Menu.Item key={action.label} icon={action.icon} onSelect={action.onSelect}>
+                                {action.label}
+                            </Menu.Item>
+                        ))}
+                        {actions.length > 0 && <Menu.Separator />}
                         <Menu.Item icon="edit" shortcut={KEYS.edit} onSelect={edit}>
                             Reword
                         </Menu.Item>

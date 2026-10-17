@@ -57,9 +57,14 @@
     font-weight: var(--fw-medium);
 }
 
+/* The month across the whole column, a day to a cell, its number over its mark */
 .calendar {
-    max-width: 22rem;
     margin-top: var(--s-8);
+}
+
+.calendar .mark {
+    width: 12px;
+    height: 12px;
 }
 
 /* ── A day's mark: a small square, like the check it was ticked with ── */
@@ -153,7 +158,6 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--s-2) var(--s-5);
-    max-width: 22rem;
     margin-top: var(--s-4);
     padding-top: var(--s-3);
     border-top: 1px solid var(--line);
@@ -166,6 +170,39 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
+}
+
+/* ── Which days of the week it is kept on: the day, a bar, and the count ── */
+
+.weekdays {
+    margin-top: var(--s-10);
+}
+
+.weekdays ul {
+    display: grid;
+    gap: var(--s-2);
+}
+
+.weekday {
+    display: grid;
+    grid-template-columns: 7.5rem minmax(0, 1fr) 9rem;
+    align-items: center;
+    gap: var(--s-3);
+    color: var(--ink-2);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+}
+
+.kept {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+/* bp: phone */
+@media (max-width: 699.98px) {
+    .weekday {
+        grid-template-columns: 6rem minmax(0, 1fr) auto;
+    }
 }
 
 /* ── Beside it: what it is ── */

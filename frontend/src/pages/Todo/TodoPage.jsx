@@ -7,14 +7,16 @@ import TodoSkeleton from "./TodoSkeleton";
 import { listPath, TODO_PATH } from "./todoPaths";
 import { DayLayout } from "../../components/day";
 import Page from "../../components/shell/Page";
-import { TodoAdd, TodoRow } from "../../components/todo";
+import { TodoAdd, TodoPlanDialog, TodoRow } from "../../components/todo";
 import { Button, ErrorState, IconButton, Menu, SectionHeader } from "../../components/ui";
 import useListKeys, { focusRow } from "../../hooks/useListKeys";
+import useToday from "../../hooks/useToday";
 import useTodos from "../../hooks/useTodos";
+import { localDay } from "../../lib/dates";
 import { KEYS } from "../../lib/shortcuts";
 import { rowKeyOf } from "../../lib/drafts";
 import { layoutList, pickList, rowKey } from "../../lib/todos";
-import { listWords } from "../../lib/todoWords";
+import { listWords, plannedWords } from "../../lib/todoWords";
 import styles from "./TodoPage.module.css";
 
 /**
@@ -31,8 +33,11 @@ const TodoPage = () => {
     // A list made a moment ago is at the address of the id it had then, until the server's id is known
     const listId = asked && listIdNow(asked);
 
-    // The form a list is named in
+    // The form a list is named in, and the one a to-do is planned for a day in
     const [naming, setNaming] = useState(null);
+    const [planning, setPlanning] = useState(null);
+    const { date } = useToday();
+    const today = date ?? localDay();
 
     useEffect(() => {
         ensure();
@@ -115,6 +120,24 @@ const TodoPage = () => {
     };
 
     const rowProps = { lists, onCheck: setDone, onRename: renameTodo, onMove: moveTodo, onDelete: deleteTodo };
+    // A planned one says its day (in the colour of something late once that day has passed undone),
+    // and any one can be planned for a day
+    const rowOf = (todo) => (
+        <TodoRow
+            key={rowKey(todo)}
+            todo={todo}
+            {...rowProps}
+            meta={plannedWords(todo, today)}
+            metaTone={todo.date && todo.date < today && !todo.done ? "late" : undefined}
+            actions={[
+                {
+                    label: todo.date ? "Change its day…" : "Plan for a day…",
+                    icon: "calendar",
+                    onSelect: () => setPlanning({ todo }),
+                },
+            ]}
+        />
+    );
     const picker = (shape) => <TodoLists layout={shape} lists={lists} onNew={() => setNaming({})} />;
 
     return (
@@ -150,9 +173,7 @@ const TodoPage = () => {
                     <div className={styles.rows}>
                         <ul>
                             <AnimatePresence initial={false}>
-                                {layout.open.map((todo) => (
-                                    <TodoRow key={rowKey(todo)} todo={todo} {...rowProps} />
-                                ))}
+                                {layout.open.map(rowOf)}
                             </AnimatePresence>
                         </ul>
                         <TodoAdd onAdd={(title) => addTodo(title, list._id)} label={`Add a to-do to ${layout.label}`} />
@@ -179,9 +200,7 @@ const TodoPage = () => {
                             />
                             <ul className={styles.rows}>
                                 <AnimatePresence initial={false}>
-                                    {layout.done.map((todo) => (
-                                        <TodoRow key={rowKey(todo)} todo={todo} {...rowProps} />
-                                    ))}
+                                    {layout.done.map(rowOf)}
                                 </AnimatePresence>
                             </ul>
                         </section>
@@ -189,6 +208,7 @@ const TodoPage = () => {
                 </div>
             </DayLayout>
             <ListDialog request={naming} onSave={saveList} onClose={() => setNaming(null)} />
+            <TodoPlanDialog request={planning} onClose={() => setPlanning(null)} />
         </Page>
     );
 };

@@ -37,6 +37,13 @@ export const timeLabel = Joi.string()
         "string.pattern.base": "{{#label}} must be a time such as 14:30.",
     });
 
+// "14:30" exactly: a time as the newer parts of the API keep it
+export const clockTime = Joi.string()
+    .pattern(/^([01]\d|2[0-3]):[0-5]\d$/)
+    .messages({
+        "string.pattern.base": "{{#label}} must be a time such as 14:30.",
+    });
+
 // [0,1,2,3,4,5,6] where 0 = Sunday
 export const weekdays = Joi.array()
     .items(Joi.number().integer().min(0).max(6))

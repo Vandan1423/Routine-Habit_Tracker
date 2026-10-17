@@ -21,6 +21,9 @@ const historyService = {
     // How each routine and habit went over a stretch of days
     getItems: (from, to) => read("/history/items", { from, to }, "Failed to fetch how each item went."),
 
+    // How each routine and habit stood on each day of a stretch: done, late, partly done or missed
+    getMarks: (from, to) => read("/history/marks", { from, to }, "Failed to fetch the week's marks."),
+
     // The XP ledger, newest first. `before` is the `next` of the page already held.
     getLedger: ({ before, limit } = {}) =>
         read("/history/ledger", { before, limit }, "Failed to fetch the ledger."),
