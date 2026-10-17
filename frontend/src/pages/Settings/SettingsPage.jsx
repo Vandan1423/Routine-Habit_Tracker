@@ -18,7 +18,9 @@ import {
 import useAppearance from "../../hooks/useAppearance";
 import useAuth from "../../hooks/useAuth";
 import useCommands from "../../hooks/useCommands";
+import useFetched from "../../hooks/useFetched";
 import { THEME_OPTIONS } from "../../lib/appearance";
+import { CONNECT_NOTE, connectionWords } from "../../lib/connectorWords";
 import { cx } from "../../lib/cx";
 import { TRASH_PATH } from "../../lib/places";
 import {
@@ -35,6 +37,7 @@ import { KEYS } from "../../lib/shortcuts";
 import { timezoneWords } from "../../lib/timezone";
 import { TRASH_DAYS_NOTE } from "../../lib/trashWords";
 import { toast } from "../../lib/toast";
+import connectorService from "../../services/connectorService";
 import styles from "./SettingsPage.module.css";
 
 // What the server takes for a name (registerSchema)
@@ -270,6 +273,71 @@ const ReminderRows = () => {
 };
 
 /**
+ * Claude: the address to add in Claude as a connector, and each time Claude has been let in, with a way to end it.
+ * The address is the site's own until the server says it (they are the same wherever the site and API share a host).
+ */
+const ClaudeRows = () => {
+    const { user } = useAuth();
+    const account = user?._id ?? user?.id ?? user?.email ?? "account";
+    const { data, retry, update } = useFetched(`connections:${account}`, connectorService.getConnections);
+    const [ending, setEnding] = useState(null);
+
+    const url = data?.url ?? `${window.location.origin}/api/mcp`;
+    const connections = data?.connections ?? [];
+
+    const copy = async () => {
+        try {
+            await navigator.clipboard.writeText(url);
+            toast("Address copied");
+        } catch {
+            toast.error("It couldn’t be copied. Select the address and copy it instead.");
+        }
+    };
+
+    const disconnect = async (connection) => {
+        setEnding(connection._id);
+        try {
+            await connectorService.disconnect(connection._id);
+            update((current) => ({
+                ...current,
+                connections: current.connections.filter((entry) => entry._id !== connection._id),
+            }));
+            toast("Claude disconnected", { detail: "To use it again, connect it from Claude." });
+        } catch (failure) {
+            toast.error(failure.message);
+        } finally {
+            setEnding(null);
+            retry();
+        }
+    };
+
+    return (
+        <>
+            <Row name="Connect Claude" note={CONNECT_NOTE} stack>
+                <div className={styles.inline}>
+                    <Input
+                        className={styles.addressField}
+                        aria-label="Connector address"
+                        readOnly
+                        spellCheck={false}
+                        value={url}
+                        onFocus={(event) => event.target.select()}
+                    />
+                    <Button onClick={copy}>Copy</Button>
+                </div>
+            </Row>
+            {connections.map((connection) => (
+                <Row key={connection._id} name={connection.clientName} note={connectionWords(connection)} stack>
+                    <Button loading={ending === connection._id} onClick={() => disconnect(connection)}>
+                        Disconnect
+                    </Button>
+                </Row>
+            ))}
+        </>
+    );
+};
+
+/**
  * Settings: how the app looks and moves on this device, who the account belongs to, the zone its day
  * is counted in, and the ways out of it (signing out, here or everywhere, and deleting it).
  * Appearance is kept by this browser; everything else is the account's and is changed on the server.
@@ -361,6 +429,10 @@ const SettingsPage = () => {
                     </Row>
                 </Section>
 
+                <Section title="Claude">
+                    <ClaudeRows />
+                </Section>
+
                 {/* Left out on a device with no keys to press (see Kbd) */}
                 <Section title="Keyboard" className={styles.keyboard}>
                     <Row
@@ -380,7 +452,7 @@ const SettingsPage = () => {
                 </Section>
 
                 <Section title="Account">
-                    <Row name="Password" note="Changing it signs out your other devices." stack>
+                    <Row name="Password" note="Changing it signs out your other devices and disconnects Claude." stack>
                         <Button onClick={() => setChangingPassword(true)}>Change password</Button>
                     </Row>
                     <Row name="Sign out" note="Of this device only." stack>
@@ -390,7 +462,7 @@ const SettingsPage = () => {
                     </Row>
                     <Row
                         name="Sign out everywhere"
-                        note="Ends every session on every device, this one included."
+                        note="Ends every session on every device, this one included, and disconnects Claude."
                         stack
                     >
                         <Button onClick={() => setLeavingAll(true)}>Sign out everywhere</Button>
@@ -417,7 +489,7 @@ const SettingsPage = () => {
                 open={leavingAll}
                 onOpenChange={setLeavingAll}
                 title="Sign out everywhere?"
-                description="Every device signed in to this account is signed out, this one included. You sign in again with your password."
+                description="Every device signed in to this account is signed out, this one included, and Claude is disconnected. You sign in again with your password."
                 confirmLabel="Sign out everywhere"
                 onConfirm={() => logoutAll()}
             />

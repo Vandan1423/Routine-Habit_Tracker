@@ -9,6 +9,7 @@ import ProtectedRoute from "./routes/ProtectedRoute";
 import PublicOnlyRoute from "./routes/PublicOnlyRoute";
 import {
     ArchivePage,
+    ConnectPage,
     ExpensesPage,
     ForgotPasswordPage,
     GalleryPage,
@@ -73,6 +74,8 @@ function App() {
                     <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
                     <Route path="/verify-email/:token" element={<VerifyEmailPage />} />
                     <Route path="/privacy" element={<PrivacyPage />} />
+                    {/* Where Claude sends someone to let it into their account; asks them to sign in first */}
+                    <Route path="/connect" element={<ConnectPage />} />
                     {GalleryPage && <Route path="/dev/ui/*" element={<GalleryPage />} />}
 
                     {/* Inside the shell, for someone signed in */}

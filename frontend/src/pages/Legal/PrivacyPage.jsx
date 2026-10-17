@@ -22,7 +22,7 @@ const PrivacyPage = () => {
 
                 <article className={styles.article}>
                     <header>
-                        <p className={styles.eyebrow}>Last updated 10 October 2026</p>
+                        <p className={styles.eyebrow}>Last updated 17 October 2026</p>
                         <h1 className={styles.title}>Privacy</h1>
                         <p className={styles.lead}>
                             {APP_NAME} is a routine, habit, to-do, goal and expense tracker run by its
@@ -67,6 +67,15 @@ const PrivacyPage = () => {
                                     logging out, removes that device’s address.
                                 </dd>
                             </div>
+                            <div>
+                                <dt>Claude, if you connect it</dt>
+                                <dd>
+                                    Only if you let Claude into your account: a note of the connection (when
+                                    it was made and last used) and the keys Claude uses, stored scrambled.
+                                    Disconnecting it under Settings, changing your password or logging out
+                                    everywhere removes it.
+                                </dd>
+                            </div>
                         </dl>
                     </section>
 
@@ -102,6 +111,11 @@ const PrivacyPage = () => {
                             data on our behalf: Vercel (the website), Render (the server), MongoDB Atlas
                             (the database) and Google’s Gmail (sending the emails above). Nobody else is
                             given your data.
+                        </p>
+                        <p>
+                            If you connect Claude, what it reads from your account to answer you goes to
+                            Anthropic, which runs Claude, under your own agreement with them. It acts only in
+                            your account, and only for as long as you keep it connected.
                         </p>
                     </section>
 

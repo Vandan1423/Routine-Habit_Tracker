@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import User, { PRIVATE_USER_FIELDS } from "../models/User.js";
 import PushSubscription from "../models/PushSubscription.js";
+import Connection from "../models/Connection.js";
 import ExpressError from "../utils/ExpressError.js";
 import sendEmail from "../utils/sendEmail.js";
 import eraseAccount from "../utils/eraseAccount.js";
@@ -343,6 +344,8 @@ export const logoutAll = async (req, res) => {
         await user.save({ validateBeforeSave: false });
         // A device that is signed out gets no reminders; each one asks again once it is signed back in
         await PushSubscription.deleteMany({ user: user._id });
+        // Everywhere includes Claude: it has to be allowed in again
+        await Connection.deleteMany({ user: user._id });
 
         res.clearCookie("refreshToken", getCookieOptions()).status(200).json({
             success: true,
@@ -542,6 +545,8 @@ export const changePassword = async (req, res, next) => {
                   }
                 : { $set: { refreshTokens: [] } },
         );
+        // So is Claude: whoever knew the old password may have been the one who let it in
+        await Connection.deleteMany({ user: user._id });
 
         res.status(200).json({
             success: true,
@@ -713,6 +718,7 @@ export const resetPassword = async (req, res) => {
         user.emailVerified = true; // the reset link arrived by email too, so the address is confirmed
         user.refreshTokens = []; // log out all devices after password change
         await user.save();
+        await Connection.deleteMany({ user: user._id }); // and Claude, which has to be allowed in again
 
         res.status(200).json({
             success: true,

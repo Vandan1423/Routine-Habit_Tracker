@@ -22,6 +22,12 @@ import trashRoutes from "./src/routes/trashRoutes.js";
 import archiveRoutes from "./src/routes/archiveRoutes.js";
 import notificationRoutes from "./src/routes/notificationRoutes.js";
 import jobRoutes from "./src/routes/jobRoutes.js";
+import {
+    connectionRoutes,
+    mcpRoutes,
+    oauthRoutes,
+    wellKnownRoutes,
+} from "./src/routes/connectorRoutes.js";
 
 import { databaseReady } from "./src/middlewares/databaseMiddleware.js";
 
@@ -45,6 +51,8 @@ app.use(cookieParser());
 app.get("/", (req, res) => {
     res.send("Welcome to the Life Management API");
 });
+// Where Claude finds out how to sign in to the connector, at the site's root (see connectorRoutes.js)
+app.use("/.well-known", wellKnownRoutes);
 // The database is connected before any request that needs it (see databaseMiddleware.js)
 app.use("/api", databaseReady);
 app.use("/api/auth", authRoutes);
@@ -61,6 +69,10 @@ app.use("/api/trash", trashRoutes);
 app.use("/api/archive", archiveRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/jobs", jobRoutes);
+// The Claude connector: signing in, the connections Settings lists, and the MCP endpoint itself
+app.use("/api/oauth", oauthRoutes);
+app.use("/api/connections", connectionRoutes);
+app.use("/api/mcp", mcpRoutes);
 
 // 404 Handler - Must be after all routes
 app.use((req, res, next) => {

@@ -151,6 +151,26 @@ export const verificationEmailRateLimit = rateLimit({
     legacyHeaders: false,
 });
 
+// At most 600 MCP requests per account per 15 minutes, through Claude. A long planning conversation makes a few
+// hundred; this stops a runaway loop, not a person. Keyed by account, because every Claude user's requests come
+// from the same few addresses of Anthropic's. Must run after `requireConnection`.
+export const connectorRateLimit = rateLimit({
+    ...countedIn("connector"),
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 600,
+    keyGenerator: (req) => `connector:${req.user._id}`,
+    message: {
+        jsonrpc: "2.0",
+        error: {
+            code: -32000,
+            message: "Too many requests from Claude for this account. Try again in 15 minutes.",
+        },
+        id: null,
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
 // At most 3 reset emails per account per hour. Must run after the body is validated.
 export const passwordResetRateLimit = rateLimit({
     ...countedIn("password-reset"),

@@ -90,6 +90,12 @@
     max-width: 100%;
 }
 
+/* The connector's address: long, and read-only, so it gets the room */
+.addressField {
+    width: 20rem;
+    max-width: 100%;
+}
+
 .foot {
     margin-top: var(--s-10);
     padding-top: var(--s-4);
@@ -159,7 +165,8 @@
     }
 
     .inline,
-    .nameField {
+    .nameField,
+    .addressField {
         width: 100%;
     }
 

@@ -7,7 +7,8 @@ import { getUserToday } from "../utils/dateRules.js";
 import { KEPT, trashStamp } from "../utils/trash.js";
 import { keyOf, saveOnce } from "../utils/saveOnce.js";
 
-const CATEGORIES = [
+// Every transaction, subscription and spending limit is filed under one of these (anything else becomes "Other")
+export const CATEGORIES = [
     "Food & Dining",
     "Travel",
     "Shopping",

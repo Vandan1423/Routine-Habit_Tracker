@@ -50,6 +50,9 @@ export const startApp = async () => {
     baseUrl = `http://127.0.0.1:${server.address().port}`;
 };
 
+// Where the running app answers, for requests outside /api (the connector's /.well-known documents)
+export const appAddress = () => baseUrl;
+
 export const stopApp = async () => {
     server?.close();
     stopEmailServer();

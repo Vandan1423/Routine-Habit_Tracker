@@ -23,6 +23,7 @@ export const ForgotPasswordPage = lazyPage(() => import("../pages/Auth/ForgotPas
 export const ResetPasswordPage = lazyPage(() => import("../pages/Auth/ResetPasswordPage"));
 export const VerifyEmailPage = lazyPage(() => import("../pages/Auth/VerifyEmailPage"));
 export const PrivacyPage = lazyPage(() => import("../pages/Legal/PrivacyPage"));
+export const ConnectPage = lazyPage(() => import("../pages/Auth/ConnectPage"));
 
 // Every shared control in every state. Exists in development only: a production build leaves it out.
 export const GalleryPage = import.meta.env.DEV

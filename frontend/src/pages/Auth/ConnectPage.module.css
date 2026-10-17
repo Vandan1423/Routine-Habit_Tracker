@@ -1,0 +1,53 @@
+/* What Claude may and may not do, between the lead and the buttons */
+.lists {
+    display: grid;
+    gap: var(--s-5);
+    margin-top: var(--s-6);
+}
+
+.heading {
+    color: var(--ink-2);
+    font-size: var(--fs-label);
+    line-height: var(--lh-meta);
+    font-weight: var(--fw-medium);
+}
+
+.list {
+    display: grid;
+    gap: var(--s-1);
+    margin-top: var(--s-2);
+    padding: 0;
+    list-style: none;
+}
+
+/* Each line led by a short rule: a tick would read as something already done */
+.list li {
+    position: relative;
+    padding-inline-start: var(--s-5);
+    text-wrap: pretty;
+}
+
+.list li::before {
+    content: "";
+    position: absolute;
+    inset-inline-start: 0;
+    top: calc(var(--lh-body) / 2);
+    width: var(--s-2);
+    border-top: 1.5px solid var(--ink);
+}
+
+/* What it can't do: the same lines, quieter */
+.list[data-tone="not"] li {
+    color: var(--ink-2);
+}
+
+.list[data-tone="not"] li::before {
+    border-top-color: var(--ink-3);
+}
+
+.note {
+    color: var(--ink-2);
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+    text-wrap: pretty;
+}

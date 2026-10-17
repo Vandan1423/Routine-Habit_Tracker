@@ -20,6 +20,7 @@ const sandboxSlot = (mode) => {
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const slot = sandboxSlot(mode)
+  const api = slot === null ? 'http://localhost:4000' : `http://127.0.0.1:${4010 + slot}`
 
   return {
     plugins: [react(), wordmark],
@@ -27,7 +28,9 @@ export default defineConfig(({ mode }) => {
     server: {
       proxy: {
         // Serve the API from the same origin as the app, so the refresh cookie is first-party
-        '/api': slot === null ? 'http://localhost:4000' : `http://127.0.0.1:${4010 + slot}`,
+        '/api': api,
+        // Where Claude reads how to sign in to the connector, at the site's root (vercel.json does the same)
+        '/.well-known': api,
       },
     },
   }
